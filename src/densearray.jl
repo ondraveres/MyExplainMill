@@ -6,7 +6,7 @@ struct ArrayMask{M}
 	mask::M
 end
 
-struct ArrayDaf{M}
+struct ArrayDaf{M} <: AbstractDaf
 	daf::M
 end
 
@@ -28,3 +28,6 @@ end
 function Duff.update!(daf::ArrayDaf, mask::ArrayMask, v::Number, valid_indexes = nothing)
 	Duff.update!(daf.daf, mask.mask, v)
 end
+
+
+dsprint(io::IO, n::ArrayDaf; pad=[]) = paddedprint(io, "DenseArray")

@@ -1,4 +1,4 @@
-struct SparseArrayDaf{M}
+struct SparseArrayDaf{M} <: AbstractDaf
 	daf::M
 	columns::Vector{Int}
 end
@@ -31,3 +31,5 @@ end
 function Duff.update!(daf::SparseArrayDaf, mask::ArrayMask, v::Number)
 	Duff.update!(daf.daf, mask.mask, v)
 end
+
+dsprint(io::IO, n::SparseArrayDaf; pad=[]) = paddedprint(io, "SparseArray")

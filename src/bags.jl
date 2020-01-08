@@ -1,4 +1,4 @@
-struct BagDaf{C,B,M}
+struct BagDaf{C,B,M} <: AbstractDaf
 	child::C
 	bags::B
 	daf::M
@@ -36,4 +36,11 @@ function Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_indexes = col
 	valid_sub_indexes = valid_indexes[mask.mask]
 	Duff.update!(daf.daf, mask.mask, v, valid_indexes)
 	Duff.update!(daf.child, mask.child_masks, v, valid_sub_indexes)
+end
+
+function dsprint(io::IO, n::BagDaf; pad=[])
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io,"Bag\n", color=c)
+    paddedprint(io, "  └── ", color=c, pad=pad)
+    dsprint(io, n.child, pad = [pad; (c, "      ")])
 end

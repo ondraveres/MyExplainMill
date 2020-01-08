@@ -97,6 +97,8 @@ end
 end
 
 @testset "Nesting of bagnodes." begin
+	an = ArrayNode(rand(2,5))
+	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
 	bnn = BagNode(bn, AlignedBags([1:2]))
 	daf = Daf(bnn);
 	mask = BagMask(BagMask(ArrayMask(Bool[1, 0]), Bool[0, 1, 0]), Bool[0, 1])

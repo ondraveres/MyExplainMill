@@ -2,7 +2,7 @@ struct TreeMask{C}
 	child_masks::C
 end
 
-struct TreeDaf{C}
+struct TreeDaf{C} <: AbstractDaf
 	childs::C
 end
 
@@ -25,3 +25,24 @@ function Duff.update!(daf::TreeDaf, mask::TreeMask, v::Number, valid_indexes = n
 		Duff.update!(daf.childs[k], mask.child_masks[k], v, valid_indexes)
 	end
 end
+
+
+function dsprint(io::IO, n::TreeDaf; pad=[])
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io, "Tree", color=c)
+    m = length(n.childs)
+    ks = keys(n.childs)
+    for i in 1:m
+    	k = "$(ks[i]): "
+        println(io)
+        if i < m
+	        paddedprint(io, "  ├── $(k)", color=c, pad=pad)
+	        dsprint(io, n.childs[i], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(k))))])
+	    else
+		    paddedprint(io, "  └── $(k)", color=c, pad=pad)
+		    dsprint(io, n.childs[end], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(k))))])
+	    end
+    end
+end
+
+
