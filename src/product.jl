@@ -26,6 +26,12 @@ function Duff.update!(daf::TreeDaf, mask::TreeMask, v::Number, valid_indexes = n
 	end
 end
 
+function prune(ds::TreeNode, mask::TreeMask)
+	ks = keys(ds.data)
+	s = (;[k => prune(ds.data[k], mask.child_masks[k]) for k in ks]...)
+	TreeNode(s)
+end
+
 
 function dsprint(io::IO, n::TreeDaf; pad=[])
     c = COLORS[(length(pad)%length(COLORS))+1]

@@ -26,7 +26,12 @@ function Duff.Daf(ds::BagNode)
 	BagDaf(Duff.Daf(ds.data), ds.bags, Duff.Daf(mask_length(ds)))
 end
 
-
+function prune(ds::BagNode, mask::BagMask)
+	x = prune(ds.data, mask.child_masks)
+	x = Mill.subset(x, findall(mask.mask))
+	bags = Mill.adjustbags(ds.bags, mask.mask)
+	BagNode(x, bags)
+end
 
 Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_indexes::Nothing) = Duff.update!(daf::BagDaf, mask::BagMask, v::Number)
 

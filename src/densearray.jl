@@ -29,5 +29,10 @@ function Duff.update!(daf::ArrayDaf, mask::ArrayMask, v::Number, valid_indexes =
 	Duff.update!(daf.daf, mask.mask, v)
 end
 
+function prune(ds::ArrayNode{T,M}, mask::ArrayMask) where {T<:Matrix, M}
+	x = deepcopy(ds.data)
+	x[.!mask.mask, :] .= 0
+	ArrayNode(x, ds.metadata)
+end
 
 dsprint(io::IO, n::ArrayDaf; pad=[]) = paddedprint(io, "DenseArray")

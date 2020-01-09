@@ -1,6 +1,60 @@
 using Mill, Flux, StatsBase, Test, Duff, SparseArrays
 using ExplainMill: BagMask, ArrayMask, TreeMask
-using ExplainMill: BagDaf, ArrayDaf, TreeDaf, SparseArrayDaf
+using ExplainMill: BagDaf, ArrayDaf, TreeDaf, SparseArrayDaf, prune
+
+@testset "Testing prunning of samples " begin
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+
+	mask = BagMask(
+			BagMask(
+				TreeMask((a = ArrayMask([true,false]),
+				c = ArrayMask([true, true, true, false, true]),)
+				),
+			[true,false,true,false,true]),
+			[true,true,true])
+	dss = prune(ds, mask)
+
+	@test nobs(dss) == 1
+	@test nobs(dss.data) == 3
+	@test nobs(dss.data.data) == 3
+	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
+	@test dss.data.data.data.a.data ≈ [1 5 9; 0 0 0 ]
+
+
+	mask = BagMask(
+			BagMask(
+				TreeMask((a = ArrayMask([false,true]),
+				c = ArrayMask([false, true, false, true, false]),)
+				),
+			[true,false,true,false,true]),
+			[true,true,true])
+	dss = prune(ds, mask)
+
+	@test nobs(dss) == 1
+	@test nobs(dss.data) == 3
+	@test nobs(dss.data.data) == 3
+	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
+	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
+
+	mask = BagMask(
+			BagMask(
+				TreeMask((a = ArrayMask([false,true]),
+				c = ArrayMask([true, true, true, true, true]),)
+				),
+			[true,false,false,false,true]),
+			[true,true,true])
+	dss = prune(ds, mask)
+
+	@test nobs(dss) == 1
+	@test nobs(dss.data) == 3
+	@test all(dss.data.bags.bags .== [1:1, 0:-1, 2:2])
+	@test nobs(dss.data.data) == 2
+	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
+	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
+end
+
 
 @testset "Generation of TreeDaf structure" begin 
 	x = reshape(collect(1:10), 2, 5)

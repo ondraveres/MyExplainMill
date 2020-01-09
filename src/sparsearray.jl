@@ -32,4 +32,11 @@ function Duff.update!(daf::SparseArrayDaf, mask::ArrayMask, v::Number)
 	Duff.update!(daf.daf, mask.mask, v)
 end
 
+function prune(ds::ArrayNode{T,M}, mask::ArrayMask) where {T<:SparseMatrixCSC, M}
+	x = deepcopy(ds.data)
+	x.nzval[.!mask.mask] .= 0
+	ArrayNode(x, ds.metadata)
+end
+
+
 dsprint(io::IO, n::SparseArrayDaf; pad=[]) = paddedprint(io, "SparseArray")

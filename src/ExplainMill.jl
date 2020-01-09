@@ -23,5 +23,6 @@ function explain(ds, model, nsamples=10000)
 	end
 	return(daf)
 end
-export explain
+
+export explain, prune
 end # module
