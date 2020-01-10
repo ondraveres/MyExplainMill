@@ -20,8 +20,8 @@ function Duff.Daf(ds::ArrayNode{T,M}) where {T<:SparseMatrixCSC, M}
 end
 
 function Duff.update!(daf::SparseArrayDaf, mask::ArrayMask, v::Number, valid_columns)
-	valid_indexes = findall([i ∈ valid_columns for i in daf.columns])
-	Duff.update!(daf.daf, mask.mask, v, valid_indexes)
+	valid_columns = findall([i ∈ valid_columns for i in daf.columns])
+	Duff.update!(daf.daf, mask.mask, v, valid_columns)
 end
 
 function Duff.update!(daf::SparseArrayDaf, mask::ArrayMask, v::Number, valid_columns::Nothing) 
@@ -38,5 +38,9 @@ function prune(ds::ArrayNode{T,M}, mask::ArrayMask) where {T<:SparseMatrixCSC, M
 	ArrayNode(x, ds.metadata)
 end
 
+function masks_and_stats(daf::SparseArrayDaf, depth = 0)
+	mask = fill(true, length(daf.daf))
+	return(ArrayMask(mask), [(m = mask, d = daf.daf, depth = depth)])
+end
 
 dsprint(io::IO, n::SparseArrayDaf; pad=[]) = paddedprint(io, "SparseArray")

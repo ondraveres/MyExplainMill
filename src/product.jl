@@ -20,9 +20,9 @@ function Duff.Daf(ds::TreeNode)
 	TreeDaf(s)
 end
 
-function Duff.update!(daf::TreeDaf, mask::TreeMask, v::Number, valid_indexes = nothing)
+function Duff.update!(daf::TreeDaf, mask::TreeMask, v::Number, valid_columns = nothing)
 	for k in keys(mask.child_masks)
-		Duff.update!(daf.childs[k], mask.child_masks[k], v, valid_indexes)
+		Duff.update!(daf.childs[k], mask.child_masks[k], v, valid_columns)
 	end
 end
 
@@ -31,7 +31,12 @@ function prune(ds::TreeNode, mask::TreeMask)
 	s = (;[k => prune(ds.data[k], mask.child_masks[k]) for k in ks]...)
 	TreeNode(s)
 end
-
+function masks_and_stats(daf::TreeDaf, depth = 0)
+	ks = keys(daf.childs)
+	s = (;[k => masks_and_stats(daf.childs[k], depth + 1) for k in ks]...)
+	ms = reduce(vcat, [s[k][2] for k in ks])
+	return(TreeMask((;[k => s[k][1] for k in ks]...)), ms)
+end
 
 function dsprint(io::IO, n::TreeDaf; pad=[])
     c = COLORS[(length(pad)%length(COLORS))+1]

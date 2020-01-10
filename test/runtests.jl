@@ -167,15 +167,15 @@ end
 
 	ss = daf.child.daf;
 	m = mask.child_masks.mask;
-	valid_indexes = vcat(collect.(bnn.data.bags[mask.mask])...)
-	@test all(ss.absent.n[valid_indexes[.!m]] .== 1)
-	@test all(ss.absent.n[valid_indexes[m]] .== 0)
-	@test all(ss.present.n[valid_indexes[m]] .== 1)
-	@test all(ss.present.n[valid_indexes[.!m]] .== 0)
+	valid_columns = vcat(collect.(bnn.data.bags[mask.mask])...)
+	@test all(ss.absent.n[valid_columns[.!m]] .== 1)
+	@test all(ss.absent.n[valid_columns[m]] .== 0)
+	@test all(ss.present.n[valid_columns[m]] .== 1)
+	@test all(ss.present.n[valid_columns[.!m]] .== 0)
 
-	invalid_indexes = setdiff(vcat(collect.(bnn.data.bags)...), valid_indexes)
-	@test all(ss.absent.n[invalid_indexes] .== 0)
-	@test all(ss.present.n[invalid_indexes] .== 0)
+	invalid_columns = setdiff(vcat(collect.(bnn.data.bags)...), valid_columns)
+	@test all(ss.absent.n[invalid_columns] .== 0)
+	@test all(ss.present.n[invalid_columns] .== 0)
 end
 
 @testset "Handling of Sparse Arrays with subset of columns" begin 
@@ -187,15 +187,15 @@ end
 	
 	ss = daf.daf
 	m = mask.mask
-	valid_indexes = [2,3,5]
-	@test all(ss.absent.n[valid_indexes[.!m]] .== 1)
-	@test all(ss.absent.n[valid_indexes[m]] .== 0)
-	@test all(ss.absent.s[valid_indexes[m]] .== 0)
-	@test all(ss.absent.s[valid_indexes[.!m]] .== 0.5)
-	@test all(ss.present.n[valid_indexes[m]] .== 1)
-	@test all(ss.present.n[valid_indexes[.!m]] .== 0)
-	@test all(ss.present.s[valid_indexes[m]] .== 0.5)
-	@test all(ss.present.s[valid_indexes[.!m]] .== 0)
+	valid_columns = [2,3,5]
+	@test all(ss.absent.n[valid_columns[.!m]] .== 1)
+	@test all(ss.absent.n[valid_columns[m]] .== 0)
+	@test all(ss.absent.s[valid_columns[m]] .== 0)
+	@test all(ss.absent.s[valid_columns[.!m]] .== 0.5)
+	@test all(ss.present.n[valid_columns[m]] .== 1)
+	@test all(ss.present.n[valid_columns[.!m]] .== 0)
+	@test all(ss.present.s[valid_columns[m]] .== 0.5)
+	@test all(ss.present.s[valid_columns[.!m]] .== 0)
 end
 
 @testset "Testing the daf framework" begin 
@@ -216,4 +216,21 @@ end
 		end
 		@test true
 	end
+end
+
+
+@testset "Testing the extraction of daf stats" begin 
+	x = Float32.(reshape(collect(1:10), 2, 5))
+	an = ArrayNode(x)
+	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
+	tn = TreeNode((a = an[1:2], b = bn))
+	dss = BagNode(tn, AlignedBags([1:2]))
+
+	mask, dafs = ExplainMill.masks_and_stats(daf)
+	dafs = sort(dafs, lt = (x,y) -> x.depth < y.depth)
+	@test all([length(dafs[i].m) == length(dafs[i].d) for i in 1:length(dafs)])
+	@test all([all(dafs[i].m) for i in 1:length(dafs)])
+	@test mask.mask[1] == true
+	dafs[1].m[1] = false
+	@test mask.mask[1] == false
 end

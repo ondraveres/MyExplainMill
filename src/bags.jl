@@ -33,14 +33,20 @@ function prune(ds::BagNode, mask::BagMask)
 	BagNode(x, bags)
 end
 
-Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_indexes::Nothing) = Duff.update!(daf::BagDaf, mask::BagMask, v::Number)
+Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_columns::Nothing) = Duff.update!(daf::BagDaf, mask::BagMask, v::Number)
 
-function Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_indexes = collect(1:length(daf.bags)))
-	valid_bags = daf.bags[valid_indexes]
-	valid_indexes = reduce(vcat, collect.(valid_bags))
-	valid_sub_indexes = valid_indexes[mask.mask]
-	Duff.update!(daf.daf, mask.mask, v, valid_indexes)
+function Duff.update!(daf::BagDaf, mask::BagMask, v::Number, valid_columns = collect(1:length(daf.bags)))
+	valid_bags = daf.bags[valid_columns]
+	valid_columns = reduce(vcat, collect.(valid_bags))
+	valid_sub_indexes = valid_columns[mask.mask]
+	Duff.update!(daf.daf, mask.mask, v, valid_columns)
 	Duff.update!(daf.child, mask.child_masks, v, valid_sub_indexes)
+end
+
+function masks_and_stats(daf::BagDaf, depth = 0)
+	(child_masks, child_dafs) = masks_and_stats(daf.child, depth + 1)
+	mask = fill(true, length(daf.daf))
+	return(BagMask(child_masks,mask), vcat(child_dafs, (m = mask, d = daf.daf, depth = depth)))
 end
 
 function dsprint(io::IO, n::BagDaf; pad=[])
