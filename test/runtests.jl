@@ -1,4 +1,4 @@
-using Mill, Flux, StatsBase, Test, Duff, SparseArrays
+using Mill, Flux, StatsBase, Test, Duff, SparseArrays, ExplainMill
 using ExplainMill: BagMask, ArrayMask, TreeMask
 using ExplainMill: BagDaf, ArrayDaf, TreeDaf, SparseArrayDaf, prune
 
@@ -218,13 +218,16 @@ end
 	end
 end
 
-
 @testset "Testing the extraction of daf stats" begin 
 	x = Float32.(reshape(collect(1:10), 2, 5))
 	an = ArrayNode(x)
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
 	tn = TreeNode((a = an[1:2], b = bn))
-	dss = BagNode(tn, AlignedBags([1:2]))
+	ds = BagNode(tn, AlignedBags([1:2]))
+
+	daf = Duff.Daf(ds);
+	model = reflectinmodel(ds, d -> Dense(d,2), d -> SegmentedMean(d), b = Dict("" => d -> Dense(d,1)))
+
 
 	mask, dafs = ExplainMill.masks_and_stats(daf)
 	dafs = sort(dafs, lt = (x,y) -> x.depth < y.depth)
