@@ -1,6 +1,70 @@
-using Mill, Flux, StatsBase, Test, Duff, SparseArrays, ExplainMill
-using ExplainMill: BagMask, ArrayMask, TreeMask
-using ExplainMill: BagDaf, ArrayDaf, TreeDaf, SparseArrayDaf, prune
+using ExplainMill, Mill, SparseArrays
+using ExplainMill: prune, Mask, invalidate!
+using Setfield
+using Test
+
+@testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0]))
+
+	mask = Mask(cn)
+	invalidate!(mask, [1,2])
+	@test mask.participate ≈ [false, false, false, true, true, true]
+	mask.participate .= true
+	invalidate!(mask, [2,4])
+	@test mask.participate ≈ [true, true, false, true, false, true]
+
+
+	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
+	mask = Mask(sn)
+	invalidate!(mask, [2,4])
+	@test mask.participate ≈ [true, false, true, false, true]
+
+	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
+	mask = Mask(ds)
+	invalidate!(mask, [1,3])
+	@test mask.participate ≈ mask.child.participate ≈ [false, false, true, false, false]
+	mask = Mask(ds)
+	mask.mask[[1,2,4,5]] .= false
+	invalidate!(mask)
+	@test mask.mask ≈ [false, false, true, false, false]
+	@test all(mask.participate .== true)
+	@test mask.child.participate ≈ [false, false, true, false, false]
+
+
+	ds = BagNode(BagNode(sn, AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	mask = Mask(ds)
+	invalidate!(mask, [1])
+	@test all(mask.mask .== true)
+	@test all(mask.participate .== false)
+	@test all(mask.child.mask .== true)
+	@test all(mask.child.participate .== false)
+	@test all(mask.child.child.mask .== true)
+	@test all(mask.child.child.participate .== false)
+	mask = Mask(ds)
+	mask.mask[[1,3]] .= false
+	invalidate!(mask)
+	@test mask.mask ≈ [false, true, false]
+	@test all(mask.participate .== true)
+	@test mask.child.participate ≈ [false, false, true, false, false]
+	@test mask.child.mask .& mask.child.participate  ≈ [false, false, true, false, false]
+
+	ds = BagNode(TreeNode((a = cn, b = sn)), AlignedBags([1:2,3:3,4:5]))
+	mask = Mask(ds)
+	mask.mask[[1,3]] .= false
+	invalidate!(mask)
+	@test mask.mask ≈ [false, true, false, true, true]
+	@test all(mask.participate .== true)
+	@test mask.child.childs[:a].participate ≈ [false, false, true, false, true, true]
+	@test mask.child.childs[:b].participate ≈ [false, true, false, true, true]
+	mask = Mask(ds)
+	invalidate!(mask,[1,3])
+	@test all(mask.mask .== true)
+	@test mask.participate ≈ [false, false, true, false, false]
+	@test mask.child.childs[:a].participate ≈ [false, false, false, true, false, false]
+	@test mask.child.childs[:b].participate ≈ [false, false, true, false, false]
+end
+
 
 @testset "Testing prunning of samples " begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))

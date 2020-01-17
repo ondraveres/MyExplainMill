@@ -1,28 +1,16 @@
 struct TreeMask{C}
-	child_masks::C
-end
-
-struct TreeDaf{C} <: AbstractDaf
 	childs::C
 end
 
-mask_length(ds::TreeNode) = 0
-
-function StatsBase.sample(daf::TreeDaf, ds::TreeNode)
+function Mask(ds::TreeNode)
 	ks = keys(ds.data)
-	s = (;[k => sample(daf.childs[k], ds.data[k]) for k in ks]...)
-	return(TreeNode((;[k => s[k][1] for k in ks]...)), TreeMask((;[k => s[k][2] for k in ks]...)))
+	s = (;[k => Mask(ds.data[k]) for k in ks]...)
+	TreeMask(s)
 end
 
-function Duff.Daf(ds::TreeNode)
-	ks = keys(ds.data)
-	s = (;[k => Duff.Daf(ds.data[k]) for k in ks]...)
-	TreeDaf(s)
-end
-
-function Duff.update!(daf::TreeDaf, mask::TreeMask, v::Number, valid_columns = nothing)
-	for k in keys(mask.child_masks)
-		Duff.update!(daf.childs[k], mask.child_masks[k], v, valid_columns)
+function invalidate!(mask::TreeMask, observations::Vector{Int})
+	for c in mask.childs
+		invalidate!(c, observations)
 	end
 end
 
@@ -31,16 +19,10 @@ function prune(ds::TreeNode, mask::TreeMask)
 	s = (;[k => prune(ds.data[k], mask.child_masks[k]) for k in ks]...)
 	TreeNode(s)
 end
-function masks_and_stats(daf::TreeDaf, depth = 0)
-	ks = keys(daf.childs)
-	s = (;[k => masks_and_stats(daf.childs[k], depth + 1) for k in ks]...)
-	ms = reduce(vcat, [s[k][2] for k in ks])
-	return(TreeMask((;[k => s[k][1] for k in ks]...)), ms)
-end
 
-function dsprint(io::IO, n::TreeDaf; pad=[])
+function dsprint(io::IO, n::TreeMask; pad=[])
     c = COLORS[(length(pad)%length(COLORS))+1]
-    paddedprint(io, "Tree", color=c)
+    paddedprint(io, "TreeMask", color=c)
     m = length(n.childs)
     ks = keys(n.childs)
     for i in 1:m

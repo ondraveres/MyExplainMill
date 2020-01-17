@@ -3,8 +3,12 @@ using Mill, Duff, SparseArrays, StatsBase, CatViews
 using Mill: paddedprint, COLORS
 import Mill: dsprint
 
-abstract type AbstractDaf end;
-Base.show(io::IO, ::MIME"text/plain", n::AbstractDaf) = dsprint(io, n)
+abstract type AbstractExplainMask end;
+function Mask end;
+
+invalidate!(mask::AbstractExplainMask) = invalidate!(mask, Vector{Int}())
+
+Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
 
 include("densearray.jl")
 include("sparsearray.jl")
