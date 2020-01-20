@@ -1,68 +1,124 @@
 using ExplainMill, Mill, SparseArrays
-using ExplainMill: prune, Mask, invalidate!
+using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask
 using Setfield
 using Test
+using MLDataPattern
+using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask
+
 
 @testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0]))
 
-	mask = Mask(cn)
-	invalidate!(mask, [1,2])
-	@test mask.participate ≈ [false, false, false, true, true, true]
-	mask.participate .= true
-	invalidate!(mask, [2,4])
-	@test mask.participate ≈ [true, true, false, true, false, true]
+	m = Mask(cn)
+	invalidate!(m, [1,2])
+	@test participate(m) ≈ [false, false, false, true, true, true]
+	participate(m) .= true
+	invalidate!(m, [2,4])
+	@test participate(m) ≈ [true, true, false, true, false, true]
 
 
 	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
-	mask = Mask(sn)
-	invalidate!(mask, [2,4])
-	@test mask.participate ≈ [true, false, true, false, true]
+	m = Mask(sn)
+	invalidate!(m, [2,4])
+	@test participate(m) ≈ [true, false, true, false, true]
 
 	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
-	mask = Mask(ds)
-	invalidate!(mask, [1,3])
-	@test mask.participate ≈ mask.child.participate ≈ [false, false, true, false, false]
-	mask = Mask(ds)
-	mask.mask[[1,2,4,5]] .= false
-	invalidate!(mask)
-	@test mask.mask ≈ [false, false, true, false, false]
-	@test all(mask.participate .== true)
-	@test mask.child.participate ≈ [false, false, true, false, false]
+	m = Mask(ds)
+	invalidate!(m, [1,3])
+	@test participate(m) ≈ participate(m.child) ≈ [false, false, true, false, false]
+	m = Mask(ds)
+	mask(m)[[1,2,4,5]] .= false
+	invalidate!(m)
+	@test mask(m) ≈ [false, false, true, false, false]
+	@test all(participate(m) .== true)
+	@test participate(m.child) ≈ [false, false, true, false, false]
 
 
 	ds = BagNode(BagNode(sn, AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
-	mask = Mask(ds)
-	invalidate!(mask, [1])
-	@test all(mask.mask .== true)
-	@test all(mask.participate .== false)
-	@test all(mask.child.mask .== true)
-	@test all(mask.child.participate .== false)
-	@test all(mask.child.child.mask .== true)
-	@test all(mask.child.child.participate .== false)
-	mask = Mask(ds)
-	mask.mask[[1,3]] .= false
-	invalidate!(mask)
-	@test mask.mask ≈ [false, true, false]
-	@test all(mask.participate .== true)
-	@test mask.child.participate ≈ [false, false, true, false, false]
-	@test mask.child.mask .& mask.child.participate  ≈ [false, false, true, false, false]
+	m = Mask(ds)
+	invalidate!(m, [1])
+	@test all(mask(m) .== true)
+	@test all(participate(m) .== false)
+	@test all(mask(m.child) .== true)
+	@test all(participate(m.child) .== false)
+	@test all(mask(m.child.child) .== true)
+	@test all(participate(m.child.child) .== false)
+	m = Mask(ds)
+	mask(m)[[1,3]] .= false
+	invalidate!(m)
+	@test mask(m) ≈ [false, true, false]
+	@test all(participate(m) .== true)
+	@test participate(m.child) ≈ [false, false, true, false, false]
+	@test participate(m.child.child) ≈ participate(m.child) ≈ [false, false, true, false, false]
 
 	ds = BagNode(TreeNode((a = cn, b = sn)), AlignedBags([1:2,3:3,4:5]))
-	mask = Mask(ds)
-	mask.mask[[1,3]] .= false
-	invalidate!(mask)
-	@test mask.mask ≈ [false, true, false, true, true]
-	@test all(mask.participate .== true)
-	@test mask.child.childs[:a].participate ≈ [false, false, true, false, true, true]
-	@test mask.child.childs[:b].participate ≈ [false, true, false, true, true]
-	mask = Mask(ds)
-	invalidate!(mask,[1,3])
-	@test all(mask.mask .== true)
-	@test mask.participate ≈ [false, false, true, false, false]
-	@test mask.child.childs[:a].participate ≈ [false, false, false, true, false, false]
-	@test mask.child.childs[:b].participate ≈ [false, false, true, false, false]
+	m = Mask(ds)
+	mask(m)[[1,3]] .= false
+	invalidate!(m)
+	@test mask(m) ≈ [false, true, false, true, true]
+	@test all(participate(m) .== true)
+	@test participate(m.child.childs[:a]) ≈ [false, false, true, false, true, true]
+	@test participate(m.child.childs[:b]) ≈ [false, true, false, true, true]
+	m = Mask(ds)
+	invalidate!(m,[1,3])
+	@test all(mask(m) .== true)
+	@test participate(m) ≈ [false, false, true, false, false]
+	@test participate(m.child.childs[:a]) ≈ [false, false, false, true, false, false]
+	@test participate(m.child.childs[:b]) ≈ [false, false, true, false, false]
+end
+
+
+@testset "mapmask" begin
+	an = Mask(ArrayNode(reshape(collect(1:10), 2, 5)))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an) ≈ [true, false]
+	@test participate(an) ≈ [false, true]
+
+
+	an = Mask(ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0])))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an) ≈ [true, false, true, true, true, true]
+	@test participate(an) ≈ [false, true, true, true, true, true]
+
+
+	an = Mask(ArrayNode(NGramMatrix(["a","b","c"],3,256,2053)))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an) ≈ [true, false, true]
+	@test participate(an) ≈ [false, true, true]
+
+	an = Mask(TreeNode((a = ArrayNode(NGramMatrix(["a","b","c","d","e"],3,256,2053)), 
+		b = ArrayNode(reshape(collect(1:10), 2, 5)))))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an.childs.a) ≈ [true, false, true, true, true]
+	@test participate(an.childs.a) ≈ [false, true, true, true, true]
+	@test mask(an.childs.b) ≈ [true, false]
+	@test participate(an.childs.b) ≈ [false, true]
+	@test participate(an) == nothing
+	@test mask(an) == nothing
+
+
+	an = Mask(BagNode(ArrayNode(reshape(collect(1:10), 2, 5)), AlignedBags([1:2,3:3,4:5])))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an) ≈ [true, false, true, true, true,]
+	@test participate(an) ≈ [false, true, true, true, true]
+	@test mask(an.child) ≈ [true, false]
+	@test participate(an.child) ≈ [false, true]
 end
 
 
@@ -71,30 +127,31 @@ end
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
 	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
-	mask = BagMask(
+	m = BagMask(
 			BagMask(
-				TreeMask((a = ArrayMask([true,false]),
-				c = ArrayMask([true, true, true, false, true]),)
-				),
+				TreeMask((a = MatrixMask([true,false]),
+				c = SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),)
+				), ds.bags.bags,
 			[true,false,true,false,true]),
+			ds.bags,
 			[true,true,true])
-	dss = prune(ds, mask)
+	dss = prune(ds, m)
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
 	@test nobs(dss.data.data) == 3
-	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
 	@test dss.data.data.data.a.data ≈ [1 5 9; 0 0 0 ]
+	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
 
-
-	mask = BagMask(
-			BagMask(
-				TreeMask((a = ArrayMask([false,true]),
-				c = ArrayMask([false, true, false, true, false]),)
-				),
-			[true,false,true,false,true]),
-			[true,true,true])
-	dss = prune(ds, mask)
+	m = BagMask(
+		BagMask(
+			TreeMask((a = MatrixMask([false,true]),
+			c = SparseArrayMask([false, true, false, true, false], [1, 2, 3, 4, 5]),)
+			), ds.bags.bags,
+		[true,false,true,false,true]),
+		ds.bags,
+		[true,true,true])
+	dss = prune(ds, m)
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
@@ -102,14 +159,15 @@ end
 	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
 	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
 
-	mask = BagMask(
-			BagMask(
-				TreeMask((a = ArrayMask([false,true]),
-				c = ArrayMask([true, true, true, true, true]),)
-				),
-			[true,false,false,false,true]),
-			[true,true,true])
-	dss = prune(ds, mask)
+	m = BagMask(
+		BagMask(
+			TreeMask((a = MatrixMask([false,true]),
+			c = SparseArrayMask([true, true, true, true, true], [1, 2, 3, 4, 5]),)
+			), ds.bags.bags,
+		[true,false,false,false,true]),
+		ds.bags,
+		[true,true,true])
+	dss = prune(ds, m)
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
@@ -219,7 +277,7 @@ end
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
 	bnn = BagNode(bn, AlignedBags([1:2]))
 	daf = Daf(bnn);
-	mask = BagMask(BagMask(ArrayMask(Bool[1, 0]), Bool[0, 1, 0]), Bool[0, 1])
+	mask = BagMask(BagMask(MatrixMask(Bool[1, 0]), Bool[0, 1, 0]), Bool[0, 1])
 	Duff.update!(daf, mask, 0.5)
 
 	ss = daf.daf;
@@ -245,7 +303,7 @@ end
 @testset "Handling of Sparse Arrays with subset of columns" begin 
 	x = ArrayNode(sparse([1 1 0 0 2.0; 0 1 0 1 0.0]))
 	daf = Daf(x)
-	mask = ArrayMask(Bool[1, 0, 1])
+	mask = MatrixMask(Bool[1, 0, 1])
 	valid_columns = [2,5]
 	Duff.update!(daf, mask, 0.5, valid_columns)
 	

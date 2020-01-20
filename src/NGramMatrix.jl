@@ -1,20 +1,21 @@
-struct NGramMatrixMask <: AbstractExplainMask
-	mask::Array{Bool,1}
-	participate::Array{Bool,1}
+struct NGramMatrixMask <: AbstractListMask
+	mask::Mask
 end
 
+NGramMatrixMask(m::Vector{Bool}) = NGramMatrixMask(Mask(m, fill(true, length(m))))
+
 function Mask(ds::ArrayNode{T,M}) where {T<:Mill.NGramMatrix{String}, M}
-	NGramMatrixMask(fill(true, length(ds.data.s)), fill(true, length(ds.data.s)))
+	NGramMatrixMask(Mask(length(ds.data.s)))
 end
 
 function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
-	mask.participate[observations] .= false
+	participate(mask)[observations] .= false
 end
 
-# function prune(ds::ArrayNode{T,M}, mask::ArrayMask) where {T<:Mill.NGramMatrix{String}, M}
-# 	x = deepcopy(ds.data)
-# 	x.s[.!mask.mask] .= ""
-# 	ArrayNode(x, ds.metadata)
-# end
+function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatrix{String}, M}
+	x = deepcopy(ds.data)
+	x.s[.!mask(m)] .= ""
+	ArrayNode(x, ds.metadata)
+end
 
 dsprint(io::IO, n::NGramMatrixMask; pad=[]) = paddedprint(io, "NGramMatrix")

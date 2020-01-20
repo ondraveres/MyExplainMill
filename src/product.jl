@@ -2,10 +2,19 @@ struct TreeMask{C}
 	childs::C
 end
 
+mask(::TreeMask) = nothing
+participate(::TreeMask) = nothing
+
 function Mask(ds::TreeNode)
 	ks = keys(ds.data)
 	s = (;[k => Mask(ds.data[k]) for k in ks]...)
 	TreeMask(s)
+end
+
+function mapmask(f, mask::TreeMask)
+	ks = keys(mask.childs)
+	s = (;[k => f(mask.childs[k]) for k in ks]...)
+	(;s...)
 end
 
 function invalidate!(mask::TreeMask, observations::Vector{Int})
@@ -16,7 +25,7 @@ end
 
 function prune(ds::TreeNode, mask::TreeMask)
 	ks = keys(ds.data)
-	s = (;[k => prune(ds.data[k], mask.child_masks[k]) for k in ks]...)
+	s = (;[k => prune(ds.data[k], mask.childs[k]) for k in ks]...)
 	TreeNode(s)
 end
 

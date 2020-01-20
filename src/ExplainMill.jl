@@ -4,9 +4,26 @@ using Mill: paddedprint, COLORS
 import Mill: dsprint
 
 abstract type AbstractExplainMask end;
-function Mask end;
+abstract type AbstractListMask <: AbstractExplainMask end;
 
-invalidate!(mask::AbstractExplainMask) = invalidate!(mask, Vector{Int}())
+
+struct Mask
+	mask::Array{Bool,1}
+	participate::Array{Bool,1}
+end
+
+Mask(d::Int) = Mask(fill(true, d), fill(true, d))
+
+participate(m::Mask) = m.participate
+participate(m::AbstractListMask) = participate(m.mask)
+mask(m::Mask) = m.mask
+mask(m::AbstractListMask) = mask(m.mask)
+
+function mapmask(f, m::AbstractListMask)
+	(mask = f(m.mask),)
+end
+
+invalidate!(m::AbstractExplainMask) = invalidate!(m, Vector{Int}())
 
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
 
