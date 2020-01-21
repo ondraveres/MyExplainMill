@@ -3,7 +3,8 @@ using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask
 using Setfield
 using Test
 using MLDataPattern
-using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask
+using StatsBase, Flux, Duff
+using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, DafMask
 
 
 @testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
@@ -178,23 +179,25 @@ end
 end
 
 
-@testset "Generation of TreeDaf structure" begin 
+@testset "extraction of daf" begin 
 	x = reshape(collect(1:10), 2, 5)
 	an = ArrayNode(x)
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
 	cn = ArrayNode(sprand(4, 2, 0.3))
 	tn = TreeNode((a = an[1:2], b = bn, c = cn))
+	model = reflectinmodel(tn, d -> Dense(d, 4), d -> SegmentedMean(d), b = Dict("" => d -> Dense(d, 1)))
+	pruning_mask = Mask(tn)
+	dafs = []
+	mapmask(pruning_mask) do m
+		global dafs
+		push!(dafs, DafMask(Daf(length(mask(m))), m))
+	end
 
-	daf = Daf(tn);
-	@test typeof(daf.childs.a) <: ArrayDaf{Duff.Daf}
-	@test typeof(daf.childs.b) <: BagDaf{ArrayDaf{Daf},AlignedBags,Daf}
-	@test typeof(daf.childs.b.child) <: ArrayDaf{Daf}
-	@test typeof(daf.childs.b.daf) <: Daf
-	@test typeof(daf.childs.c) <: SparseArrayDaf{Duff.Daf}
-
-	@test length(Daf(cn).daf) == nnz(cn.data)
-	@test length(Daf(an).daf) == size(an.data,1)
-	@test length(Daf(bn).daf) == nobs(bn.data)
+	for i in 1:1000
+		sample!(pruning_mask)
+		ds = prune(tn, pruning_mask)
+		o = model(ds)
+	end
 end
 
 

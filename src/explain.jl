@@ -1,19 +1,34 @@
-"""
-	scalar(x) 
-
-	scalar from 1-by-1 matrix, vector with a single item, or an ArrayNode
-"""
-@inline function scalar(x::Matrix) 
-	@assert size(x, 1) == 1
-	@assert size(x, 2) == 1
-	return(x[1])
-end
-@inline function scalar(x::Vector) 
-	@assert size(x, 1) == 1
-	return(x[1])
-end
-@inline scalar(x::Mill.ArrayNode) = scalar(x.data)
+@inline row(x::Mill.ArrayNode) = scalar(x.data)
 @inline scalar(x) = x
+
+
+struct DafMask{M}
+	daf::Daf 
+	mask::M
+end
+
+function StatsBase.sample!(pruning_mask::AbstractExplainMask)
+	mapmask(pruning_mask) do m 
+		sample!(mask(m), [true, false])
+	end
+end
+
+function update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
+	update!(dafs, v.data, pruning_mask)
+end
+function update!(dafs::Vector, v::AbstactArray{T}, pruning_mask) where{T<:Real}
+	for i in 1:length(v)
+		mapmask(pruning_mask) do m 
+			participate(m) .= true
+		end
+		invalidate!(pruning_mask,[i])
+		for d in dafs 
+
+		end
+	end
+end
+# StatsBase.sample!(daf::DafMask) = sample!(mask(daf.mask), [true, false])
+
 
 
 """

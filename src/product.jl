@@ -1,4 +1,4 @@
-struct TreeMask{C}
+struct TreeMask{C} <: AbstractExplainMask
 	childs::C
 end
 
