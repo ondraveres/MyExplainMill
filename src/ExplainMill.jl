@@ -2,6 +2,9 @@ module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews
 using Mill: paddedprint, COLORS
 import Mill: dsprint
+using TimerOutputs
+
+const to = TimerOutput();
 
 abstract type AbstractExplainMask end;
 abstract type AbstractListMask <: AbstractExplainMask end;

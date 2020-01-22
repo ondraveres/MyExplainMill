@@ -1,34 +1,34 @@
-@inline row(x::Mill.ArrayNode) = scalar(x.data)
-@inline scalar(x) = x
-
-
 struct DafMask{M}
 	daf::Daf 
 	mask::M
 end
 
+DafMask(m::Mask) = DafMask(Daf(length(mask(m))), m)
+
 function StatsBase.sample!(pruning_mask::AbstractExplainMask)
 	mapmask(pruning_mask) do m 
-		sample!(mask(m), [true, false])
+		if !isempty(mask(m)) 
+			mask(m) .= sample([true, false], length(mask(m)))
+		end
 	end
 end
 
-function update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
-	update!(dafs, v.data, pruning_mask)
+function Duff.update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
+	Duff.update!(dafs, v.data, pruning_mask)
 end
-function update!(dafs::Vector, v::AbstactArray{T}, pruning_mask) where{T<:Real}
+
+function Duff.update!(dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
 	for i in 1:length(v)
 		mapmask(pruning_mask) do m 
 			participate(m) .= true
 		end
-		invalidate!(pruning_mask,[i])
+		invalidate!(pruning_mask,setdiff(1:length(v), i))
 		for d in dafs 
-
+			# @show sum(findall(mask(d.mask) .& participate(d.mask)))
+			Duff.update!(d.daf, v[1], mask(d.mask), participate(d.mask))
 		end
 	end
 end
-# StatsBase.sample!(daf::DafMask) = sample!(mask(daf.mask), [true, false])
-
 
 
 """
@@ -37,13 +37,18 @@ end
 	Shapley values of individual items of a sample `ds` in the model `model` estimated from `n` trials
 """
 function dafstats(ds, model, n=10000)
-	daf = Duff.Daf(ds);
-	for i in 1:n
-		dss, mask = sample(daf, ds)
-		v = scalar(model(dss))
-		Duff.update!(daf, mask, v)
+	pruning_mask = Mask(ds)
+	dafs = []
+	mapmask(pruning_mask) do m
+		m != nothing && push!(dafs, DafMask(m))
 	end
-	return(daf)
+	for i in 1:n
+		@timeit to "sample!" sample!(pruning_mask)
+		pruned_ds = @timeit to "prune" prune(ds, pruning_mask)
+		o = @timeit to "evaluate" model(pruned_ds)
+		@timeit to "update!" Duff.update!(dafs, o, pruning_mask)
+	end
+	return(dafs, pruning_mask)
 end
 
 
@@ -55,19 +60,22 @@ end
 	:uselessfirst means that samples with low importance are removed first
 """
 function explain(ds, model;  n = 10000, method = :uselessfirst, threshold = 0.5, verbose = false)
-	if scalar(model(ds)) < threshold
+	if minimum(model(ds)) < threshold
 		@info "stopped explanation as the output is below threshold"
 		return(ds)
 	end
-	daf = dafstats(ds, model, n)
-	mask, dafs = masks_and_stats(daf)
+	dafs, pruning_mask = dafstats(ds, model, n)
+	
+	catmask = CatView(tuple([mask(d.mask) for d in dafs]...))
+	pvalue = CatView(tuple([Duff.UnequalVarianceTTest(d.daf) for d in dafs]...))
+	pvalue = CatView(tuple([Duff.meanscore(d.daf) for d in dafs]...))
+
 	if method == :uselessfirst
-		return(uselessfirst(ds, model, mask, dafs, threshold, verbose))
+		return(uselessfirst(ds, pruning_mask,model, catmask, pvalue, threshold, verbose))
 	else
 		@error "unknown pruning method $(method)"
 	end
 end
-
 
 """
 	uselessfirst(ds, model, mask, dafs, threshold, verbose)
@@ -75,18 +83,16 @@ end
 	Removes items from a sample `ds` such that output of `model(ds)` is above `threshold`.
 	Removing starts with items that according to Shapley values do not contribute to the output
 """
-function uselessfirst(ds, model, mask, dafs, threshold, verbose)
-	catmask = CatView(tuple([d.m for d in dafs]...))
-	pvalue = CatView(tuple([Duff.UnequalVarianceTTest(d.d) for d in dafs]...))
-
-	verbose && println("model output: ",round(scalar(model(ds)), digits = 3))
+function uselessfirst(ds, pruning_mask, model, catmask, pvalue, threshold, verbose)
+	catmask .= true
+	verbose && println("model output: ", round(minimum(model(ds)), digits = 3))
 	for i in sortperm(pvalue, rev = true)
 		catmask[i] = false
-		o = scalar(model(prune(ds, mask)))
+		o = minimum(model(prune(ds, pruning_mask)))
 		if o <= threshold
 			catmask[i] = true
 		end
 		verbose && println(i,": p-value: ",round(pvalue[i], digits = 6),": model output: ",round(o, digits = 3))
 	end
-	return(prune(ds, mask))
+	return(prune(ds, pruning_mask))
 end

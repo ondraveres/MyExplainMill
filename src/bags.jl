@@ -7,17 +7,25 @@ end
 BagMask(child, bags, m::Vector{Bool}) = BagMask(child, bags, Mask(m, fill(true, length(m))))
 Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
 
+# function Mask(ds::BagNode, m::TreeModel)
+# 	child_mask = Mask(ds.data, m.im)
+
+# 	d = pairwise(CosineDist(), m.im(ds.data).data, dims = 2)
+# 	cluster_assignments = dbscan(d, 0.2, 1).assignments
+
+# 	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
+# end
+
 participate(m::BagMask) = participate(m.mask)
 mask(m::BagMask) = mask(m.mask)
 
 function mapmask(f, m::BagMask)
-	f(m.child)
+	mapmask(f, m.child)
 	f(m.mask)
 end
 
 function invalidate!(mask::BagMask, observations::Vector{Int})
 	invalid_instances = isempty(observations) ? observations : reduce(vcat, [collect(mask.bags[i]) for i in observations])
-	@show invalid_instances
 	mask.mask.participate[invalid_instances] .= false
 	invalid_instances = unique(vcat(invalid_instances, findall(.!mask.mask.mask)))
 	invalidate!(mask.child, invalid_instances)

@@ -13,7 +13,7 @@ end
 
 function mapmask(f, mask::TreeMask)
 	ks = keys(mask.childs)
-	s = (;[k => f(mask.childs[k]) for k in ks]...)
+	s = (;[k => mapmask(f, mask.childs[k]) for k in ks]...)
 	(;s...)
 end
 
