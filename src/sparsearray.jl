@@ -3,12 +3,14 @@ struct SparseArrayMask <: AbstractListMask
 	columns::Vector{Int}
 end
 
-SparseArrayMask(m::Vector{Bool}, columns) = SparseArrayMask(Mask(m, fill(true, length(m))), columns)
-
 function Mask(ds::ArrayNode{T,M}) where {T<:SparseMatrixCSC, M}
 	columns = findall(!iszero, ds.data);
 	columns = [c.I[2] for c in columns]
 	SparseArrayMask(Mask(length(columns)), columns)
+end
+
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm = cluster_instances) where {T<:SparseMatrixCSC, M}
+	Mask(ds)
 end
 
 function invalidate!(mask::SparseArrayMask, observations::Vector{Int})

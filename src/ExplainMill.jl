@@ -9,18 +9,15 @@ const to = TimerOutput();
 abstract type AbstractExplainMask end;
 abstract type AbstractListMask <: AbstractExplainMask end;
 
+participate(m::AbstractExplainMask) = participate(m.mask)
+mask(m::AbstractExplainMask) = mask(m.mask)
 
-struct Mask
-	mask::Array{Bool,1}
-	participate::Array{Bool,1}
+
+function cluster_instances(x)
+	d = pairwise(CosineDist(), x, dims = 2)
+	dbscan(d, 0.2, 1).assignments
 end
 
-Mask(d::Int) = Mask(fill(true, d), fill(true, d))
-
-participate(m::Mask) = m.participate
-participate(m::AbstractListMask) = participate(m.mask)
-mask(m::Mask) = m.mask
-mask(m::AbstractListMask) = mask(m.mask)
 
 function mapmask(f, m::AbstractListMask)
 	(mask = f(m.mask),)
@@ -30,6 +27,7 @@ invalidate!(m::AbstractExplainMask) = invalidate!(m, Vector{Int}())
 
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
 
+include("mask.jl")
 include("densearray.jl")
 include("sparsearray.jl")
 include("NGramMatrix.jl")

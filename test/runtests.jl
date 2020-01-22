@@ -6,6 +6,11 @@ using MLDataPattern
 using StatsBase, Flux, Duff
 using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, DafMask
 
+ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(Mask(m, fill(true, length(m)), nothing))
+ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, Mask(m, fill(true, length(m)), nothing))
+ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(Mask(m, fill(true, length(m)), nothing))
+ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayMask(Mask(m, fill(true, length(m)), nothing), columns)
+
 
 @testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))

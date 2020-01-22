@@ -4,20 +4,13 @@ struct BagMask{C,B} <: AbstractExplainMask
 	mask::Mask
 end
 
-BagMask(child, bags, m::Vector{Bool}) = BagMask(child, bags, Mask(m, fill(true, length(m))))
 Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
 
-# function Mask(ds::BagNode, m::TreeModel)
-# 	child_mask = Mask(ds.data, m.im)
-
-# 	d = pairwise(CosineDist(), m.im(ds.data).data, dims = 2)
-# 	cluster_assignments = dbscan(d, 0.2, 1).assignments
-
-# 	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
-# end
-
-participate(m::BagMask) = participate(m.mask)
-mask(m::BagMask) = mask(m.mask)
+function Mask(ds::BagNode, m::BagModel, cluster_algorithm = cluster_instances)
+	child_mask = Mask(ds.data, m.im, cluster_algorithm)
+	cluster_assignments = cluster_algorithm(m.im(ds.data).data)
+	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
+end
 
 function mapmask(f, m::BagMask)
 	mapmask(f, m.child)
