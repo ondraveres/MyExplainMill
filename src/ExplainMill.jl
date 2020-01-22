@@ -1,5 +1,5 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, CatViews
+using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering
 using Mill: paddedprint, COLORS
 import Mill: dsprint
 using TimerOutputs

@@ -3,14 +3,31 @@ struct DafMask{M}
 	mask::M
 end
 
-DafMask(m::Mask) = DafMask(Daf(length(mask(m))), m)
+DafMask(m::Mask{Nothing}) = DafMask(Daf(length(m.mask)), m)
+DafMask(m::Mask{Vector{Int64}}) = DafMask(Daf(length(unique(m.cluster_membership))), m)
+
+function Duff.update!(d::DafMask{M}, v) where {M<:Mask{Nothing}}
+	Duff.update!(d.daf, v, mask(d.mask), participate(d.mask))
+end
+
+function Duff.update!(d::DafMask{M}, v) where {M<:Mask{Vector{Int64}}}
+	Duff.update!(d.daf, v, mask(d.mask), participate(d.mask), d.mask.cluster_membership)
+end
+
+function StatsBase.sample!(m::Mask{Nothing})
+	mask(m) .= sample([true, false], length(mask(m)))
+end
+
+function StatsBase.sample!(m::Mask{Vector{Int64}})
+	ci = m.cluster_membership
+	_mask = sample([true, false], maximum(ci))
+	for (i,k) in enumerate(ci)
+		m.mask[i] = _mask[k]
+	end 
+end
 
 function StatsBase.sample!(pruning_mask::AbstractExplainMask)
-	mapmask(pruning_mask) do m 
-		if !isempty(mask(m)) 
-			mask(m) .= sample([true, false], length(mask(m)))
-		end
-	end
+	mapmask(sample!, pruning_mask)
 end
 
 function Duff.update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
@@ -24,8 +41,7 @@ function Duff.update!(dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:
 		end
 		invalidate!(pruning_mask,setdiff(1:length(v), i))
 		for d in dafs 
-			# @show sum(findall(mask(d.mask) .& participate(d.mask)))
-			Duff.update!(d.daf, v[1], mask(d.mask), participate(d.mask))
+			Duff.update!(d, v[i])
 		end
 	end
 end

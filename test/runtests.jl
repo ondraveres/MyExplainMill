@@ -182,3 +182,51 @@ end
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
 end
+
+@testset "test that sampling with clusters as expected" begin 
+	m = Mask(fill(true, 4), fill(true, 4), [1,2,1,2])
+	for i in 1:10
+		sample!(m)
+		@test mask(m)[1] == mask(m)[3] && mask(m)[2] == mask(m)[4]
+	end
+end
+
+@testset "workflow --- independent instances" begin 
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+
+	model = reflectinmodel(ds, d -> Dense(d, 1))
+
+	pruning_mask = Mask(ds)
+	dafs = []
+	mapmask(pruning_mask) do m
+		m != nothing && push!(dafs, DafMask(m))
+	end
+
+	sample!(pruning_mask)
+	pruned_ds = prune(ds, pruning_mask)
+	o = model(pruned_ds)
+	Duff.update!(dafs, o, pruning_mask)
+	@test true
+end
+
+@testset "workflow --- clustered instances" begin 
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+
+	model = reflectinmodel(ds, d -> Dense(d, 1))
+
+	pruning_mask = Mask(ds, model)
+	dafs = []
+	mapmask(pruning_mask) do m
+		m != nothing && push!(dafs, DafMask(m))
+	end
+
+	sample!(pruning_mask)
+	pruned_ds = prune(ds, pruning_mask)
+	o = model(pruned_ds).data
+	Duff.update!(dafs, o, pruning_mask)
+	@test true
+end
