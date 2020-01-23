@@ -1,30 +1,3 @@
-struct DafMask{M}
-	daf::Daf 
-	mask::M
-end
-
-DafMask(m::Mask{Nothing}) = DafMask(Daf(length(m.mask)), m)
-DafMask(m::Mask{Vector{Int64}}) = DafMask(Daf(length(unique(m.cluster_membership))), m)
-
-function Duff.update!(d::DafMask{M}, v) where {M<:Mask{Nothing}}
-	Duff.update!(d.daf, v, mask(d.mask), participate(d.mask))
-end
-
-function Duff.update!(d::DafMask{M}, v) where {M<:Mask{Vector{Int64}}}
-	Duff.update!(d.daf, v, mask(d.mask), participate(d.mask), d.mask.cluster_membership)
-end
-
-function StatsBase.sample!(m::Mask{Nothing})
-	mask(m) .= sample([true, false], length(mask(m)))
-end
-
-function StatsBase.sample!(m::Mask{Vector{Int64}})
-	ci = m.cluster_membership
-	_mask = sample([true, false], maximum(ci))
-	for (i,k) in enumerate(ci)
-		m.mask[i] = _mask[k]
-	end 
-end
 
 function StatsBase.sample!(pruning_mask::AbstractExplainMask)
 	mapmask(sample!, pruning_mask)

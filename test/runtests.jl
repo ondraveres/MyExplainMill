@@ -4,13 +4,13 @@ using Setfield
 using Test
 using MLDataPattern
 using StatsBase, Flux, Duff
-using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, DafMask
+using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask
 
-ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(Mask(m, fill(true, length(m)), nothing))
-ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, Mask(m, fill(true, length(m)), nothing))
-ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(Mask(m, fill(true, length(m)), nothing))
-ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayMask(Mask(m, fill(true, length(m)), nothing), columns)
-
+ExplainMill.Mask(m::Vector{Bool}) = Mask(m, fill(true, length(m)), Daf(length(m)), nothing)
+ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(Mask(m))
+ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, Mask(m))
+ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(Mask(m))
+ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayMask(Mask(m), columns)
 
 @testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
@@ -184,7 +184,7 @@ end
 end
 
 @testset "test that sampling with clusters as expected" begin 
-	m = Mask(fill(true, 4), fill(true, 4), [1,2,1,2])
+	m = Mask(fill(true, 4), fill(true, 4), Daf(2), [1,2,1,2])
 	for i in 1:10
 		sample!(m)
 		@test mask(m)[1] == mask(m)[3] && mask(m)[2] == mask(m)[4]
@@ -201,7 +201,7 @@ end
 	pruning_mask = Mask(ds)
 	dafs = []
 	mapmask(pruning_mask) do m
-		m != nothing && push!(dafs, DafMask(m))
+		m != nothing && push!(dafs, m)
 	end
 
 	sample!(pruning_mask)
@@ -221,7 +221,7 @@ end
 	pruning_mask = Mask(ds, model)
 	dafs = []
 	mapmask(pruning_mask) do m
-		m != nothing && push!(dafs, DafMask(m))
+		m != nothing && push!(dafs, m)
 	end
 
 	sample!(pruning_mask)
