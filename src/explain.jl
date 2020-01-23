@@ -1,3 +1,4 @@
+Base.minimum(ds::ArrayNode) = minimum(ds.data)
 
 function StatsBase.sample!(pruning_mask::AbstractExplainMask)
 	mapmask(sample!, pruning_mask)
@@ -29,7 +30,7 @@ function dafstats(ds, model, n=10000)
 	pruning_mask = Mask(ds)
 	dafs = []
 	mapmask(pruning_mask) do m
-		m != nothing && push!(dafs, DafMask(m))
+		m != nothing && push!(dafs, m)
 	end
 	for i in 1:n
 		@timeit to "sample!" sample!(pruning_mask)
@@ -54,13 +55,15 @@ function explain(ds, model;  n = 10000, method = :uselessfirst, threshold = 0.5,
 		return(ds)
 	end
 	dafs, pruning_mask = dafstats(ds, model, n)
-	
-	catmask = CatView(tuple([mask(d.mask) for d in dafs]...))
-	pvalue = CatView(tuple([Duff.UnequalVarianceTTest(d.daf) for d in dafs]...))
-	pvalue = CatView(tuple([Duff.meanscore(d.daf) for d in dafs]...))
+
+	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
+		ii = [(i,j) for j in 1:length(d.daf)]
+	end
+	# pvalue = mapreduce(d -> Duff.UnequalVarianceTTest(d.daf), vcat, dafs)
+	mscore = mapreduce(d -> Duff.meanscore(d.daf), vcat, dafs)
 
 	if method == :uselessfirst
-		return(uselessfirst(ds, pruning_mask,model, catmask, pvalue, threshold, verbose))
+		return(uselessfirst(ds, pruning_mask, model, dafs, mscore, ii, threshold, verbose), pruning_mask)
 	else
 		@error "unknown pruning method $(method)"
 	end
@@ -72,16 +75,19 @@ end
 	Removes items from a sample `ds` such that output of `model(ds)` is above `threshold`.
 	Removing starts with items that according to Shapley values do not contribute to the output
 """
-function uselessfirst(ds, pruning_mask, model, catmask, pvalue, threshold, verbose)
-	catmask .= true
+function uselessfirst(ds, pruning_mask, model, dafs, score, ii, threshold, verbose)
+	mapmask(m -> mask(m) .= true, pruning_mask)
+
 	verbose && println("model output: ", round(minimum(model(ds)), digits = 3))
-	for i in sortperm(pvalue, rev = true)
-		catmask[i] = false
+	for i in sortperm(score, rev = true)
+		k,l = ii[i]
+		dafs[k][l] = false
+
 		o = minimum(model(prune(ds, pruning_mask)))
 		if o <= threshold
-			catmask[i] = true
+			dafs[k][l] = true
 		end
-		verbose && println(i,": p-value: ",round(pvalue[i], digits = 6),": model output: ",round(o, digits = 3))
+		verbose && println((k,l),": score: ",round(score[i], digits = 6),": model output: ",round(o, digits = 3))
 	end
 	return(prune(ds, pruning_mask))
 end

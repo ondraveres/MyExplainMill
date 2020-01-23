@@ -9,8 +9,8 @@ participate(m::Mask) = m.participate
 mask(m::Mask) = m.mask
 
 Base.getindex(m::Mask, i::Int) = m.mask[i]
-Base.setindex(m::Mask{Nothing}, i::Int, v) = m.mask[i] = v
-Base.setindex(m::Mask{Vector{Int}}, i::Int, v) = m.mask[cluster_membership .== i] = v
+Base.setindex!(m::Mask{Nothing}, v, i::Int) = m.mask[i] = v
+Base.setindex!(m::Mask{Vector{Int}}, v, i::Int) = m.mask[m.cluster_membership .== i] .= v
 
 ####
 #	Explaination without clustering, where each item is independent of others
