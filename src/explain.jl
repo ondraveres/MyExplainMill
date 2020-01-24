@@ -89,9 +89,9 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 	f = x -> minimum(model(x).data[i,:])
 	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
 	if pruning == :importantlast
-			importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+			importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
 		elseif pruning == :importantfirst
-			importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+			importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
 		else
 			@error "unknown pruning $(pruning)"
 	end
@@ -102,19 +102,19 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 end
 
 """
-	importantlast(ds, model, mask, dafs, threshold, verbose)
+	importantlast(ds, model, mask, dafs, threshold)
 
 	Removes items from a sample `ds` such that output of `model(ds)` is above `threshold`.
 	Removing starts with items that according to Shapley values do not contribute to the output
 """
-function importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+function importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
 	mapmask(m -> mask(m) .= true, pruning_mask)
 	f = x -> minimum(model(x).data[i,:])
 	removeexcess!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
 	prune(ds, pruning_mask)
 end
 
-function importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+function importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
 	mapmask(m -> mask(m) .= false, pruning_mask)
 	f = x -> minimum(model(x).data[i,:])
 	addminimum!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
