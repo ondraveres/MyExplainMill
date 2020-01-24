@@ -6,6 +6,10 @@ function Mask(ds::ArrayNode{T,M}) where {T<:Mill.NGramMatrix{String}, M}
 	NGramMatrixMask(Mask(length(ds.data.s)))
 end
 
+function Mask(ds::ArrayNode{T,M}, m, c = nothing) where {T<:Mill.NGramMatrix{String}, M}
+	NGramMatrixMask(Mask(length(ds.data.s)))
+end
+
 function Mask(ds::ArrayNode, m::ArrayModel)
 	cluster_assignments = m(ds).data
 	NGramMatrixMask(Mask(cluster_assignments))
