@@ -95,9 +95,10 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 		else
 			@error "unknown pruning $(pruning)"
 	end
-	eds = prune(ds, pruning_mask)
-	verbose && println("model output after explanation: ", round(f(eds), digits = 3))
-	eds
+	ex_ds = prune(ds, pruning_mask)
+	ex_ds = ex_ds[1:nobs(ex_ds)]
+	verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
+	ex_ds
 end
 
 """

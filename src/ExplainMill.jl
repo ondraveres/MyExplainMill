@@ -35,6 +35,7 @@ include("skip.jl")
 include("bags.jl")
 include("product.jl")
 include("explain.jl")
+include("removemissing.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
