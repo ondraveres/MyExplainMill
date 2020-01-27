@@ -69,8 +69,8 @@ end
 	`method` controls the order in which the items are subjected to iterative removal. 
 	:importantlast means that samples with low importance are removed first
 """
-function explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true)
-	explain(ds, model, i, n, pruning, getscorefun(scoring), threshold, verbose, clustering)
+function explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true, completely = false)
+	completely ? explaincompletely(ds, model, i, n, pruning, getscorefun(scoring), threshold, verbose, clustering) : explain(ds, model, i, n, pruning, getscorefun(scoring), threshold, verbose, clustering)
 end
 
 function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, clustering)
@@ -83,15 +83,18 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
 		ii = [(i,j) for j in 1:length(d.daf)]
 	end
-
 	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
 
 	f = x -> minimum(model(x).data[i,:])
+	# used = Vector{Int}()
 	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
 	if pruning == :importantlast
 			importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
 		elseif pruning == :importantfirst
 			importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
+			# free = setdiff(1:length(ii), used)
+			# importantfirst(ds, model, i, pruning_mask, dafs, mscore[free], ii[free], threshold)
+			# used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
 		else
 			@error "unknown pruning $(pruning)"
 	end
@@ -99,6 +102,40 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 	ex_ds = ex_ds[1:nobs(ex_ds)]
 	verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
 	ex_ds
+end
+
+function explaincompletely(ds, model, i, n, pruning, scorefun, threshold, verbose, clustering)
+	if minimum(model(ds).data[i,:]) < threshold
+		@info "stopped explanation as the output is below threshold"
+		return(ds)
+	end
+	dafs, pruning_mask = dafstats(ds, model, i, n, clustering)
+
+	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
+		ii = [(i,j) for j in 1:length(d.daf)]
+	end
+	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
+
+	f = x -> minimum(model(x).data[i,:])
+	used = Vector{Int}()
+	ex_dss = []
+	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
+	while length(used) < length(ii)
+		if pruning == :importantlast
+			@error "not implemented yet, as Pevnak is afraid this to be terribly slow"
+		elseif pruning == :importantfirst
+			free = setdiff(1:length(ii), used)
+			importantfirst(ds, model, i, pruning_mask, dafs, mscore[free], ii[free], threshold)
+			used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
+			ex_ds = prune(ds, pruning_mask)
+			verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
+			round(f(ex_ds), digits = 3) < threshold && break
+			push!(ex_dss, ex_ds[1:nobs(ex_ds)])
+		else
+			@error "unknown pruning $(pruning)"
+		end
+	end
+	ex_dss
 end
 
 """

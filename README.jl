@@ -2,8 +2,8 @@
 
 # This library provides an explanation of hierarchical multi-instance learning 
 # models using the method of Shapley values. This explanation method works by 
-# randomly perturbing "features" of the sample and observing the output of the 
-# classifier. The rationale behind the method is that if the feature is 
+# randomly perturbing "features" of the sample and observing changes of the 
+# output of the classifier on themThe rationale behind the method is that if the feature is 
 # non-informative than the output of the classifier should be non-sensitive 
 # to its perturbation (and vice-versa). To support hierarchical models, 
 # we define several types of "daf" explainers.
