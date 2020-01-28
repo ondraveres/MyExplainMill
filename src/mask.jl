@@ -50,12 +50,20 @@ function StatsBase.sample!(m::Mask{Nothing})
 	m.mask .= sample([true, false], length(m.mask))
 end
 
+function normalize_clusterids(x)
+	n = length(unique(x))
+	isempty(setdiff(1:n, unique(x))) && return(x)
+	u = unique(x)
+	k2id = Dict([u[i] => i for i in 1:length(u)])
+	map(k -> k2id[k], x)
+end
 ####
 #	Explaination, where items are clustered together
 ####
 function Mask(cluster_membership::Vector{Int}) 
+	cluster_membership = normalize_clusterids(cluster_membership)
 	n = length(unique(cluster_membership))
-	!isempty(setdiff(1:n, unique(cluster_membership))) && @error "clusters should be labeled from 1 to n"
+	!isempty(setdiff(1:n, unique(cluster_membership))) && @show cluster_membership
 	d = length(cluster_membership)
 	Mask(fill(true, d), fill(true, d), fill(0, d), Daf(n), cluster_membership)
 end

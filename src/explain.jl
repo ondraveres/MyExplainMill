@@ -44,7 +44,7 @@ end
 	Shapley values of individual items of a sample `ds` in the model `model` estimated from `n` trials
 """
 function dafstats(ds, model, i, n, clustering)
-	pruning_mask = clustering ? Mask(ds, model) : Mask(ds)
+	pruning_mask = clustering ? Mask(ds, model, verbose = true) : Mask(ds)
 	infersamplemembership!(pruning_mask, nobs(ds))
 	dafs = []
 	mapmask(pruning_mask) do m

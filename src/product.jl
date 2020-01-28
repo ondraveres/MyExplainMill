@@ -11,9 +11,9 @@ function Mask(ds::TreeNode)
 	TreeMask(s)
 end
 
-function Mask(ds::TreeNode, m::ProductModel, cluster_algorithm = cluster_instances)
+function Mask(ds::TreeNode, m::ProductModel; verbose = false, cluster_algorithm = cluster_instances)
 	ks = keys(ds.data)
-	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_instances) for k in ks]...)
+	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_algorithm = cluster_instances, verbose = verbose) for k in ks]...)
 	TreeMask(s)
 end
 

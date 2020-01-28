@@ -6,9 +6,13 @@ end
 
 Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
 
-function Mask(ds::BagNode, m::BagModel, cluster_algorithm = cluster_instances)
-	child_mask = Mask(ds.data, m.im, cluster_algorithm)
+function Mask(ds::BagNode, m::BagModel; cluster_algorithm = cluster_instances, verbose::Bool = false)
+	child_mask = Mask(ds.data, m.im, cluster_algorithm = cluster_algorithm, verbose = verbose)
 	cluster_assignments = cluster_algorithm(m.im(ds.data).data)
+	if verbose
+		n, m = nobs(ds), length(unique(cluster_assignments))
+		println("number of instances: ", n, " ratio: ", round(m/n, digits = 3))
+	end
 	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
 end
 

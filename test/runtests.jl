@@ -191,4 +191,8 @@ end
 	@test pm.mask.outputid ≈ [1, 1, 2, 3, 3]
 end
 
+@testset "remapping the cluster" begin
+	@test ExplainMill.normalize_clusterids([2,3,2,3,4]) ≈ [1,2,1,2,3]
+	@test ExplainMill.normalize_clusterids([1,2,2,1]) ≈ [1,2,2,1]
+end
 end
