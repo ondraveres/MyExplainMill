@@ -6,7 +6,7 @@ using MLDataPattern
 using StatsBase, Flux, Duff
 using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask
 
-ExplainMill.Mask(m::Vector{Bool}) = Mask(m, fill(true, length(m)), Daf(length(m)), nothing)
+ExplainMill.Mask(m::Vector{Bool}) = Mask(m, fill(true, length(m)), fill(0, length(m)), Daf(length(m)), nothing)
 ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(Mask(m))
 ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, Mask(m))
 ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(Mask(m))
@@ -181,4 +181,14 @@ end
 	@test nobs(dss.data.data) == 2
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
+end
+
+@testset "testing infering of sample membership" begin 
+	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
+	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
+	pm = Mask(ds)
+	ExplainMill.infersamplemembership!(pm, nobs(ds))
+	@test pm.mask.outputid ≈ [1, 1, 2, 3, 3]
+end
+
 end

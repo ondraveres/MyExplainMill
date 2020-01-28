@@ -9,13 +9,19 @@ function Duff.update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
 end
 
 function Duff.update!(dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
-	for i in 1:length(v)
+	for d in dafs 
+		Duff.update!(d, v)
+	end
+end
+
+function infersamplemembership!(pruning_mask, n)
+	for i in 1:n 
 		mapmask(pruning_mask) do m 
 			participate(m) .= true
 		end
-		invalidate!(pruning_mask,setdiff(1:length(v), i))
-		for d in dafs 
-			Duff.update!(d, v[i])
+		invalidate!(pruning_mask,setdiff(1:n, i))
+		mapmask(pruning_mask) do m 
+			m.outputid[participate(m)] .= i
 		end
 	end
 end
@@ -39,6 +45,7 @@ end
 """
 function dafstats(ds, model, i, n, clustering)
 	pruning_mask = clustering ? Mask(ds, model) : Mask(ds)
+	infersamplemembership!(pruning_mask, nobs(ds))
 	dafs = []
 	mapmask(pruning_mask) do m
 		m != nothing && push!(dafs, m)
@@ -78,7 +85,7 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 		@info "stopped explanation as the output is below threshold"
 		return(ds)
 	end
-	dafs, pruning_mask = dafstats(ds, model, i, n, clustering)
+	dafs, pruning_mask = @timeit to "dafstats" dafstats(ds, model, i, n, clustering)
 
 	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
 		ii = [(i,j) for j in 1:length(d.daf)]
@@ -86,15 +93,11 @@ function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, cluster
 	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
 
 	f = x -> minimum(model(x).data[i,:])
-	# used = Vector{Int}()
 	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
 	if pruning == :importantlast
-			importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
+			@timeit to "importantlast" importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
 		elseif pruning == :importantfirst
-			importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
-			# free = setdiff(1:length(ii), used)
-			# importantfirst(ds, model, i, pruning_mask, dafs, mscore[free], ii[free], threshold)
-			# used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
+			@timeit to "importantfirst"  importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
 		else
 			@error "unknown pruning $(pruning)"
 	end
@@ -144,18 +147,22 @@ end
 	Removes items from a sample `ds` such that output of `model(ds)` is above `threshold`.
 	Removing starts with items that according to Shapley values do not contribute to the output
 """
-function importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
+function importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose::Bool = false)
 	mapmask(m -> mask(m) .= true, pruning_mask)
 	f = x -> minimum(model(x).data[i,:])
 	removeexcess!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
 	prune(ds, pruning_mask)
 end
 
-function importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold)
+function importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose::Bool = false)
 	mapmask(m -> mask(m) .= false, pruning_mask)
 	f = x -> minimum(model(x).data[i,:])
-	addminimum!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
-	removeexcess!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
+	addminimum!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = false)], threshold)
+	used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
+	verbose && println("adding $(length(used)) features")
+	removeexcess!(pruning_mask, dafs, ds, f, ii[used], threshold)
+	used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
+	verbose && println("keeping $(length(used)) features")
 	prune(ds, pruning_mask)
 end
 
