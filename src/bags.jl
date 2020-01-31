@@ -13,6 +13,10 @@ function Mask(ds::BagNode{Missing, B,M})  where {B<:Mill.AbstractBags,M}
 	return(EmptyMask())
 end
 
+function Mask(ds::BagNode{Missing, B,M}, m::BagModel; cluster_algorithm = cluster_instances, verbose::Bool = false)  where {B<:Mill.AbstractBags,M}
+	return(EmptyMask())
+end
+
 function Mask(ds::BagNode, m::BagModel; cluster_algorithm = cluster_instances, verbose::Bool = false)
 	child_mask = Mask(ds.data, m.im, cluster_algorithm = cluster_algorithm, verbose = verbose)
 	cluster_assignments = cluster_algorithm(m.im(ds.data).data)
