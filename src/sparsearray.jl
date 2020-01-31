@@ -1,4 +1,3 @@
-using Serialization
 struct SparseArrayMask <: AbstractListMask
 	mask::Mask
 	columns::Vector{Int}

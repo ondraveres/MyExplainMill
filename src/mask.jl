@@ -46,6 +46,7 @@ Base.setindex!(m::Mask{Vector{Int}}, v, i::Int) = m.mask[m.cluster_membership .=
 ####
 Mask(d::Int) = Mask(fill(true, d), fill(true, d), fill(0, d), Daf(d), nothing)
 
+
 function StatsBase.sample!(m::Mask{Nothing})
 	m.mask .= sample([true, false], length(m.mask))
 end

@@ -70,7 +70,7 @@ function getscorefun(s)
 end
 
 """
-	explain(ds, model;  n = 10000, method = :importantlast, threshold = 0.5, verbose = false)
+	explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true, completely = false)
 
 	Explain sample `ds` by removing its items such that output of `model(ds)` is above `threshold`.
 	`method` controls the order in which the items are subjected to iterative removal. 
@@ -83,7 +83,7 @@ end
 function explain(ds, model, i, n, pruning, scorefun, threshold, verbose, clustering)
 	if minimum(model(ds).data[i,:]) < threshold
 		@info "stopped explanation as the output is below threshold"
-		return(ds)
+		return(nothing)
 	end
 	dafs, pruning_mask = @timeit to "dafstats" dafstats(ds, model, i, n, clustering)
 
@@ -110,7 +110,7 @@ end
 function explaincompletely(ds, model, i, n, pruning, scorefun, threshold, verbose, clustering)
 	if minimum(model(ds).data[i,:]) < threshold
 		@info "stopped explanation as the output is below threshold"
-		return(ds)
+		return(nothing)
 	end
 	dafs, pruning_mask = dafstats(ds, model, i, n, clustering)
 
