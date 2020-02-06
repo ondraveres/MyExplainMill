@@ -1,5 +1,5 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering
+using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux
 using Mill: paddedprint, COLORS
 import Mill: dsprint
 using TimerOutputs
@@ -14,6 +14,7 @@ mask(m::AbstractExplainMask) = mask(m.mask)
 
 
 function cluster_instances(x)
+	nobs(x) == 1 && return([1])
 	d = pairwise(CosineDist(), x, dims = 2)
 	dbscan(d, 0.2, 1).assignments
 end
@@ -30,6 +31,7 @@ Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
 include("mask.jl")
 include("densearray.jl")
 include("sparsearray.jl")
+include("categoricalarray.jl")
 include("NGramMatrix.jl")
 include("skip.jl")
 include("bags.jl")

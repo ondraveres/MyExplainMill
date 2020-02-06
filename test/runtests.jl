@@ -4,10 +4,11 @@ using Setfield
 using Test
 using MLDataPattern
 using StatsBase, Flux, Duff
-using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask
+using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, CategoricalMask
 
 ExplainMill.Mask(m::Vector{Bool}) = Mask(m, fill(true, length(m)), fill(0, length(m)), Daf(length(m)), nothing)
 ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(Mask(m))
+ExplainMill.CategoricalMask(m::Vector{Bool}) = ExplainMill.CategoricalMask(Mask(m))
 ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, Mask(m))
 ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(Mask(m))
 ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayMask(Mask(m), columns)
@@ -26,6 +27,12 @@ ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayM
 
 	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 	m = Mask(sn)
+	invalidate!(m, [2,4])
+	@test participate(m) ≈ [true, false, true, false, true]
+
+	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+	m = Mask(on)
+	@test length(mask(m.mask)) == 5
 	invalidate!(m, [2,4])
 	@test participate(m) ≈ [true, false, true, false, true]
 
@@ -93,6 +100,14 @@ end
 	@test mask(an) ≈ [true, false, true, true, true, true]
 	@test participate(an) ≈ [false, true, true, true, true, true]
 
+	an = Mask(ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4)))
+	mapmask(an) do m 
+		participate(m)[1] = false
+		mask(m)[2] = false
+	end
+	@test mask(an) ≈ [true, false, true, true, true]
+	@test participate(an) ≈ [false, true, true, true, true]
+
 
 	an = Mask(ArrayNode(NGramMatrix(["a","b","c"],3,256,2053)))
 	mapmask(an) do m 
@@ -130,13 +145,15 @@ end
 
 @testset "Testing prunning of samples " begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	ds = BagNode(BagNode(TreeNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
 	m = BagMask(
 			BagMask(
 				TreeMask((a = MatrixMask([true,false]),
-				c = SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),)
+				c = SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),
+				o = CategoricalMask([true, true, true, false, false]),)
 				), ds.bags.bags,
 			[true,false,true,false,true]),
 			ds.bags,
@@ -148,11 +165,13 @@ end
 	@test nobs(dss.data.data) == 3
 	@test dss.data.data.data.a.data ≈ [1 5 9; 0 0 0 ]
 	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
+	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([1,3,4], 1:4)
 
 	m = BagMask(
 		BagMask(
 			TreeMask((a = MatrixMask([false,true]),
-			c = SparseArrayMask([false, true, false, true, false], [1, 2, 3, 4, 5]),)
+			c = SparseArrayMask([false, true, false, true, false], [1, 2, 3, 4, 5]),
+			o = CategoricalMask([false, true, false, true, false]),)
 			), ds.bags.bags,
 		[true,false,true,false,true]),
 		ds.bags,
@@ -163,12 +182,14 @@ end
 	@test nobs(dss.data) == 3
 	@test nobs(dss.data.data) == 3
 	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
+	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
 
 	m = BagMask(
 		BagMask(
 			TreeMask((a = MatrixMask([false,true]),
-			c = SparseArrayMask([true, true, true, true, true], [1, 2, 3, 4, 5]),)
+			c = SparseArrayMask([true, true, true, true, true], [1, 2, 3, 4, 5]),
+			o = CategoricalMask([false, true, false, true, false]),)
 			), ds.bags.bags,
 		[true,false,false,false,true]),
 		ds.bags,
@@ -180,6 +201,7 @@ end
 	@test all(dss.data.bags.bags .== [1:1, 0:-1, 2:2])
 	@test nobs(dss.data.data) == 2
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
+	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
 end
 
@@ -194,5 +216,4 @@ end
 @testset "remapping the cluster" begin
 	@test ExplainMill.normalize_clusterids([2,3,2,3,4]) ≈ [1,2,1,2,3]
 	@test ExplainMill.normalize_clusterids([1,2,2,1]) ≈ [1,2,2,1]
-end
 end
