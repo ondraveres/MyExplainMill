@@ -13,10 +13,8 @@ Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
 include("densearray.jl")
 include("sparsearray.jl")
 include("NGramMatrix.jl")
-include("skip.jl")
 include("bags.jl")
 include("product.jl")
-include("explain.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
