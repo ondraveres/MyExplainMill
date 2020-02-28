@@ -38,9 +38,10 @@ include("bags.jl")
 include("product.jl")
 include("explain.jl")
 include("removemissing.jl")
+include("prettyprint.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
-export explain, dafstats
+export explain, dafstats, print_explained
 
 end # module
