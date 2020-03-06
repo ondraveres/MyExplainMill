@@ -18,6 +18,12 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.On
 	end
 end
 
+function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractBranch}
+	length(e.other) > 1 &&  @error "This should not happen"
+	k =collect(keys(e.other))[1]
+	print_explained(io, ds, e.other[k])
+end
+
 function print_explained(io, ds::ArrayNode{T}, e; pad = []) where {T<:Mill.NGramMatrix}
     c = COLORS[(length(pad)%length(COLORS))+1]
 	s = filter(!isempty, ds.data.s)

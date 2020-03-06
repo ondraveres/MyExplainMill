@@ -43,6 +43,9 @@ function prune(ds::BagNode, mask::BagMask)
 	x = prune(ds.data, mask.child)
 	x = Mill.subset(x, findall(mask.mask.mask))
 	bags = Mill.adjustbags(ds.bags, mask.mask.mask)
+	if ismissing(x.data)
+		bags.bags .= [0:-1]
+	end
 	BagNode(x, bags)
 end
 

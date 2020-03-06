@@ -12,7 +12,6 @@ abstract type AbstractListMask <: AbstractExplainMask end;
 participate(m::AbstractExplainMask) = participate(m.mask)
 mask(m::AbstractExplainMask) = mask(m.mask)
 
-
 function cluster_instances(x)
 	nobs(x) == 1 && return([1])
 	d = pairwise(CosineDist(), x, dims = 2)
