@@ -1,5 +1,6 @@
 using ExplainMill, Mill, SparseArrays
-using ExplainMill: prune, Mask, invalidate!
+using ExplainMill: prune, Mask, invalidate!, MatrixMask
+import Mill: NGramMatrix
 using Setfield
 using Test
 
@@ -120,7 +121,7 @@ end
 end
 
 
-@testset "Generation of TreeDaf structure" begin 
+@testset "Generation of TreeDaf structure" begin
 	x = reshape(collect(1:10), 2, 5)
 	an = ArrayNode(x)
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
@@ -175,7 +176,7 @@ end
 	@test all(atn.data.c.data.nzval[.!mask.child_masks.c.mask, :] .== 0)
 end
 
-@testset "Update of Daf" begin 
+@testset "Update of Daf" begin
 	an = ArrayNode(rand(2,5))
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
 	cn = ArrayNode(sprand(4, 2, 0.3))
@@ -242,13 +243,13 @@ end
 	@test all(ss.present.n[invalid_columns] .== 0)
 end
 
-@testset "Handling of Sparse Arrays with subset of columns" begin 
+@testset "Handling of Sparse Arrays with subset of columns" begin
 	x = ArrayNode(sparse([1 1 0 0 2.0; 0 1 0 1 0.0]))
 	daf = Daf(x)
 	mask = ArrayMask(Bool[1, 0, 1])
 	valid_columns = [2,5]
 	Duff.update!(daf, mask, 0.5, valid_columns)
-	
+
 	ss = daf.daf
 	m = mask.mask
 	valid_columns = [2,3,5]
@@ -262,7 +263,7 @@ end
 	@test all(ss.present.s[valid_columns[.!m]] .== 0)
 end
 
-@testset "Testing the daf framework" begin 
+@testset "Testing the daf framework" begin
 	x = Float32.(reshape(collect(1:10), 2, 5))
 	an = ArrayNode(x)
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
@@ -282,7 +283,7 @@ end
 	end
 end
 
-@testset "Testing the extraction of daf stats" begin 
+@testset "Testing the extraction of daf stats" begin
 	x = Float32.(reshape(collect(1:10), 2, 5))
 	an = ArrayNode(x)
 	bn = BagNode(deepcopy(an), AlignedBags([1:2,3:5]))
