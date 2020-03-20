@@ -12,17 +12,14 @@ end
 
 function invalidate!(mask::SparseArrayMask, observations::Vector{Int})
 	for (i,c) in enumerate(mask.columns)
-		if c ∈ observations 
+		if c ∈ observations
 			mask.participate[i] = false
 		end
 	end
 end
-
 
 # function prune(ds::ArrayNode{T,M}, mask::ArrayMask) where {T<:SparseMatrixCSC, M}
 # 	x = deepcopy(ds.data)
 # 	x.nzval[.!mask.mask] .= 0
 # 	ArrayNode(x, ds.metadata)
 # end
-
-dsprint(io::IO, n::SparseArrayMask; pad=[]) = paddedprint(io, "SparseArrayMask")

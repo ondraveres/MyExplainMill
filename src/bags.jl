@@ -21,10 +21,3 @@ function prune(ds::BagNode, mask::BagMask)
 	bags = Mill.adjustbags(ds.bags, mask.mask)
 	BagNode(x, bags)
 end
-
-function dsprint(io::IO, n::BagMask; pad=[])
-    c = COLORS[(length(pad)%length(COLORS))+1]
-    paddedprint(io,"BagMask\n", color=c)
-    paddedprint(io, "  └── ", color=c, pad=pad)
-    dsprint(io, n.child, pad = [pad; (c, "      ")])
-end

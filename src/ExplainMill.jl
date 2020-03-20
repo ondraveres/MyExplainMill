@@ -18,7 +18,12 @@ include("product.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
-
 export explain, dafstats
+
+include("hierarchical_utils.jl")
+
+Base.show(io::IO, ::T) where T <: Union{AbstractExplainMask, TreeMask} = show(io, Base.typename(T))
+Base.show(io::IO, ::MIME"text/plain", n::Union{AbstractExplainMask, TreeMask}) = HierarchicalUtils.printtree(io, n; trav=false)
+Base.getindex(n::Union{JSONEntry, AbstractExtractor}, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
 end # module

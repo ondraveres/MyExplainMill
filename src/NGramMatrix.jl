@@ -16,5 +16,3 @@ end
 # 	x.s[.!mask.mask] .= ""
 # 	ArrayNode(x, ds.metadata)
 # end
-
-dsprint(io::IO, n::NGramMatrixMask; pad=[]) = paddedprint(io, "NGramMatrix")
