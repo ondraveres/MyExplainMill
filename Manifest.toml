@@ -300,7 +300,9 @@ version = "0.21.0"
 
 [[JsonGrinder]]
 deps = ["BSON", "FillArrays", "Flux", "HierarchicalUtils", "HttpCommon", "JSON", "LearnBase", "LinearAlgebra", "MLDataPattern", "Mill", "Mustache", "Printf", "SparseArrays", "Statistics", "StatsBase", "Zygote"]
-git-tree-sha1 = "6461d7cd83e27ee96457e73b3f1db47f5d9f335c"
+git-tree-sha1 = "894cc4c99b17d879d64b5f315dc4daa94cb090fb"
+repo-rev = "mill_1_1_0"
+repo-url = "https://github.com/pevnak/JsonGrinder.jl.git"
 uuid = "d201646e-a9c0-11e8-1063-23b139159713"
 version = "1.0.3"
 
@@ -354,10 +356,10 @@ uuid = "66a33bbf-0c2b-5fc8-a008-9da813334f0a"
 version = "0.5.1"
 
 [[MacroTools]]
-deps = ["DataStructures", "Markdown", "Random"]
-git-tree-sha1 = "07ee65e03e28ca88bc9a338a3726ae0c3efaa94b"
+deps = ["Markdown", "Random"]
+git-tree-sha1 = "f7d2e3f654af75f01ec49be82c231c382214223a"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.4"
+version = "0.5.5"
 
 [[MappedArrays]]
 git-tree-sha1 = "e2a02fe7ee86a10c707ff1756ab1650b40b140bb"
@@ -376,9 +378,11 @@ version = "0.5.0"
 
 [[Mill]]
 deps = ["Combinatorics", "DataFrames", "DataStructures", "Flux", "HierarchicalUtils", "LearnBase", "MLDataPattern", "SparseArrays", "Statistics", "Zygote"]
-git-tree-sha1 = "d37662acbd71e6a5ccdd03b81d6fc27f60fe2602"
+git-tree-sha1 = "8a64f79ed6635f08876a79da2d13447d3923506c"
+repo-rev = "master"
+repo-url = "https://github.com/pevnak/Mill.jl.git"
 uuid = "1d0525e4-8992-11e8-313c-e310e1f6ddea"
-version = "1.0.7"
+version = "1.1.0"
 
 [[Missings]]
 deps = ["DataAPI"]

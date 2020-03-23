@@ -6,9 +6,9 @@ function removemissing(ds::Mill.BagNode)
 	ismissing(data) ? missing : BagNode(data, ds.bags)
 end
 
-function removemissing(ds::Mill.TreeNode) 
+function removemissing(ds::Mill.ProductNode)
 	ks = filter(k -> !ismissing(ds.data[k]), collect(keys(ds.data)))
 	isempty(ks) && return(missing)
-	TreeNode((;[k => removemissing(ds.data[k]) for k in ks]...))
+	ProductNode((;[k => removemissing(ds.data[k]) for k in ks]...))
 end
 

@@ -57,9 +57,9 @@ function print_explained(io, ds::BagNode, e; pad = [])
 	end
 end
 
-function print_explained(io::IO, n::AbstractTreeNode, e; pad=[])
+function print_explained(io::IO, n::AbstractProductNode, e; pad=[])
     c = COLORS[(length(pad)%length(COLORS))+1]
-    paddedprint(io, "TreeNode", color=c)
+    paddedprint(io, "ProductNode", color=c)
     m = length(n.data)
     ks = sort(collect(keys(n.data)))
     for i in 1:(m-1)
@@ -109,13 +109,13 @@ function print_explained(m::MIME"text/html", ds::BagNode, e; pad = [])
 	end
 end
 
-function print_explained(m::MIME"text/html", ds::AbstractTreeNode, e; pad=[])
+function print_explained(m::MIME"text/html", ds::AbstractProductNode, e; pad=[])
     c = COLORS[(length(pad)%length(COLORS))+1]
-    # repr(m, "TreeNode", color=c)
+    # repr(m, "ProductNode", color=c)
     ks = sort(collect(keys(ds.data)))
     ss = map(k -> print_explained(m, ds.data[k], e[String(k)], pad=[pad; (c, "  " * repeat(" ", max(3, 2+length(k))))]), ks)
     mask = .!isempty.(ss)
     ks, ss = ks[mask], ss[mask]
     isempty(ks) && return("")
-    "TreeNode\n"*mapfoldl(i -> String(ks[i])*": "*ss[i], *, 1:length(ks))
+    "ProductNode\n"*mapfoldl(i -> String(ks[i])*": "*ss[i], *, 1:length(ks))
 end

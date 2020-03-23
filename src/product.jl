@@ -5,13 +5,13 @@ end
 mask(::TreeMask) = nothing
 participate(::TreeMask) = nothing
 
-function Mask(ds::TreeNode)
+function Mask(ds::ProductNode)
 	ks = keys(ds.data)
 	s = (;[k => Mask(ds.data[k]) for k in ks]...)
 	TreeMask(s)
 end
 
-function Mask(ds::TreeNode, m::ProductModel; verbose = false, cluster_algorithm = cluster_instances)
+function Mask(ds::ProductNode, m::ProductModel; verbose = false, cluster_algorithm = cluster_instances)
 	ks = keys(ds.data)
 	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_algorithm = cluster_instances, verbose = verbose) for k in ks]...)
 	TreeMask(s)
@@ -29,8 +29,8 @@ function invalidate!(mask::TreeMask, observations::Vector{Int})
 	end
 end
 
-function prune(ds::TreeNode, mask::TreeMask)
+function prune(ds::ProductNode, mask::TreeMask)
 	ks = keys(ds.data)
 	s = (;[k => prune(ds.data[k], mask.childs[k]) for k in ks]...)
-	TreeNode(s)
+	ProductNode(s)
 end

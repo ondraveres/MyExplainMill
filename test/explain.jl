@@ -15,7 +15,7 @@ end
 @testset "workflow --- independent instances" begin 
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	ds = BagNode(BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
 	model = reflectinmodel(ds, d -> Dense(d, 1))
 
@@ -35,7 +35,7 @@ end
 @testset "workflow --- clustered instances" begin 
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	ds = BagNode(BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
 	model = reflectinmodel(ds, d -> Dense(d, 1))
 

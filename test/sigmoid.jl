@@ -66,8 +66,8 @@ end
 		maximum(m(x).data, dims = 2)
 	end
 
-	@testset "TreeModel" begin 
-		x = TreeNode((
+	@testset "ProductModel" begin
+		x = ProductNode((
 			a = BagNode(ArrayNode(xx), bags),
 			b = ArrayNode(randn(2,100))
 			))
