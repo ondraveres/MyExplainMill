@@ -15,5 +15,3 @@ prune(ds, mask::EmptyMask) = ds
 mapmask(f, mask::EmptyMask) = nothing
 
 invalidate!(mask::EmptyMask, observations::Vector{Int}) = nothing
-
-Mill.dsprint(io::IO, n::EmptyMask; pad=[]) = paddedprint(io, "skipped")

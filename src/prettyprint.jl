@@ -3,14 +3,14 @@ using JsonGrinder
 reversedict(d) = Dict([v => k for (k,v) in d]...)
 
 # copied from Mill.jl, which now does not have it
-# const COLORS = [:blue, :red, :green, :yellow, :cyan, :magenta]
-#
-# function paddedprint(io, s...; color=:default, pad=[])
-#     for (c, p) in pad
-#         printstyled(io, p, color=c)
-#     end
-#     printstyled(io, s..., color=color)
-# end
+const COLORS = [:blue, :red, :green, :yellow, :cyan, :magenta]
+
+function paddedprint(io, s...; color=:default, pad=[])
+    for (c, p) in pad
+        printstyled(io, p, color=c)
+    end
+    printstyled(io, s..., color=color)
+end
 
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractCategorical}
 	c = COLORS[(length(pad)%length(COLORS))+1]

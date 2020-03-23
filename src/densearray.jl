@@ -13,7 +13,3 @@ end
 
 function invalidate!(mask::MatrixMask, observations::Vector{Int})
 end
-
-
-
-dsprint(io::IO, n::MatrixMask; pad=[]) = paddedprint(io, "MatrixMask")

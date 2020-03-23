@@ -24,5 +24,3 @@ function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatri
 	x.s[.!mask(m)] .= ""
 	ArrayNode(x, ds.metadata)
 end
-
-dsprint(io::IO, n::NGramMatrixMask; pad=[]) = paddedprint(io, "NGramMatrix")

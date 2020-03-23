@@ -1,7 +1,7 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux
-using Mill: paddedprint, COLORS
-import Mill: dsprint
+# using Mill: paddedprint, COLORS
+# import Mill: dsprint
 using TimerOutputs
 
 const to = TimerOutput();
@@ -25,8 +25,6 @@ end
 
 invalidate!(m::AbstractExplainMask) = invalidate!(m, Vector{Int}())
 
-Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = dsprint(io, n)
-
 include("mask.jl")
 include("densearray.jl")
 include("sparsearray.jl")
@@ -44,10 +42,10 @@ Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
 export explain, dafstats, print_explained
 
-# include("hierarchical_utils.jl")
-#
-# Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
-# Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false)
-# Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
+include("hierarchical_utils.jl")
+
+Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
+Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false)
+Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
 end # module

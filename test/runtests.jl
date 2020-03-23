@@ -7,6 +7,8 @@ using MLDataPattern
 using StatsBase, Flux, Duff
 using Mill: NGramMatrix
 using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, CategoricalMask
+using HierarchicalUtils
+import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree
 
 ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(0, length(m)), Daf(length(m)), nothing)
 ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(ExplainMill.Mask(m))
@@ -237,65 +239,14 @@ end
 			[true,true,true])
 
 		buf = IOBuffer()
-		# printtree(buf, m, trav=true)
-		Mill.dsprint(buf, m)
+		printtree(buf, m, trav=true)
 		str_repr = String(take!(buf))
 		@test str_repr ==
 """
-BagMask
-  └── BagMask
-        └── TreeMask
-              ├── a: MatrixMask
-              ├── c: SparseArrayMask
-              └── o: CategoricalMask"""
+BagMask [""]
+  └── BagMask ["U"]
+        └── TreeMask ["k"]
+              ├── a: MatrixMask ["o"]
+              ├── c: SparseArrayMask ["s"]
+              └── o: CategoricalMask ["w"]"""
 end
-
-# @testset "nnodes" begin
-#     @test nnodes(ext) == 12
-#     @test nnodes(ext[:a]) == 1
-#     @test nnodes(ext[:b]) == 4
-#     @test nnodes(ext[:c]) == 6
-# end
-#
-# @testset "nleafs" begin
-#     @test nleafs(ext[:a]) + nleafs(ext[:b]) + nleafs(ext[:c]) == nleafs(ext)
-# end
-#
-# @testset "children" begin
-# 	@test children(ext) == (a=ext[:a], b=ext[:b], c=ext[:c])
-# 	@test children(ext[:a]) == []
-# 	@test children(ext[:b]) == (a=ext[:b][:a], b=ext[:b][:b])
-# 	@test children(ext[:b][:a]) == (ext[:b][:a].item,)
-# 	@test children(ext[:b][:b]) == []
-# 	@test children(ext[:c]) == (a=ext[:c][:a],)
-# 	@test children(ext[:c][:a]) == (a=ext[:c][:a][:a], b=ext[:c][:a][:b])
-# 	@test children(ext[:c][:a][:a]) == (ext[:c][:a][:a].item,)
-# 	@test children(ext[:c][:a][:b]) == (ext[:c][:a][:b].item,)
-# end
-#
-# @testset "nchildren" begin
-# 	@test nchildren(ext) == 3
-# 	@test nchildren(ext[:a]) == 0
-# 	@test nchildren(ext[:b]) == 2
-# 	@test nchildren(ext[:b][:a]) == 1
-# 	@test nchildren(ext[:b][:b]) == 0
-# 	@test nchildren(ext[:c]) == 1
-# 	@test nchildren(ext[:c][:a]) == 2
-# 	@test nchildren(ext[:c][:a][:a]) == 1
-# 	@test nchildren(ext[:c][:a][:b]) == 1
-# end
-#
-# @testset "getindex on strings" begin
-# 	@test ext[""] == ext
-# 	@test ext["E"] == ext[:a]
-# 	@test ext["U"] == ext[:b]
-# 	@test ext["Y"] == ext[:b][:a]
-# 	@test ext["a"] == ext[:b][:a].item
-# 	@test ext["c"] == ext[:b][:b]
-# 	@test ext["k"] == ext[:c]
-# 	@test ext["s"] == ext[:c][:a]
-# 	@test ext["u"] == ext[:c][:a][:a]
-# 	@test ext["v"] == ext[:c][:a][:a].item
-# 	@test ext["w"] == ext[:c][:a][:b]
-# 	@test ext["x"] == ext[:c][:a][:b].item
-# end

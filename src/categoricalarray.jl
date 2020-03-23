@@ -22,7 +22,3 @@ end
 function invalidate!(mask::CategoricalMask, observations::Vector{Int})
 	participate(mask.mask)[observations] .= false
 end
-
-
-
-dsprint(io::IO, n::CategoricalMask; pad=[]) = paddedprint(io, "CategoricalMask")

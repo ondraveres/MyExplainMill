@@ -5,8 +5,9 @@ NodeType(::Type{T}) where T <: AbstractListMask = LeafNode()
 NodeType(::Type{T}) where T <: BagMask = SingletonNode()
 NodeType(::Type{T}) where T <: TreeMask = InnerNode()
 
-noderepr(n::AbstractExplainMask) = Base.typename(T)
-
+noderepr(n::AbstractExplainMask) = "$(Base.typename(typeof(n)))"
+noderepr(n::EmptyMask) = "skipped"
+string(Base.typename(BagMask))
 childrenfields(::Type{T}) where T <: BagMask = (:child,)
 childrenfields(::Type{TreeMask}) = (:childs,)
 

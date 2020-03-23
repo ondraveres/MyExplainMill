@@ -36,5 +36,3 @@ function prune(ds::ArrayNode{T,M}, mask::SparseArrayMask) where {T<:SparseMatrix
 	x.nzval[.!mask.mask.mask] .= 0
 	ArrayNode(x, ds.metadata)
 end
-
-dsprint(io::IO, n::SparseArrayMask; pad=[]) = paddedprint(io, "SparseArrayMask")
