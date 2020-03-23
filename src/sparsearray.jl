@@ -25,7 +25,7 @@ end
 
 function invalidate!(mask::SparseArrayMask, observations::Vector{Int})
 	for (i,c) in enumerate(mask.columns)
-		if c ∈ observations 
+		if c ∈ observations
 			mask.mask.participate[i] = false
 		end
 	end

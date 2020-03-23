@@ -1,4 +1,4 @@
-struct MatrixMask <:AbstractListMask
+struct MatrixMask <: AbstractListMask
 	mask::Mask
 end
 

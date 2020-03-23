@@ -2,12 +2,22 @@ using JsonGrinder
 
 reversedict(d) = Dict([v => k for (k,v) in d]...)
 
+# copied from Mill.jl, which now does not have it
+# const COLORS = [:blue, :red, :green, :yellow, :cyan, :magenta]
+#
+# function paddedprint(io, s...; color=:default, pad=[])
+#     for (c, p) in pad
+#         printstyled(io, p, color=c)
+#     end
+#     printstyled(io, s..., color=color)
+# end
+
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractCategorical}
 	c = COLORS[(length(pad)%length(COLORS))+1]
 	x = ds.data
 	idxs = map(argmax, x.data)
 	filter!(i -> x.height != i, idxs)
-	if isempty(idxs) 
+	if isempty(idxs)
 		s = "∅"
 		paddedprint(io, s, color = c)
 	else
@@ -27,7 +37,7 @@ end
 function print_explained(io, ds::ArrayNode{T}, e; pad = []) where {T<:Mill.NGramMatrix}
     c = COLORS[(length(pad)%length(COLORS))+1]
 	s = filter(!isempty, ds.data.s)
-	if isempty(s) 
+	if isempty(s)
 		s = "∅"
 		paddedprint(io, s, color = c)
 	else
@@ -71,7 +81,7 @@ function print_explained(::MIME"text/html", ds::ArrayNode{T}, e::E; pad = []) wh
 	x = ds.data
 	idxs = map(argmax, x.data)
 	filter!(i -> x.height != i, idxs)
-	if isempty(idxs) 
+	if isempty(idxs)
 		return("")
 	else
 		idxs = unique(idxs);
@@ -109,5 +119,3 @@ function print_explained(m::MIME"text/html", ds::AbstractTreeNode, e; pad=[])
     isempty(ks) && return("")
     "TreeNode\n"*mapfoldl(i -> String(ks[i])*": "*ss[i], *, 1:length(ks))
 end
-
-

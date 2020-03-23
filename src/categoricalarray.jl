@@ -1,4 +1,4 @@
-struct CategoricalMask <:AbstractListMask
+struct CategoricalMask <: AbstractListMask
 	mask::Mask
 end
 
@@ -11,7 +11,7 @@ function Mask(ds::ArrayNode{T,M}, m::ArrayModel; cluster_algorithm = cluster_ins
 end
 
 function prune(ds::ArrayNode{T,M}, m::CategoricalMask) where {T<:Flux.OneHotMatrix, M}
-	ii = map(enumerate(ds.data.data)) do ji 
+	ii = map(enumerate(ds.data.data)) do ji
 		j,i = ji
 		mask(m)[j] ? i.ix : i.of
 	end
