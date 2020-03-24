@@ -6,7 +6,7 @@ using Test
 using MLDataPattern
 using StatsBase, Flux, Duff
 using Mill: NGramMatrix
-using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMask, CategoricalMask
+using ExplainMill: MatrixMask, ProductMask, BagMask, NGramMatrixMask, SparseArrayMask, CategoricalMask
 using HierarchicalUtils
 import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree
 
@@ -69,7 +69,7 @@ ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayM
 	@test participate(m.child) ≈ [false, false, true, false, false]
 	@test participate(m.child.child) ≈ participate(m.child) ≈ [false, false, true, false, false]
 
-	ds = BagNode(TreeNode((a = cn, b = sn)), AlignedBags([1:2,3:3,4:5]))
+	ds = BagNode(ProductNode((a = cn, b = sn)), AlignedBags([1:2,3:3,4:5]))
 	m = Mask(ds)
 	mask(m)[[1,3]] .= false
 	invalidate!(m)
@@ -121,7 +121,7 @@ end
 	@test mask(an) ≈ [true, false, true]
 	@test participate(an) ≈ [false, true, true]
 
-	an = Mask(TreeNode((a = ArrayNode(NGramMatrix(["a","b","c","d","e"],3,256,2053)),
+	an = Mask(ProductNode((a = ArrayNode(NGramMatrix(["a","b","c","d","e"],3,256,2053)),
 		b = ArrayNode(reshape(collect(1:10), 2, 5)))))
 	mapmask(an) do m
 		participate(m)[1] = false
@@ -151,11 +151,11 @@ end
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(TreeNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
 	m = BagMask(
 			BagMask(
-				TreeMask((a = MatrixMask([true,false]),
+				ProductMask((a = MatrixMask([true,false]),
 				c = SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),
 				o = CategoricalMask([true, true, true, false, false]),)
 				), ds.bags.bags,
@@ -173,7 +173,7 @@ end
 
 	m = BagMask(
 		BagMask(
-			TreeMask((a = MatrixMask([false,true]),
+			ProductMask((a = MatrixMask([false,true]),
 			c = SparseArrayMask([false, true, false, true, false], [1, 2, 3, 4, 5]),
 			o = CategoricalMask([false, true, false, true, false]),)
 			), ds.bags.bags,
@@ -191,7 +191,7 @@ end
 
 	m = BagMask(
 		BagMask(
-			TreeMask((a = MatrixMask([false,true]),
+			ProductMask((a = MatrixMask([false,true]),
 			c = SparseArrayMask([true, true, true, true, true], [1, 2, 3, 4, 5]),
 			o = CategoricalMask([false, true, false, true, false]),)
 			), ds.bags.bags,
@@ -226,11 +226,11 @@ end
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(TreeNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
 	m = ExplainMill.BagMask(
 			ExplainMill.BagMask(
-				ExplainMill.TreeMask((a = ExplainMill.MatrixMask([true,false]),
+				ExplainMill.ProductMask((a = ExplainMill.MatrixMask([true,false]),
 				c = ExplainMill.SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),
 				o = ExplainMill.CategoricalMask([true, true, true, false, false]),)
 				), ds.bags.bags,
@@ -245,7 +245,7 @@ end
 """
 BagMask [""]
   └── BagMask ["U"]
-        └── TreeMask ["k"]
+        └── ProductMask ["k"]
               ├── a: MatrixMask ["o"]
               ├── c: SparseArrayMask ["s"]
               └── o: CategoricalMask ["w"]"""

@@ -104,10 +104,11 @@ function explain(ds, model, clustering_model,  i, n, pruning, scorefun, threshol
 		else
 			@error "unknown pruning $(pruning)"
 	end
-	ex_ds = prune(ds, pruning_mask)
-	ex_ds = ex_ds[1:nobs(ex_ds)]
-	verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
-	ex_ds
+	# ex_ds = prune(ds, pruning_mask)
+	# ex_ds = ex_ds[1:nobs(ex_ds)]
+	# verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
+	# ex_ds
+	pruning_mask
 end
 
 function explaincompletely(ds, model, clustering_model, i, n, pruning, scorefun, threshold, verbose, clustering)

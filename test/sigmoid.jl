@@ -67,7 +67,7 @@ end
 	end
 
 	@testset "TreeModel" begin 
-		x = TreeNode((
+		x = ProductNode((
 			a = BagNode(ArrayNode(xx), bags),
 			b = ArrayNode(randn(2,100))
 			))

@@ -23,8 +23,8 @@ using Mill, ExplainMill, SparseArrays, Flux
 
 an = ArrayNode(randn(2,5))
 cn = ArrayNode(sprand(2,5, 0.5))
-bn = BagNode(TreeNode((a = an, c = cn)), AlignedBags([1:2,3:5]))
-tn = TreeNode((a = an[1:2], b = bn))
+bn = BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:5]))
+tn = ProductNode((a = an[1:2], b = bn))
 ds = BagNode(tn, AlignedBags([1:2]))
 model = reflectinmodel(ds, d -> Dense(d,2), 
 		d -> SegmentedMean(d), 

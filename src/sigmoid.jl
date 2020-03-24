@@ -107,7 +107,7 @@ function sigmoid(m::BagModel, α, x::BagNode)
 	BagModel(imσ, m.a, bmσ)
 end
 
-function sigmoid(m::ProductModel, α, x::TreeNode)
+function sigmoid(m::ProductModel, α, x::ProductNode)
 	n_xmin, n_xmax = minimax(ProductModel(m.ms, identity)(x))
 	msσ = map(k -> k => sigmoid(m.ms[k], α, x.data[k]), keys(m.ms))
 	msσ = (;msσ...)

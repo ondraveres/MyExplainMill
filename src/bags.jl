@@ -5,6 +5,7 @@ struct BagMask{C,B} <: AbstractExplainMask
 end
 
 Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
+
 function Mask(ds::BagNode{Missing, B,M}, m; cluster_algorithm = cluster_instances, verbose::Bool = false)  where {B<:Mill.AbstractBags,M}
 	return(EmptyMask())
 end
@@ -18,6 +19,7 @@ function Mask(ds::BagNode{Missing, B,M}, m::BagModel; cluster_algorithm = cluste
 end
 
 function Mask(ds::BagNode, m::BagModel; cluster_algorithm = cluster_instances, verbose::Bool = false)
+	nobs(ds.data) == 0 && return(EmptyMask())
 	child_mask = Mask(ds.data, m.im, cluster_algorithm = cluster_algorithm, verbose = verbose)
 	cluster_assignments = cluster_algorithm(m.im(ds.data).data)
 	if verbose
@@ -26,6 +28,11 @@ function Mask(ds::BagNode, m::BagModel; cluster_algorithm = cluster_instances, v
 	end
 	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
 end
+
+NodeType(::Type{T}) where T <: BagMask = SingletonNode()
+children(n::BagMask) = (n.child,)
+childrenfields(::Type{T}) where T <: BagMask = (:child,)
+
 
 function mapmask(f, m::BagMask)
 	mapmask(f, m.child)

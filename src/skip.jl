@@ -2,6 +2,9 @@
 
 struct EmptyMask <:AbstractExplainMask end
 
+NodeType(::Type{ExplainMill.EmptyMask}) = LeafNode()
+noderepr(n::EmptyMask) = "skipped"
+
 function StatsBase.sample!(pruning_mask::EmptyMask)
 
 end

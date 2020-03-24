@@ -1,13 +1,16 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux
-# using Mill: paddedprint, COLORS
-# import Mill: dsprint
+using HierarchicalUtils
+import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree, noderepr
 using TimerOutputs
 
 const to = TimerOutput();
 
 abstract type AbstractExplainMask end;
 abstract type AbstractListMask <: AbstractExplainMask end;
+
+NodeType(::Type{T}) where T <: AbstractListMask = LeafNode()
+noderepr(n::AbstractExplainMask) = "$(Base.typename(typeof(n)))"
 
 participate(m::AbstractExplainMask) = participate(m.mask)
 mask(m::AbstractExplainMask) = mask(m.mask)
@@ -37,12 +40,11 @@ include("explain.jl")
 include("removemissing.jl")
 include("prettyprint.jl")
 include("sigmoid.jl")
+include("predict.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
 export explain, dafstats, print_explained
-
-include("hierarchical_utils.jl")
 
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false)
