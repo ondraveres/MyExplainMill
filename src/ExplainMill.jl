@@ -21,6 +21,18 @@ function cluster_instances(x)
 	dbscan(d, 0.2, 1).assignments
 end
 
+function idmap(ids::Vector{T}) where{T}
+	d = Dict{T,Vector{Int}}()
+	for (i,v) in enumerate(ids)
+		if haskey(d, v)
+			d[v] = vcat(d[v], [i])
+		else
+			d[v] = [i]
+		end
+	end
+	return(d)
+end
+
 
 function mapmask(f, m::AbstractListMask)
 	(mask = f(m.mask),)
@@ -41,6 +53,7 @@ include("removemissing.jl")
 include("prettyprint.jl")
 include("sigmoid.jl")
 include("predict.jl")
+include("logic_output.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 

@@ -82,6 +82,10 @@ function Duff.update!(d::Mask, v::AbstractArray)
 	end
 end
 
+function invalidate!(mask::Mask, i)
+	mask.participate[i] .= false
+end
+
 function StatsBase.sample!(m::Mask{Vector{Int64}})
 	ci = m.cluster_membership
 	_mask = sample([true, false], maximum(ci))

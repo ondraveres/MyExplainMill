@@ -1,12 +1,10 @@
-# The SkipDaf is effectively a noop for explanatio
+struct EmptyMask <: AbstractExplainMask
+end
 
-struct EmptyMask <:AbstractExplainMask end
-
-NodeType(::Type{ExplainMill.EmptyMask}) = LeafNode()
+NodeType(::Type{EmptyMask}) = LeafNode()
 noderepr(n::EmptyMask) = "skipped"
 
 function StatsBase.sample!(pruning_mask::EmptyMask)
-
 end
 
 mask(::EmptyMask) = Vector{Bool}()
