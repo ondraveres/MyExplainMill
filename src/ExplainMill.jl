@@ -1,6 +1,6 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux
-using HierarchicalUtils
+using HierarchicalUtils, JsonGrinder
 import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree, noderepr
 using TimerOutputs
 
@@ -40,20 +40,20 @@ end
 
 invalidate!(m::AbstractExplainMask) = invalidate!(m, Vector{Int}())
 
-include("mask.jl")
-include("densearray.jl")
-include("sparsearray.jl")
-include("categoricalarray.jl")
-include("NGramMatrix.jl")
-include("skip.jl")
-include("bags.jl")
-include("product.jl")
+include("masks/mask.jl")
+include("masks/densearray.jl")
+include("masks/sparsearray.jl")
+include("masks/categoricalarray.jl")
+include("masks/NGramMatrix.jl")
+include("masks/skip.jl")
+include("masks/bags.jl")
+include("masks/product.jl")
+include("output/logic_output.jl")
+include("output/prettyprint.jl")
 include("explain.jl")
 include("removemissing.jl")
-include("prettyprint.jl")
 include("sigmoid.jl")
 include("predict.jl")
-include("logic_output.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 

@@ -1,3 +1,4 @@
+import Base.repr
 
 child_mask(m::BagMask) = m.child
 function child_mask(m::BagMask{C,B}) where {C<:EmptyMask, B}
@@ -9,13 +10,14 @@ function child_mask(m::EmptyMask)
 end
 
 
-function repr_boolean(op::Symbol, s::Vector{T}) where {T}
+function repr_boolean(op::Symbol, s::Vector{T}; thin = true) where {T}
 	s = filter(!isempty, s)
 	s = unique(s)
 	if isempty(s) 
 		return(Dict{Symbol,T}())
 	elseif length(s) == 1
-		return(only(s))
+		thin && return(only(s))
+		return(s)
 	else
 		return(Dict(op => s))
 	end
@@ -23,8 +25,8 @@ end
 
 repr_boolean(::Symbol, d::Dict{Symbol,String}) = d
 
-# function print_explained(io, m::CategoricalMask, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractBranch}
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractBranch}
+# function print_explained(io, m::CategoricalMask, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:JsonGrinder.ExtractBranch}
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:JsonGrinder.ExtractBranch}
 	length(e.other) > 1 &&  @error "This should not happen"
 	k = collect(keys(e.other))[1]
 	repr(mim, m, ds, e.other[k])
@@ -76,7 +78,7 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
 		end
 		repr_boolean(:or, ss)
 	end
-	repr_boolean(:and, ss)
+	repr_boolean(:and, ss; thin = false)
 end
 
 function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
