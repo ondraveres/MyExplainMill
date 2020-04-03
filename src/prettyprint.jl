@@ -28,7 +28,7 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.On
 	end
 end
 
-function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractBranch}
+function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
 	length(e.other) > 1 &&  @error "This should not happen"
 	k =collect(keys(e.other))[1]
 	print_explained(io, ds, e.other[k])
