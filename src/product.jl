@@ -1,11 +1,26 @@
-struct TreeMask{C}
+struct TreeMask{C} <: AbstractExplainMask
 	childs::C
 end
 
-function Mask(ds::TreeNode)
+mask(::TreeMask) = nothing
+participate(::TreeMask) = nothing
+
+function Mask(ds::ProductNode)
 	ks = keys(ds.data)
 	s = (;[k => Mask(ds.data[k]) for k in ks]...)
 	TreeMask(s)
+end
+
+function Mask(ds::ProductNode, m::ProductModel; verbose = false, cluster_algorithm = cluster_instances)
+	ks = keys(ds.data)
+	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_algorithm = cluster_instances, verbose = verbose) for k in ks]...)
+	TreeMask(s)
+end
+
+function mapmask(f, mask::TreeMask)
+	ks = keys(mask.childs)
+	s = (;[k => mapmask(f, mask.childs[k]) for k in ks]...)
+	(;s...)
 end
 
 function invalidate!(mask::TreeMask, observations::Vector{Int})
@@ -14,8 +29,8 @@ function invalidate!(mask::TreeMask, observations::Vector{Int})
 	end
 end
 
-function prune(ds::TreeNode, mask::TreeMask)
+function prune(ds::ProductNode, mask::TreeMask)
 	ks = keys(ds.data)
-	s = (;[k => prune(ds.data[k], mask.child_masks[k]) for k in ks]...)
-	TreeNode(s)
+	s = (;[k => prune(ds.data[k], mask.childs[k]) for k in ks]...)
+	ProductNode(s)
 end
