@@ -10,12 +10,15 @@ using ExplainMill: MatrixMask, TreeMask, BagMask, NGramMatrixMask, SparseArrayMa
 using HierarchicalUtils
 import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree
 
-ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(0, length(m)), Daf(length(m)), nothing)
+ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(1, length(m)), Daf(length(m)), nothing)
 ExplainMill.MatrixMask(m::Vector{Bool}) = ExplainMill.MatrixMask(ExplainMill.Mask(m))
 ExplainMill.CategoricalMask(m::Vector{Bool}) = ExplainMill.CategoricalMask(ExplainMill.Mask(m))
 ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, ExplainMill.Mask(m))
 ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(ExplainMill.Mask(m))
 ExplainMill.SparseArrayMask(m::Vector{Bool}, columns) = ExplainMill.SparseArrayMask(ExplainMill.Mask(m), columns)
+
+include("explain.jl")
+include("sigmoid.jl")
 
 @testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))

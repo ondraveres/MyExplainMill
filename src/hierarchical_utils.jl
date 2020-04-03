@@ -2,6 +2,7 @@ import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, Singlet
 
 # for schema structures
 NodeType(::Type{T}) where T <: AbstractListMask = LeafNode()
+NodeType(::Type{T}) where T <: EmptyMask = LeafNode()
 NodeType(::Type{T}) where T <: BagMask = SingletonNode()
 NodeType(::Type{T}) where T <: TreeMask = InnerNode()
 
