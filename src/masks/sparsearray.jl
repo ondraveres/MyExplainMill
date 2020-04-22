@@ -10,7 +10,7 @@ function Mask(ds::ArrayNode{T,M}) where {T<:SparseMatrixCSC, M}
 	SparseArrayMask(Mask(length(columns)), columns)
 end
 
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel; cluster_algorithm = cluster_instances, verbose::Bool = false) where {T<:SparseMatrixCSC, M}
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose::Bool = false) where {T<:SparseMatrixCSC, M}
 	nnz(ds.data) == 0 && return(EmptyMask())
 	column2cluster = cluster_algorithm(m(ds).data)
 	columns = findall(!iszero, ds.data);

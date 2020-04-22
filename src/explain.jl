@@ -1,67 +1,5 @@
 Base.minimum(ds::ArrayNode) = minimum(ds.data)
 
-output(ds::ArrayNode) = ds.data
-output(x::AbstractMatrix) = x
-
-function StatsBase.sample!(pruning_mask::AbstractExplainMask)
-	mapmask(sample!, pruning_mask)
-end
-
-function Duff.update!(dafs::Vector, v::Mill.ArrayNode, pruning_mask)
-	Duff.update!(dafs, v.data, pruning_mask)
-end
-
-function Duff.update!(dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
-	for d in dafs 
-		Duff.update!(d, v)
-	end
-end
-
-function infersamplemembership!(pruning_mask, n)
-	for i in 1:n 
-		mapmask(pruning_mask) do m 
-			participate(m) .= true
-		end
-		invalidate!(pruning_mask,setdiff(1:n, i))
-		mapmask(pruning_mask) do m 
-			m.outputid[participate(m)] .= i
-		end
-	end
-end
-
-function maskstats(pruning_mask)
-	k,l = 0,0
-	mapmask(pruning_mask) do m
-		if m != nothing
-			k += length(m.daf)
-			l+= length(m.mask)
-		end
-	end
-	println("degrees of freedom: ", k, " number of items: ", l)
-end
-
-
-"""
-	function dafstats(ds, model, n=10000)
-
-	Shapley values of individual items of a sample `ds` in the model `model` estimated from `n` trials
-"""
-function dafstats(ds, model, i, n, clustering; verbose = false)
-	pruning_mask = clustering ? Mask(ds, model, verbose = verbose) : Mask(ds)
-	infersamplemembership!(pruning_mask, nobs(ds))
-	dafs = []
-	mapmask(pruning_mask) do m
-		m != nothing && push!(dafs, m)
-	end
-	for _j in 1:n
-		@timeit to "sample!" sample!(pruning_mask)
-		pruned_ds = @timeit to "prune" prune(ds, pruning_mask)
-		o = @timeit to "evaluate" model(pruned_ds)
-		@timeit to "update!" Duff.update!(dafs, output(o)[i,:], pruning_mask)
-	end
-	return(dafs, pruning_mask)
-end
-
 function getscorefun(s)
 	if s == :mean 
 		return(Duff.meanscore)
@@ -73,11 +11,12 @@ function getscorefun(s)
 end
 
 """
-	explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true, completely = false)
+	explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true, completely = false, clustering_model = model)
 
 	Explain sample `ds` by removing its items such that output of `model(ds)` is above `threshold`.
 	`method` controls the order in which the items are subjected to iterative removal. 
 	:importantlast means that samples with low importance are removed first
+
 """
 function explain(ds, model, i;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0.5, verbose = false, clustering = true, completely = false, clustering_model = model)
 	completely ? explaincompletely(ds, model, clustering_model, i, n, pruning, getscorefun(scoring), threshold, verbose, clustering) : explain(ds, model, clustering_model, i, n, pruning, getscorefun(scoring), threshold, verbose, clustering)
@@ -88,19 +27,54 @@ function explain(ds, model, clustering_model,  i, n, pruning, scorefun, threshol
 		@info "stopped explanation as the output is below threshold"
 		return(nothing)
 	end
-	dafs, pruning_mask = @timeit to "dafstats" dafstats(ds, clustering_model, i, n, clustering, verbose = verbose)
+	dafs, pruning_mask = @timeit to "dafstats" dafstats(ds, model, i, n, clustering_model, clustering, verbose)
+
+	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
+		[(i,j) for j in 1:length(d.daf)]
+	end
+	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
+	verbose && println("Score estimation failed on ", sum(isnan.(mscore))," out of ",length(mscore))
+
+	f = x -> sum(min.(output(model(x))[i,:] .- threshold, 0))
+	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
+	verbose && println("total number of feature: ", length(ii))
+	if pruning == :importantlast
+			@timeit to "importantlast" importantlast(f, ds, pruning_mask, dafs, mscore, ii, verbose)
+		elseif pruning == :importantfirst
+			@timeit to "importantfirst"  importantfirst(f, ds, pruning_mask, dafs, mscore, ii, verbose)
+		else
+			@error "unknown pruning $(pruning)"
+	end
+	# ex_ds = prune(ds, pruning_mask)
+	# ex_ds = ex_ds[1:nobs(ex_ds)]
+	# verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
+	# ex_ds
+	pruning_mask
+end
+
+function explain2(ds, f, clustering_model;  n = 1000, pruning = :importantfirst, scoring = :mean, threshold = 0, verbose = false, clustering = true)
+	explain2(ds, f, clustering_model, n, pruning, getscorefun(scoring), threshold, verbose, clustering)
+end
+function explain2(ds, predictor_fun, clustering_model, n, pruning, scorefun, threshold, verbose, clustering)
+	if minimum(predictor_fun(ds)) < threshold
+		@info "stopped explanation as the output is below threshold"
+		return(nothing)
+	end
+	dafs, pruning_mask = @timeit to "dafstats" dafstats(ds, predictor_fun, n, clustering_model, clustering, verbose)
 
 	ii = mapreduce(vcat, enumerate(dafs)) do (i,d)
 		ii = [(i,j) for j in 1:length(d.daf)]
 	end
 	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
+	verbose && println("Score estimation failed on ", sum(isnan.(mscore))," out of ",length(mscore))
 
-	f = x -> minimum(output(model(x))[i,:])
+	f = x -> sum(min.(output(predictor_fun(x)) .- threshold, 0))
 	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
+	verbose && println("total number of feature: ", length(ii))
 	if pruning == :importantlast
-			@timeit to "importantlast" importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+			@timeit to "importantlast" importantlast(f, ds, pruning_mask, dafs, mscore, ii, verbose)
 		elseif pruning == :importantfirst
-			@timeit to "importantfirst"  importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose)
+			@timeit to "importantfirst"  importantfirst(f, ds, pruning_mask, dafs, mscore, ii, verbose)
 		else
 			@error "unknown pruning $(pruning)"
 	end
@@ -123,20 +97,21 @@ function explaincompletely(ds, model, clustering_model, i, n, pruning, scorefun,
 	end
 	mscore = mapreduce(d -> scorefun(d.daf), vcat, dafs)
 
-	f = x -> minimum(output(model(x))[i,:])
+	f = x -> sum(min.(output(model(x))[i,:] .- threshold, 0))
 	used = Vector{Int}()
 	ex_dss = []
 	verbose && println("model output before explanation: ", round(f(ds), digits = 3))
+	verbose && println("total number of feature: ", length(ii))
 	while length(used) < length(ii)
 		if pruning == :importantlast
 			@error "not implemented yet, as Pevnak is afraid this to be terribly slow"
 		elseif pruning == :importantfirst
 			free = setdiff(1:length(ii), used)
-			importantfirst(ds, model, i, pruning_mask, dafs, mscore[free], ii[free], threshold)
+			importantfirst(f, ds, pruning_mask, dafs, mscore[free], ii[free], verbose)
 			used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
 			ex_ds = prune(ds, pruning_mask)
 			verbose && println("model output after explanation: ", round(f(ex_ds), digits = 3))
-			round(f(ex_ds), digits = 3) < threshold && break
+			round(f(ex_ds), digits = 3) < 0 && break
 			push!(ex_dss, ex_ds[1:nobs(ex_ds)])
 		else
 			@error "unknown pruning $(pruning)"
@@ -146,55 +121,79 @@ function explaincompletely(ds, model, clustering_model, i, n, pruning, scorefun,
 end
 
 """
-	importantlast(ds, model, mask, dafs, threshold)
+	importantlast(ds, model, mask, dafs)
 
-	Removes items from a sample `ds` such that output of `model(ds)` is above `threshold`.
+	Removes items from a sample `ds` such that output of `model(ds)` is above zero.
 	Removing starts with items that according to Shapley values do not contribute to the output
 """
-function importantlast(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose::Bool = false)
+function importantlast(f, ds, pruning_mask, dafs, mscore, ii, verbose::Bool = false)
 	mapmask(m -> mask(m) .= true, pruning_mask)
-	f = x -> minimum(output(model(x))[i,:])
-	removeexcess!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = true)], threshold)
+	removeexcess!(f, ds, pruning_mask, dafs, ii[sortperm(mscore, rev = true)])
 	prune(ds, pruning_mask)
 end
 
-function importantfirst(ds, model, i, pruning_mask, dafs, mscore, ii, threshold, verbose::Bool = false)
+useditems(dafs, ii) = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
+
+function importantfirst(f, ds, pruning_mask, dafs, mscore, ii, verbose::Bool = false)
 	mapmask(m -> mask(m) .= false, pruning_mask)
-	f = x -> minimum(output(model(x))[i,:])
-	addminimum!(pruning_mask, dafs, ds, f, ii[sortperm(mscore, rev = false)], threshold)
-	used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
-	verbose && println("adding $(length(used)) features")
-	removeexcess!(pruning_mask, dafs, ds, f, ii[used], threshold)
+	previous = f(prune(ds, pruning_mask))
+	println("output on empty sample = ", previous)
+	i  = 0
+	changed = false
+	used = Int[]
+	while previous < 0 && i < 10 && !changed
+		i += 1
+		changed = addminimum!(f, ds, pruning_mask, dafs, ii[sortperm(mscore, rev = false)], strict_improvement = true)
+		used = useditems(dafs, ii)
+		previous = f(prune(ds, pruning_mask))
+		verbose && println("$(i): output = $(previous) added $(length(used)) features")
+	end
+	if previous < 0 
+		addminimum!(f, ds, pruning_mask, dafs, ii[sortperm(mscore, rev = false)], strict_improvement = false)
+		used = useditems(dafs, ii)
+		verbose && println("added $(length(used)) features")
+	end
+	removeexcess!(f, ds, pruning_mask, dafs, ii[used])
 	used = findall(map(i -> all(dafs[i[1]][i[2]]), ii))
 	verbose && println("keeping $(length(used)) features")
 	prune(ds, pruning_mask)
 end
 
-function removeexcess!(pruning_mask, dafs, ds, f, ii, threshold)
-	minimum(f(prune(ds, pruning_mask))) < threshold && return(threshold)
+
+function removeexcess!(f, ds, pruning_mask, dafs, ii)
+	previous =  f(prune(ds, pruning_mask))
+	previous < 0 && return(false)
 	changed = false
 	for (k,l) in ii
 		dafs[k][l] == false && continue
 		dafs[k][l] = false
-		changed = true
 		o = f(prune(ds, pruning_mask))
-		if o < threshold
+		if o < 0
 			dafs[k][l] = true
+			break
+		else
+			changed = true
 		end
 	end
 	return(changed)
 end
 
-function addminimum!(pruning_mask, dafs, ds, f, ii, threshold)
-	minimum(f(prune(ds, pruning_mask))) > threshold && return(threshold)
+function addminimum!(f, ds, pruning_mask, dafs, ii; strict_improvement::Bool = true)
 	changed = false
+	previous =  f(prune(ds, pruning_mask))
+	previous > 0 && return(changed)
 	for (k,l) in ii
-		dafs[k][l] == true && continue
+		all(dafs[k][l]) && continue
 		dafs[k][l] = true
-		changed = true
-		o = minimum(f(prune(ds, pruning_mask)))
-		if o > threshold
-			return(changed)
+		o = f(prune(ds, pruning_mask))
+		if strict_improvement && o <= previous
+			dafs[k][l] = false
+		else 
+			previous = o
+			changed = true
+		end
+		if o >= 0
+			break
 		end
 	end
 	return(changed)

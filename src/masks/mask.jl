@@ -61,7 +61,7 @@ end
 ####
 #	Explaination, where items are clustered together
 ####
-function Mask(cluster_membership::Vector{Int}) 
+function Mask(cluster_membership::Vector{T}) where {T<:Integer} 
 	cluster_membership = normalize_clusterids(cluster_membership)
 	n = length(unique(cluster_membership))
 	!isempty(setdiff(1:n, unique(cluster_membership))) && @show cluster_membership

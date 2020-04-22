@@ -1,5 +1,4 @@
 import Base.repr
-
 child_mask(m::BagMask) = m.child
 function child_mask(m::BagMask{C,B}) where {C<:EmptyMask, B}
 	m.mask
@@ -9,30 +8,49 @@ function child_mask(m::EmptyMask)
 	EmptyMask()
 end
 
+function islogical(s::Dict{Symbol,T}) where {T}
+	collect(keys(s)) == [:and] && return(true)
+	collect(keys(s)) == [:or] && return(true)
+	return(false)
+end
 
-function repr_boolean(op::Symbol, s::Vector{T}; thin = true) where {T}
+function islogical(s::Vector)
+	length(s) != 1 && return(false)
+	islogical(only(s))
+end
+
+function repr_boolean(op::Symbol, s::Vector{T}; thin::Bool = true) where {T}
 	s = filter(!isempty, s)
 	s = unique(s)
 	if isempty(s) 
 		return(Dict{Symbol,T}())
 	elseif length(s) == 1
-		thin && return(only(s))
-		return(s)
+		if thin 
+			return(only(s))
+		else 
+			return(Dict(op => s))
+		end
 	else
 		return(Dict(op => s))
 	end
 end
 
-repr_boolean(::Symbol, d::Dict{Symbol,String}) = d
+function repr_boolean(op::Symbol, s::Dict{Symbol,String}; thin::Bool = true) 
+	if thin || isempty(s)
+		return(s)
+	elseif islogical(s)
+		return(s)
+	else 
+		return(Dict(op => s))
+	end
+end
 
-# function print_explained(io, m::CategoricalMask, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:JsonGrinder.ExtractBranch}
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:JsonGrinder.ExtractBranch}
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
 	length(e.other) > 1 &&  @error "This should not happen"
 	k = collect(keys(e.other))[1]
 	repr(mim, m, ds, e.other[k])
 end
 
-# function repr(::MIME"text/json":CategoricalMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractCategorical}
 function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Flux.OneHotMatrix}
 	contributing = participate(m) .& mask(m)
 	items = map(i -> i.ix, ds.data.data)
@@ -51,14 +69,10 @@ function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) wh
 end
 
 function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-	@info "Improve NGramMatrix with EmptyMask"
-	repr_boolean(:and, ds.data.s)
+	repr_boolean(:and, unique(ds.data.s))
 end
 
-#	We need at least one item from each cluster, which means that there is an OR relationship
-# 	withing clusters and AND relationship across clusters 
-#
-#
+
 function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
     ismissing(ds.data) && Dict{Symbol, String}()
 
@@ -78,13 +92,13 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
 		end
 		repr_boolean(:or, ss)
 	end
-	repr_boolean(:and, ss; thin = false)
+	repr_boolean(:and, ss, thin = false)
 end
 
 function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
     ismissing(ds.data) && Dict{Symbol,String}()
     ss = repr(mim, m, ds.data, e.item);
-    repr_boolean(:and, ss)
+    repr_boolean(:and, ss, thin = false)
 end
 
 function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::AbstractProductNode, e)
@@ -93,4 +107,18 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::AbstractProductN
         isempty(subs) ? nothing : k => subs
     end
     Dict(filter(!isnothing, s))
+end
+
+
+function e2boolean(pruning_mask, dss, extractor)
+	d = map(1:nobs(dss)) do i 
+		mapmask(pruning_mask) do m 
+			participate(m) .= true
+		end
+		invalidate!(pruning_mask,setdiff(1:nobs(dss), i))
+		repr(MIME("text/json"),pruning_mask, dss, extractor);
+	end
+	d = filter(!isempty, d)
+	d = unique(d)
+	d = length(d) > 1 ? ExplainMill.repr_boolean(:or, d) : d
 end

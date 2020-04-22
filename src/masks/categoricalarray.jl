@@ -4,9 +4,10 @@ end
 
 Mask(ds::ArrayNode{T,M}) where {T<:Flux.OneHotMatrix, M} =  CategoricalMask(Mask(size(ds.data,2)))
 
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel; cluster_algorithm = cluster_instances, verbose = false) where {T<:Flux.OneHotMatrix, M}
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
 	nobs(ds) == 0 && return(EmptyMask())
-	cluster_assignments = cluster_algorithm(m(ds).data)
+	# cluster_assignments = cluster_algorithm(m(ds).data)
+	cluster_assignments = cluster_algorithm(m, ds)
 	CategoricalMask(Mask(cluster_assignments))
 end
 

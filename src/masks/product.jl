@@ -13,9 +13,9 @@ function Mask(ds::ProductNode)
 	ProductMask(s)
 end
 
-function Mask(ds::ProductNode, m::ProductModel; verbose = false, cluster_algorithm = cluster_instances)
+function Mask(ds::ProductNode, m::ProductModel, cluster_algorithm, verbose::Bool = false)
 	ks = keys(ds.data)
-	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_algorithm = cluster_instances, verbose = verbose) for k in ks]...)
+	s = (;[k => Mask(ds.data[k], m.ms[k], cluster_algorithm, verbose) for k in ks]...)
 	ProductMask(s)
 end
 

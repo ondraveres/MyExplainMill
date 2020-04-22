@@ -12,6 +12,19 @@ function paddedprint(io, s...; color=:default, pad=[])
     printstyled(io, s..., color=color)
 end
 
+
+function paddedprint(io::IO, d::Dict{String, T}; color=:default, pad=[]) where {T}
+	c = COLORS[(length(pad)%length(COLORS))+1]
+	isempty(d) && paddedprint(io, "∅\n", color = c, pad = pad)
+	m = maximum(length(k) for k in keys(d))
+    for (i, (k,v)) in enumerate(d)
+    	s = rpad(k, m)*" => $(v)"
+    	s *= i == length(d) ? "" : "\n"
+    	paddedprint(io, s, color = c, pad = pad)
+    end
+end
+
+
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractCategorical}
 	c = COLORS[(length(pad)%length(COLORS))+1]
 	x = ds.data
@@ -28,7 +41,7 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.On
 	end
 end
 
-function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractBranch}
+function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
 	length(e.other) > 1 &&  @error "This should not happen"
 	k =collect(keys(e.other))[1]
 	print_explained(io, ds, e.other[k])
@@ -41,14 +54,14 @@ function print_explained(io, ds::ArrayNode{T}, e; pad = []) where {T<:Mill.NGram
 		s = "∅"
 		paddedprint(io, s, color = c)
 	else
-		s = join(s,", ")
-		paddedprint(io, s, color = c)
+		ExplainMill.paddedprint(io,"\n", color=c)
+		paddedprint(io, countmap(s), color = c, pad = pad)
 	end
 end
 
 function print_explained(io, ds::BagNode, e; pad = [])
     c = COLORS[(length(pad)%length(COLORS))+1]
-    if ismissing(ds.data)
+    if ismissing(ds.data) || isnothing(ds.data)
 	    paddedprint(io,"∅", color = c)
 	else
 	    paddedprint(io,"List of\n", color=c)
