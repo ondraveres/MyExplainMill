@@ -1,4 +1,4 @@
-struct ProductMask{C} <: AbstractExplainMask
+struct ProductMask{C} <: AbstractNoMask
 	childs::C
 end
 

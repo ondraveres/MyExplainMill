@@ -23,3 +23,4 @@ end
 function invalidate!(mask::CategoricalMask, observations::Vector{Int})
 	participate(mask.mask)[observations] .= false
 end
+

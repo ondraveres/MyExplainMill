@@ -14,10 +14,7 @@ function islogical(s::Dict{Symbol,T}) where {T}
 	return(false)
 end
 
-function islogical(s::Vector)
-	length(s) != 1 && return(false)
-	islogical(only(s))
-end
+islogical(s::Vector) = s
 
 function repr_boolean(op::Symbol, s::Vector{T}; thin::Bool = true) where {T}
 	s = filter(!isempty, s)
@@ -96,12 +93,14 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
 end
 
 function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
-    ismissing(ds.data) && Dict{Symbol,String}()
+    ismissing(ds.data) && return(Dict{Symbol,String}())
+    nobs(ds.data) == 0 && return(Dict{Symbol,String}())
     ss = repr(mim, m, ds.data, e.item);
     repr_boolean(:and, ss, thin = false)
 end
 
 function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::AbstractProductNode, e)
+	nobs(ds) == 0 && return(Dict{Symbol,String}())
 	s = map(sort(collect(keys(ds.data)))) do k
         subs = repr(mim, m[k], ds[k], e[k])
         isempty(subs) ? nothing : k => subs

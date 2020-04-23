@@ -1,4 +1,4 @@
-struct EmptyMask <: AbstractExplainMask
+struct EmptyMask <: AbstractNoMask
 end
 
 NodeType(::Type{EmptyMask}) = LeafNode()
@@ -16,3 +16,6 @@ prune(ds, mask::EmptyMask) = ds
 mapmask(f, mask::EmptyMask) = nothing
 
 invalidate!(mask::EmptyMask, observations::Vector{Int}) = nothing
+
+
+index_in_parent(m::CategoricalMask, i) = error("Does not make sense")

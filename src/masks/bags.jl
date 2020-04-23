@@ -34,7 +34,6 @@ NodeType(::Type{T}) where T <: BagMask = SingletonNode()
 children(n::BagMask) = (n.child,)
 childrenfields(::Type{T}) where T <: BagMask = (:child,)
 
-
 function mapmask(f, m::BagMask)
 	mapmask(f, m.child)
 	f(m.mask)
@@ -56,3 +55,5 @@ function prune(ds::BagNode, mask::BagMask)
 	end
 	BagNode(x, bags)
 end
+
+index_in_parent(m::ExplainMill.BagMask, i) = only(findall(map(b -> i ∈ b, m.bags)))

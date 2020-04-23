@@ -13,3 +13,5 @@ end
 
 function invalidate!(mask::MatrixMask, observations::Vector{Int})
 end
+
+index_in_parent(m::MatrixMask, i) = 1

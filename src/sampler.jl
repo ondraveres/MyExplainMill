@@ -9,6 +9,7 @@ function json_sample(d::Dict)
 end
 
 json_sample(s::String) = s 
+json_sample(s::Number) = s 
 sample_or(vs::Vector) = json_sample(sample(vs))
 sample_and(vs::Vector) = map(json_sample, vs)
 json_sample(vs::Vector) = map(json_sample, vs)

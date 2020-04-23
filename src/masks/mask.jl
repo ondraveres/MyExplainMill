@@ -36,16 +36,17 @@ end
 participate(m::Mask) = m.participate
 mask(m::Mask) = m.mask
 
+Base.length(m::Mask) = length(m.daf)
 Base.getindex(m::Mask{Nothing}, i::Int) = m.mask[i]
 Base.getindex(m::Mask{Vector{Int}}, i::Int) = m.mask[m.cluster_membership .== i]
 Base.setindex!(m::Mask{Nothing}, v, i::Int) = m.mask[i] = v
 Base.setindex!(m::Mask{Vector{Int}}, v, i::Int) = m.mask[m.cluster_membership .== i] .= v
+Base.fill!(m::Mask, v) = Base.fill!(mask(m), v)
 
 ####
 #	Explaination without clustering, where each item is independent of others
 ####
 Mask(d::Int) = Mask(fill(true, d), fill(true, d), fill(0, d), Daf(d), nothing)
-
 
 function StatsBase.sample!(m::Mask{Nothing})
 	m.mask .= sample([true, false], length(m.mask))
@@ -58,6 +59,7 @@ function normalize_clusterids(x)
 	k2id = Dict([u[i] => i for i in 1:length(u)])
 	map(k -> k2id[k], x)
 end
+
 ####
 #	Explaination, where items are clustered together
 ####

@@ -36,3 +36,5 @@ function prune(ds::ArrayNode{T,M}, mask::SparseArrayMask) where {T<:SparseMatrix
 	x.nzval[.!mask.mask.mask] .= 0
 	ArrayNode(x, ds.metadata)
 end
+
+index_in_parent(m::SparseArrayMask, i) = m.columns[i]
