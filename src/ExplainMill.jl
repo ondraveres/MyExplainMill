@@ -37,6 +37,7 @@ include("predict.jl")
 include("sampler.jl")
 include("stats.jl")
 include("matching.jl")
+include("gnn_explainer.jl")
 
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean

@@ -209,13 +209,13 @@ end
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
 end
 
-# @testset "testing infering of sample membership" begin
-# 	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
-# 	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
-# 	pm = Mask(ds)
-# 	ExplainMill.updatesamplemembership!(pm, nobs(ds))
-# 	@test pm.mask.outputid ≈ [1, 1, 2, 3, 3]
-# end
+@testset "testing infering of sample membership" begin
+	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
+	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
+	pm = Mask(ds)
+	ExplainMill.updatesamplemembership!(pm, nobs(ds))
+	@test pm.mask.outputid ≈ [1, 1, 2, 3, 3]
+end
 
 @testset "remapping the cluster" begin
 	@test ExplainMill.normalize_clusterids([2,3,2,3,4]) ≈ [1,2,1,2,3]

@@ -6,30 +6,16 @@ end
 
 Flux.@functor(BagMask)
 
-Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
-
-function Mask(ds::BagNode{Missing, B,M})  where {B<:Mill.AbstractBags,M}
-	return(EmptyMask())
-end
-
-function Mask(ds::BagNode{Missing, B,M}, m, cluster_algorithm, verbose::Bool = false)  where {B<:Mill.AbstractBags,M}
-	return(EmptyMask())
-end
-
-function Mask(ds::BagNode{Missing, B,M}, m::BagModel, cluster_algorithm, verbose::Bool = false)  where {B<:Mill.AbstractBags,M}
-	return(EmptyMask())
-end
-
-function Mask(ds::BagNode, m::BagModel, cluster_algorithm, verbose::Bool = false)
+function Mask(ds::BagNode, m::BagModel, initstats, cluster; verbose::Bool = false)
+	isnothing(ds.data) && return(EmptyMask())
 	nobs(ds.data) == 0 && return(EmptyMask())
-	child_mask = Mask(ds.data, m.im, cluster_algorithm, verbose)
-	# cluster_assignments = cluster_algorithm(m.im(ds.data).data)
-	cluster_assignments = cluster_algorithm(m.im, ds.data)
+	child_mask = Mask(ds.data, m.im, initstats, cluster, verbose = verbose)
+	cluster_assignments = cluster(m.im, ds.data)
 	if verbose
 		n, m = nobs(ds.data), length(unique(cluster_assignments))
 		println("number of instances: ", n, " ratio: ", round(m/n, digits = 3))
 	end
-	BagMask(child_mask, ds.bags, Mask(cluster_assignments))
+	BagMask(child_mask, ds.bags, Mask(cluster_assignments, initstats))
 end
 
 NodeType(::Type{T}) where T <: BagMask = SingletonNode()
@@ -58,4 +44,12 @@ function prune(ds::BagNode, mask::BagMask)
 	BagNode(x, bags)
 end
 
+function (m::Mill.BagModel)(x::BagNode, mask::ExplainMill.BagMask)
+	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
+	xx = ArrayNode(transpose(gnnmask(mask)) .* m.im(x.data, mask.child).data)
+    m.bm(m.a(xx, x.bags))
+end
+
 index_in_parent(m::ExplainMill.BagMask, i) = only(findall(map(b -> i ∈ b, m.bags)))
+
+_nocluster(m::BagModel, ds::BagNode) = nobs(ds.data)

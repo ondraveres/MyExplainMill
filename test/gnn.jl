@@ -5,40 +5,8 @@ using Test
 using MLDataPattern
 using StatsBase, Flux, Duff
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::MatrixMask)
-    ArrayNode(m.m(mask.mask .* ds.data))
-end
 
 function mulnnz(x::SparseMatrixCSC, mask)
-end
-
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::SparseArrayMask)
-	x = ds.data
-	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* mask.mask)
-    ArrayNode(m.m(xx))
-end
-
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::CategoricalMask)
-    ArrayNode(m.m(ds.data) .* transpose(mask.mask))
-end
-
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
-    ArrayNode(m.m(ds.data) .* transpose(mask.mask))
-end
-
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::EmptyMask)
-    m(ds)
-end
-
-function (m::Mill.BagModel)(x::BagNode, mask::ExplainMill.BagMask)
-	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
-	xx = ArrayNode(transpose(mask.mask) .* m.im(x.data, mask.child).data)
-    m.bm(m.a(xx, x.bags))
-end
-
-function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mask::ExplainMill.ProductMask) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
-    xx = vcat([m[k](x[k], mask[k]) for k in keys(m.ms)]...)
-    m.m(xx)
 end
 
 @testset "do we handle correctly the explanation?" begin

@@ -5,23 +5,16 @@ end
 
 Flux.@functor(SparseArrayMask)
 
-function Mask(ds::ArrayNode{T,M}) where {T<:SparseMatrixCSC, M}
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:SparseMatrixCSC, M}
 	nnz(ds.data) == 0 && return(EmptyMask())
-	columns = findall(!iszero, ds.data);
-	columns = [c.I[2] for c in columns]
-	SparseArrayMask(Mask(length(columns)), columns)
-end
-
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose::Bool = false) where {T<:SparseMatrixCSC, M}
-	nnz(ds.data) == 0 && return(EmptyMask())
-	column2cluster = cluster_algorithm(m(ds).data)
+	column2cluster = cluster(m(ds).data)
 	columns = identifycolumns(ds.data)
 	cluster_assignments = [column2cluster[c] for c in columns]
 	if verbose
 		n, m = nobs(ds), length(unique(cluster_assignments))
 		println("number of sparse vectors: ", n, " number of clusters: ", m, " ratio: ", round(m/n, digits = 3))
 	end
-	SparseArrayMask(Mask(cluster_assignments), columns)
+	SparseArrayMask(Mask(cluster_assignments, initstats), columns)
 end
 
 function identifycolumns(x::SparseMatrixCSC)
@@ -43,4 +36,13 @@ function prune(ds::ArrayNode{T,M}, mask::SparseArrayMask) where {T<:SparseMatrix
 	ArrayNode(x, ds.metadata)
 end
 
+function (m::Mill.ArrayModel)(ds::ArrayNode, mask::SparseArrayMask)
+	x = ds.data
+	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* gnnmask(mask))
+    ArrayNode(m.m(xx))
+end
+
+
 index_in_parent(m::SparseArrayMask, i) = m.columns[i]
+
+_nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:SparseMatrixCSC, M} = nnz(ds.data)

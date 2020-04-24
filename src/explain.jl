@@ -10,7 +10,7 @@ function explain(ds, predictor_fun, clustering_model, n, pruning, threshold, clu
 	pruning_mask = @timeit to "dafstats" dafstats(ds, predictor_fun, n, clustering_model, clustering)
 
 	flatmask = FlatView(pruning_mask)
-	significance = map(x -> Duff.meanscore(x.mask.daf), flatmask)
+	significance = map(x -> Duff.meanscore(x.mask.stats), flatmask)
 
 	@info "Score estimation failed on $(sum(isnan.(significance))) out of $(length(significance))"
 

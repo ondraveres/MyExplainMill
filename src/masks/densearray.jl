@@ -4,8 +4,9 @@ end
 
 Flux.@functor(MatrixMask)
 
-Mask(ds::ArrayNode{T,M}) where {T<:Matrix, M} =  MatrixMask(Mask(size(ds.data,1)))
-Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose = false) where {T<:Matrix, M} =  Mask(ds)
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:Matrix, M} 
+	Mask(nobs(ds.data), initstats)
+end
 
 function prune(ds::ArrayNode{T,M}, m::MatrixMask) where {T<:Matrix, M}
 	x = deepcopy(ds.data)
@@ -14,6 +15,10 @@ function prune(ds::ArrayNode{T,M}, m::MatrixMask) where {T<:Matrix, M}
 end
 
 function invalidate!(mask::MatrixMask, observations::Vector{Int})
+end
+
+function (m::Mill.ArrayModel)(ds::ArrayNode, mask::MatrixMask)
+    ArrayNode(m.m(mask.mask .* ds.data))
 end
 
 index_in_parent(m::MatrixMask, i) = 1

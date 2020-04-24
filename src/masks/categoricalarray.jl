@@ -4,13 +4,10 @@ end
 
 Flux.@functor(CategoricalMask)
 
-Mask(ds::ArrayNode{T,M}) where {T<:Flux.OneHotMatrix, M} =  CategoricalMask(Mask(size(ds.data,2)))
-
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
 	nobs(ds) == 0 && return(EmptyMask())
-	# cluster_assignments = cluster_algorithm(m(ds).data)
-	cluster_assignments = cluster_algorithm(m, ds)
-	CategoricalMask(Mask(cluster_assignments))
+	cluster_assignments = cluster(m, ds)
+	CategoricalMask(Mask(cluster_assignments, initstats))
 end
 
 function prune(ds::ArrayNode{T,M}, m::CategoricalMask) where {T<:Flux.OneHotMatrix, M}
@@ -25,3 +22,8 @@ function invalidate!(mask::CategoricalMask, observations::Vector{Int})
 	participate(mask.mask)[observations] .= false
 end
 
+function (m::Mill.ArrayModel)(ds::ArrayNode, mask::CategoricalMask)
+    ArrayNode(m.m(ds.data) .* transpose(gnnmask(mask)))
+end
+
+_nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Flux.OneHotMatrix, M} = nobs(ds.data)

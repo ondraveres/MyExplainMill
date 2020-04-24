@@ -4,18 +4,13 @@ end
 
 Flux.@functor(NGramMatrixMask)
 
-function Mask(ds::ArrayNode{T,M}) where {T<:Mill.NGramMatrix{String}, M}
-	NGramMatrixMask(Mask(length(ds.data.s)))
-end
-
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose = false) where {T<:Mill.NGramMatrix{String}, M}
-	# cluster_assignments = cluster_algorithm(m(ds).data)
-	cluster_assignments = cluster_algorithm(m, ds)
+function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose = false) where {T<:Mill.NGramMatrix{String}, M}
+	cluster_assignments = cluster(m, ds)
 	if verbose
 		n, m = nobs(ds), length(unique(cluster_assignments)), length(unique(ds.data.s))
 		println("number of strings: ", n, " number of clusters: ", m, " ratio: ", round(m/n, digits = 3))
 	end
-	NGramMatrixMask(Mask(cluster_assignments))
+	NGramMatrixMask(Mask(cluster_assignments, initstats))
 end
 
 function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
@@ -27,3 +22,9 @@ function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatri
 	x.s[.!mask(m)] .= ""
 	ArrayNode(x, ds.metadata)
 end
+
+function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
+    ArrayNode(m.m(ds.data) .* transpose(gnnmask(mask)))
+end
+
+_nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)
