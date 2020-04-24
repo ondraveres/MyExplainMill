@@ -2,6 +2,8 @@ struct ProductMask{C} <: AbstractNoMask
 	childs::C
 end
 
+Flux.@functor(ProductMask)
+
 Base.getindex(m::ProductMask, i) = m.childs[i]
 
 mask(::ProductMask) = nothing

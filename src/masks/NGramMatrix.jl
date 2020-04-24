@@ -1,6 +1,8 @@
-struct NGramMatrixMask <: AbstractListMask
-	mask::Mask
+struct NGramMatrixMask{M} <: AbstractListMask
+	mask::M
 end
+
+Flux.@functor(NGramMatrixMask)
 
 function Mask(ds::ArrayNode{T,M}) where {T<:Mill.NGramMatrix{String}, M}
 	NGramMatrixMask(Mask(length(ds.data.s)))

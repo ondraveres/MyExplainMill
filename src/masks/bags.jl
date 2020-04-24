@@ -1,8 +1,10 @@
-struct BagMask{C,B} <: AbstractExplainMask
+struct BagMask{C,B,M} <: AbstractExplainMask
 	child::C
 	bags::B
-	mask::Mask
+	mask::M
 end
+
+Flux.@functor(BagMask)
 
 Mask(ds::BagNode) = BagMask(Mask(ds.data), ds.bags, Mask(nobs(ds.data)))
 

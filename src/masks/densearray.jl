@@ -1,6 +1,8 @@
-struct MatrixMask <: AbstractListMask
-	mask::Mask
+struct MatrixMask{M} <: AbstractListMask
+	mask::M
 end
+
+Flux.@functor(MatrixMask)
 
 Mask(ds::ArrayNode{T,M}) where {T<:Matrix, M} =  MatrixMask(Mask(size(ds.data,1)))
 Mask(ds::ArrayNode{T,M}, m::ArrayModel, cluster_algorithm, verbose = false) where {T<:Matrix, M} =  Mask(ds)
