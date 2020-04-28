@@ -38,7 +38,7 @@ end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::SparseArrayMask)
 	x = ds.data
-	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* gnnmask(mask))
+	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* mulmask(mask))
     ArrayNode(m.m(xx))
 end
 

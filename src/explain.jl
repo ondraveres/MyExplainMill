@@ -30,15 +30,15 @@ function importantfirst!(f, flatmask, significance)
 	i  = 0
 	changed = false
 	used = Int[]
-	ii = sortperm(significance, rev = false);
+	ii = sortperm(significance, rev = true);
 	while previous < 0 && i < 10 && !changed
 		i += 1
-		changed = addminimum!(f, flatmask, ii, strict_improvement = previous < 10)
+		changed = addminimum!(f, flatmask, significance, ii, strict_improvement = previous < 10)
 		used = useditems(flatmask)
 		previous = f()
 		@info "$(i): output = $(previous) added $(length(used)) features"
 	end
-	changed = addminimum!(f, flatmask, ii, strict_improvement = false)
+	changed = addminimum!(f, flatmask, significance, ii, strict_improvement = false)
 	used = useditems(flatmask)
 	previous = f()
 	@info "$(i): output = $(previous) added $(length(used)) features"
@@ -55,17 +55,18 @@ function removeexcess!(f, flatmask, ii =  1:length(flatmask))
 		flatmask[i] == false && continue
 		flatmask[i] = false
 		o = f()
+		@show (i, o)
 		if o < 0
 			flatmask[i] = true
 		end
 		changed = true
-		@debug i = i f = o
+		# @debug i = i f = o
 	end
 	return(changed)
 end
 
-function addminimum!(f, flatmask, ii = 1:length(flatmask); strict_improvement::Bool = true)
-	@debug "enterring addminimum"
+function addminimum!(f, flatmask, significance, ii = 1:length(flatmask); strict_improvement::Bool = true)
+	# @debug "enterring addminimum"
 	changed = false
 	previous =  f()
 	previous > 0 && return(changed)
@@ -73,13 +74,13 @@ function addminimum!(f, flatmask, ii = 1:length(flatmask); strict_improvement::B
 		all(flatmask[i]) && continue
 		flatmask[i] = true
 		o = f()
+		# @show (i, significance[i], o)
 		if strict_improvement && o <= previous
 			flatmask[i] = false
 		else 
 			previous = o
 			changed = true
 		end
-		@debug i = i f = o
 		if o >= 0
 			break
 		end

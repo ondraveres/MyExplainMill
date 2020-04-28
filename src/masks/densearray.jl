@@ -10,7 +10,7 @@ end
 
 function prune(ds::ArrayNode{T,M}, m::MatrixMask) where {T<:Matrix, M}
 	x = deepcopy(ds.data)
-	x[.!mask(m), :] .= 0
+	x[.!prunemask(m)[:], :] .= 0
 	ArrayNode(x, ds.metadata)
 end
 

@@ -1,29 +1,42 @@
-using Zygote, HierarchicalUtils
+using Zygote, HierarchicalUtils, Setfield
 
-function entropy(x::AbstractArray) 
-	x = x[:]
-	@assert all(( x.>= 0) .& (x .<=1))
-	mask = (x .!= 0) .& (x .!= 1)
-	-sum(x[mask] .* log.(x[mask])) / max(1,length(x))
+struct GnnExplainer
+	α::Float32
+	β::Float32
 end
 
-_entropy(x::T) where {T<:Real} = (x <=0 || x >= 1) ? zero(T) : - x * log(x)
-function _entropy(x::AbstractArray) 
-	isempty(x) && return(0f0)
-	mapreduce(_entropy, + ,x) / length(x)
-end
+GnnExplainer() = GnnExplainer(1f0, 5f-3)
 
-_∇entropy(Δ, x::T) where {T<:Real} = (x <=0 || x >= 1) ? zero(T) : - Δ * (one(T) +  log(x))
 
-function _∇entropy(Δ, x)
-	Δ /= length(x)
-	(_∇entropy.(Δ, x), )
-end
+function explain(e::GnnExplainer, ds, model, i, n, clustering, threshold = 0.1)
+	soft_model = @set model.m.m = Chain(model.m.m..., softmax);
+	mask = ExplainMill.Mask(ds, model, d -> rand(Float32, d, 1), ExplainMill._nocluster)
+	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))
+	ps = Flux.Params(map(x -> x.mask.stats, ms))
+	reinit!(ps)
+	y = gnntarget(model, ds, i)
+	opt = ADAM()
+	loss() = Flux.logitcrossentropy(model(ds, mask).data, y)
+	println("logitcrossentropy sample: ", Flux.logitcrossentropy(model(ds).data, y))
+	gap = () -> sum(min.(ExplainMill.confidencegap(ds -> soft_model(ds, mask), ds, i) .- threshold, 0))
+	for step in 1:n
+		gs = gradient(loss, ps)
+		for p in ps
+			gs[p] .+= gradient(x -> regularization(x, e.α, e.β), p)[1]
+		end
+		Flux.Optimise.update!(opt, ps, gs)
+		mod(step, 100) == 0 && (print("step: ",step, " gap: ", round(gap(), digits = 3));stats(model, ds, mask, y, ps))
+ 	end
 
-Zygote.@adjoint function entropy(x::AbstractArray) 
-	@assert all(( x.>= 0) .& (x .<=1))
-	return(_entropy(x), 
-		Δ -> _∇entropy(Δ, x))
+	# flatmask = FlatView(mask)
+	# significance = map(x -> σ.(x.mask.stats), flatmask)[:];
+
+	# f = () -> sum(min.(ExplainMill.confidencegap(soft_model,prune(ds, mask), i) .- threshold, 0))
+	# @info "output before explanation: $(round(f(), digits = 3))"
+	# fill!(flatmask, false)
+	# greedy!(f, flatmask, significance)
+	# @info "output after explanation (should be zero): $(f())"
+	mask
 end
 
 function regularization(p::AbstractArray{T}, α, β) where {T<:Real} 
@@ -48,24 +61,4 @@ function stats(model, ds, mask, y, ps)
 	lo = Flux.logitcrossentropy(model(ds, mask).data, y)
 	x = vcat([σ.(p[:]) for p in ps]...)
 	println(" loss: ", lo, " entropy: ", entropy(x), " quantiles: ",map(x -> round(x, digits = 2), quantile(x, 0:0.2:1)))
-end
-
-function gnn_explain(ds, model, i, n, clustering;  α = 1f0, β = 5f-3)
-	mask = ExplainMill.Mask(ds, model, d -> rand(Float32, d, 1), ExplainMill._nocluster)
-	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))
-	ps = Flux.Params(map(x -> x.mask.stats, ms))
-	reinit!(ps)
-	y = gnntarget(model, ds, i)
-	opt = ADAM()
-	loss() = Flux.logitcrossentropy(model(ds, mask).data, y)
-	println("full sample: ", Flux.logitcrossentropy(model(ds).data, y))
-	for step in 1:n
-		gs = gradient(loss, ps)
-		for p in ps
-			gs[p] .+= gradient(x -> regularization(x, α, β), p)[1]
-		end
-		Flux.Optimise.update!(opt, ps, gs)
-		mod(step, 100) == 0 && (print("step: ",step);stats(model, ds, mask, y, ps))
- 	end
- 	mask
 end

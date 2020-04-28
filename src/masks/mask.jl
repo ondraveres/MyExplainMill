@@ -41,7 +41,7 @@ Base.getindex(m::Mask{Nothing}, i::Int) = m.mask[i]
 Base.getindex(m::Mask{Vector{Int}}, i::Int) = m.mask[m.cluster_membership .== i]
 Base.setindex!(m::Mask{Nothing}, v, i::Int) = m.mask[i] = v
 Base.setindex!(m::Mask{Vector{Int}}, v, i::Int) = m.mask[m.cluster_membership .== i] .= v
-Base.fill!(m::Mask, v) = Base.fill!(mask(m), v)
+Base.fill!(m::Mask, v) = Base.fill!(prunemask(m), v)
 
 ####
 #	Explaination without clustering, where each item is independent of others
@@ -90,7 +90,7 @@ end
 function Duff.update!(d::Mask, v::AbstractArray)
 	s = d.stats
 	for i in 1:length(d.mask)
-		!d.participate[i] && continue
+		# !d.participate[i] && continue
 		f = v[d.outputid[i]]
 		j = _cluster_membership(d.cluster_membership, i)
 		Duff.update!(s, f, d.mask[i], j)

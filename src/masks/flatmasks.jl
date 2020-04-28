@@ -15,9 +15,33 @@ struct FlatView{V}
 	starts::Vector{Int}
 end
 
+Parents = Array{Pair{k,Int64} where k,1}
 
-function FlatView(mask)
-	masks = remove_useless_parents(parent_structure(mask))
+function FlatView(m::AbstractExplainMask; noleaves = false, onlyleaves = false)
+	(noleaves && onlyleaves ) && error("no leaves and onlyleaves does not make sense")
+	parents = parent_structure(m)
+	masks = map(x -> x.first, parents)
+	masks = filter(x -> !isa(x, AbstractNoMask), masks)
+	masks = noleaves ? filter(x -> isa(x, BagMask), masks) : masks
+	masks = onlyleaves ? filter(x -> !isa(x, BagMask), masks) : masks
+
+	# if onlydepth > 0
+	# 	depths = map(1:length(masks)) do i
+	# 		depth(parents, allparents(masks, parents, i))
+	# 	end
+	# 	masks = masks[depths .== onlydepth]
+	# end
+	isempty(masks) && return(nothing)
+	FlatView(firstparents(masks, parents))
+end
+
+
+function FlatView(m::AbstractExplainMask, masks::Parents)
+	parents = parent_structure(m)
+	FlatView(firstparents(masks, parents))
+end
+
+function FlatView(masks::Vector)
 	itemno = 0
 	itemmap = map(enumerate(masks)) do (i,m)
 		map(1:length(m.first.mask)) do j
@@ -35,9 +59,13 @@ function Base.setindex!(m::FlatView, v, i)
 	m.masks[j.maskid].first.mask[j.innerid] = v
 end
 
-function Base.getindex(m::FlatView, i) 
+function Base.getindex(m::FlatView, i::Int) 
 	j = m.itemmap[i]
 	only(unique(m.masks[j.maskid].first.mask[j.innerid]))
+end
+
+function Base.getindex(m::FlatView, ii::Vector{Int}) 
+	map(i -> m[i], ii)
 end
 
 Base.length(m::FlatView) = length(m.itemmap)
@@ -55,3 +83,4 @@ function Base.map(f, m::FlatView)
 end
 
 useditems(m::FlatView) = findall(map(i -> m[i], 1:length(m)))
+participate(m::FlatView) = reduce(vcat, map(i -> participate(i.first), m.masks))

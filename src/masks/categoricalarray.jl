@@ -12,7 +12,7 @@ end
 
 function prune(ds::ArrayNode{T,M}, m::CategoricalMask) where {T<:Flux.OneHotMatrix, M}
 	ii = map(enumerate(ds.data.data)) do (j,i)
-		mask(m)[j] ? i.ix : i.of
+		prunemask(m)[j] ? i.ix : i.of
 	end
 	x = Flux.onehotbatch(ii, 1:ds.data.height)
 	ArrayNode(x, ds.metadata)
@@ -23,7 +23,7 @@ function invalidate!(mask::CategoricalMask, observations::Vector{Int})
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::CategoricalMask)
-    ArrayNode(m.m(ds.data) .* transpose(gnnmask(mask)))
+    ArrayNode(m.m(ds.data) .* transpose(mulmask(mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Flux.OneHotMatrix, M} = nobs(ds.data)

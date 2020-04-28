@@ -19,12 +19,12 @@ end
 
 function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatrix{String}, M}
 	x = deepcopy(ds.data)
-	x.s[.!mask(m)] .= ""
+	x.s[.!prunemask(m)[:]] .= ""
 	ArrayNode(x, ds.metadata)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
-    ArrayNode(m.m(ds.data) .* transpose(gnnmask(mask)))
+    ArrayNode(m.m(ds.data) .* transpose(mulmask(mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)

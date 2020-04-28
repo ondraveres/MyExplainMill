@@ -36,8 +36,9 @@ end
 
 function prune(ds::BagNode, mask::BagMask)
 	x = prune(ds.data, mask.child)
-	x = Mill.subset(x, findall(mask.mask.mask))
-	bags = Mill.adjustbags(ds.bags, mask.mask.mask)
+	pmask = prunemask(mask)[:]
+	x = Mill.subset(x, findall(pmask))
+	bags = Mill.adjustbags(ds.bags, pmask)
 	if ismissing(x.data)
 		bags.bags .= [0:-1]
 	end
@@ -46,7 +47,7 @@ end
 
 function (m::Mill.BagModel)(x::BagNode, mask::ExplainMill.BagMask)
 	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
-	xx = ArrayNode(transpose(gnnmask(mask)) .* m.im(x.data, mask.child).data)
+	xx = ArrayNode(transpose(mulmask(mask)) .* m.im(x.data, mask.child).data)
     m.bm(m.a(xx, x.bags))
 end
 

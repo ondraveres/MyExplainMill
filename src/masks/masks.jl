@@ -2,12 +2,13 @@ abstract type AbstractExplainMask end;
 abstract type AbstractListMask <: AbstractExplainMask end;
 abstract type AbstractNoMask <: AbstractExplainMask end;
 
+RealArray = Union{Vector{T}, Matrix{T}} where {T<:Real}
+
 NodeType(::Type{T}) where T <: AbstractListMask = LeafNode()
 noderepr(n::T) where {T <: AbstractExplainMask} = "$(T.name)"
 
 participate(m::AbstractExplainMask) = participate(m.mask)
-mask(m::AbstractExplainMask) = mask(m.mask)
-Base.fill!(m::AbstractExplainMask, v) = Base.fill!(mask(m), v)
+Base.fill!(m::AbstractExplainMask, v) = Base.fill!(m.mask, v)
 Base.fill!(m::AbstractNoMask, v) = nothing
 index_in_parent(m, i) = i
 
@@ -47,4 +48,25 @@ function Mask(ds::AbstractNode, m::AbstractMillModel; verbose::Bool = false)
 	Mask(ds, m, Daf, nocluster)
 end
 
-gnnmask(m::AbstractExplainMask) = σ.(m.mask.stats)
+mulmask(m::AbstractExplainMask) = mulmask(m.mask)
+mulmask(m::Mask{Nothing,M}) where {M<:RealArray} = σ.(m.stats)
+mulmask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = σ.(m.stats[m.cluster_membership,:])
+
+@deprecate mask prunemask
+
+prunemask(m::AbstractExplainMask) = prunemask(m.mask)
+prunemask(m::Mask{Nothing,M}) where {M<:RealArray} = m.mask
+prunemask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = m.mask[m.cluster_membership,:]
+
+prunemask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = m.mask
+prunemask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = m.mask[m.cluster_membership,:]
+
+mulmask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = prunemask(m)
+mulmask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = prunemask(m)
+
+
+function updateparticipation!(ms)
+	mapmask(m -> participate(m) .= true, ms)
+	invalidate!(ms)
+end
+
