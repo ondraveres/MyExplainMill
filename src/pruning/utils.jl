@@ -1,4 +1,4 @@
-function removeexcess!(f, flatmask, ii =  1:length(flatmask))
+function removeexcess!(f, flatmask, ii)
 	@debug "enterring removeexcess"
 	previous =  f()
 	previous < 0 && return(false)
@@ -16,8 +16,7 @@ function removeexcess!(f, flatmask, ii =  1:length(flatmask))
 	return(changed)
 end
 
-function addminimum!(f, flatmask, significance, ii = 1:length(flatmask); strict_improvement::Bool = true)
-	# @debug "enterring addminimum"
+function addminimum!(f, flatmask, significance, ii; strict_improvement::Bool = true)
 	changed = false
 	previous =  f()
 	previous > 0 && return(changed)
@@ -25,7 +24,6 @@ function addminimum!(f, flatmask, significance, ii = 1:length(flatmask); strict_
 		all(flatmask[i]) && continue
 		flatmask[i] = true
 		o = f()
-		# @show (i, significance[i], o)
 		if strict_improvement && o <= previous
 			flatmask[i] = false
 		else 

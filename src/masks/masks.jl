@@ -27,6 +27,7 @@ include("NGramMatrix.jl")
 include("skip.jl")
 include("bags.jl")
 include("product.jl")
+include("lazymask.jl")
 include("parentstructure.jl")
 include("flatmasks.jl")
 
@@ -40,13 +41,13 @@ include("flatmasks.jl")
 	of cluster function 
 	cluster --- function (ds, m) -> returning vector identifying cluster membership for each explained item
 """
-function Mask(ds::AbstractNode, m::AbstractMillModel, initstats, cluster; verbose::Bool = false)
-	@info "$(eltype(ds).node) is not supported"
-end
+# function Mask(ds::AbstractNode, m::AbstractMillModel, initstats, cluster; verbose::Bool = false)
+# 	@info "$(eltype(ds).node) is not supported"
+# end
 
-function Mask(ds::AbstractNode, m::AbstractMillModel; verbose::Bool = false)
-	Mask(ds, m, Daf, nocluster)
-end
+# function Mask(ds::AbstractNode, m::AbstractMillModel; verbose::Bool = false)
+# 	Mask(ds, m, Daf, nocluster)
+# end
 
 mulmask(m::AbstractExplainMask) = mulmask(m.mask)
 mulmask(m::Mask{Nothing,M}) where {M<:RealArray} = σ.(m.stats)
@@ -55,18 +56,16 @@ mulmask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = σ.(m.stats[m.cluster_
 @deprecate mask prunemask
 
 prunemask(m::AbstractExplainMask) = prunemask(m.mask)
-prunemask(m::Mask{Nothing,M}) where {M<:RealArray} = m.mask
-prunemask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = m.mask[m.cluster_membership,:]
+prunemask(m::Mask{Nothing,M}) where {M<:RealArray} = m.mask[:]
+prunemask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = m.mask[m.cluster_membership,:][:]
 
-prunemask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = m.mask
-prunemask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = m.mask[m.cluster_membership,:]
+prunemask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = m.mask[:]
+prunemask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = m.mask[m.cluster_membership,:][:]
 
 mulmask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = prunemask(m)
 mulmask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = prunemask(m)
-
 
 function updateparticipation!(ms)
 	mapmask(m -> participate(m) .= true, ms)
 	invalidate!(ms)
 end
-

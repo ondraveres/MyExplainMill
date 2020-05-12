@@ -24,6 +24,10 @@ function paddedprint(io::IO, d::Dict{String, T}; color=:default, pad=[]) where {
     end
 end
 
+function print_explained(io, ds::Missing, e; pad = [])
+	c = COLORS[(length(pad)%length(COLORS))+1]
+	paddedprint(io, "∅", color = c)
+end
 
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.OneHotMatrix, E<:ExtractCategorical}
 	c = COLORS[(length(pad)%length(COLORS))+1]
@@ -85,4 +89,17 @@ function print_explained(io::IO, n::AbstractProductNode, e; pad=[])
     print_explained(io, n[ks[end]], e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
+
+function print_explained(io::IO, ds::T, e; pad = []) where {T<:Mill.LazyNode}
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    if ismissing(ds.data) || isnothing(ds.data) || isempty(ds.data)
+	    paddedprint(io,"∅", color = c)
+	else
+	    paddedprint(io,"$(T.name)\n", color=c)
+	    paddedprint(io, countmap(ds.data), color = c, pad = pad)
+	end
+end
+
+
 print_explained(ds::AbstractNode, e) = print_explained(stdout, ds, e)
+print_explained(ds::Missing, e) = print_explained(stdout, ds, e)

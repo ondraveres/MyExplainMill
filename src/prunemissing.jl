@@ -1,14 +1,21 @@
-Base.ismissing(ds::Mill.AbstractNode) = ismissing(ds.data)
+removable(::Missing) = true
+# removable(::Missing) = true
+removable(ds::Mill.AbstractNode) = ismissing(ds.data)
+removable(s::Vector{T}) where {T<:AbstractString} = isempty(s)
+removable(x::NGramMatrix{String}) = all(isempty.(x.s))
+removable(x::Flux.OneHotMatrix{Array{Flux.OneHotVector,1}}) = all(j.ix == x.height for j in x.data)
+removemissing(ds::Mill.AbstractNode) = removable(ds.data) ? missing : ds
 
-prunemissing(ds::Mill.AbstractNode) = ismissing(ds.data) ? missing : ds
-function prunemissing(ds::Mill.BagNode) 
-	data = prunemissing(ds.data)
-	ismissing(data) ? missing : BagNode(data, ds.bags)
+function removemissing(ds::Mill.BagNode) 
+	data = removemissing(ds.data)
+	removable(data) ? missing : BagNode(data, ds.bags)
 end
 
-function prunemissing(ds::Mill.ProductNode) 
-	ks = filter(k -> !ismissing(ds.data[k]), collect(keys(ds.data)))
+function removemissing(ds::Mill.ProductNode) 
+	ks = [k => removemissing(ds.data[k]) for k in collect(keys(ds.data))]
+	ks = filter(k -> !ismissing(k.second), ks)
 	isempty(ks) && return(missing)
-	ProductNode((;[k => prunemissing(ds.data[k]) for k in ks]...))
+	ProductNode((;ks...))
 end
 
+@deprecate prunemissing removemissing

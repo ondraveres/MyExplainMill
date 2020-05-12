@@ -1,6 +1,6 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux, Zygote
-using HierarchicalUtils, JsonGrinder
+using HierarchicalUtils, JsonGrinder, Setfield
 import HierarchicalUtils: NodeType, childrenfields, children, InnerNode, SingletonNode, LeafNode, printtree, noderepr
 using TimerOutputs
 
@@ -8,6 +8,7 @@ const to = TimerOutput();
 
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
+NNlib.softmax(ds::ArrayNode) = ArrayNode(softmax(ds.data))
 
 function dbscan_cosine(x, ϵ)
 	nobs(x) == 1 && return([1])
@@ -33,15 +34,20 @@ include("masks/masks.jl")
 include("output/logic_output.jl")
 include("output/prettyprint.jl")
 include("dafstats.jl")
+include("gnn_explainer.jl")
+include("const_explainer.jl")
+include("stochastic_explainer.jl")
 include("prunemissing.jl")
 include("sigmoid.jl")
 include("predict.jl")
 include("sampler.jl")
 include("stats.jl")
 include("matching.jl")
+include("ensemble.jl")
 include("pruning/pruning.jl")
 include("utils/entropy.jl")
-include("gnn_explainer.jl")
+include("utils/setops.jl")
+include("explain.jl")
 
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean

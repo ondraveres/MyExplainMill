@@ -8,6 +8,7 @@ Base.push!(t::Terms, k) = t[k] = nothing
 
 function complexity(d::Dict)
 	ks = collect(keys(d))
+	isempty(ks) && return(0)
 	if length(ks) == 1 
 		k = only(ks)
 		k == :or && return(complexity_or(d[:or]))
@@ -16,7 +17,7 @@ function complexity(d::Dict)
 	1 + mapreduce(k -> complexity(d[k]), +, ks)
 end
 
-complexity(vs::Vector) = mapreduce(complexity, +, vs)
+complexity(vs::Vector) = isempty(vs) ? 0 : mapreduce(complexity, +, vs)
 complexity(s::AbstractString) = 1 
 
 complexity_and(vs::Vector{T}) where {T<:AbstractString} = length(vs)

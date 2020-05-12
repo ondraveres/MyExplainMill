@@ -3,6 +3,7 @@ child_mask(m::BagMask) = m.child
 function child_mask(m::BagMask{C,B}) where {C<:EmptyMask, B}
 	m.mask
 end
+
 function child_mask(m::EmptyMask)
 	@info "How did I get to here"
 	EmptyMask()
@@ -16,9 +17,20 @@ end
 
 islogical(s::Vector) = s
 
+sortunique(s::Vector{T}) where {T<:AbstractString} = sort(unique(s))
+sortunique(s::Vector{T}) where {T<:Number} = sort(unique(s))
+sortunique(s::Vector{T}) where {T<:Dict} = unique(s)
+function sortunique(s::Vector)
+	if mapreduce(typeof, promote_type, s) <:AbstractString
+		return(sortunique(String.(s)))
+	else 
+		return(unique(s))
+	end
+end
+
 function repr_boolean(op::Symbol, s::Vector{T}; thin::Bool = true) where {T}
 	s = filter(!isempty, s)
-	s = unique(s)
+	s = sortunique(unique(s))
 	if isempty(s) 
 		return(Dict{Symbol,T}())
 	elseif length(s) == 1
@@ -42,6 +54,18 @@ function repr_boolean(op::Symbol, s::Dict{Symbol,String}; thin::Bool = true)
 	end
 end
 
+isarray(s::String) = false
+isarray(s::Vector) = true
+function isarray(d::Dict)
+	ks = keys(d)
+	if length(ks) == 1
+		k = only(ks)
+		k == :or && return(false)
+		k == :and && return(isarray(d[k]))
+	end
+	return(false)
+end
+
 function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
 	length(e.other) > 1 &&  @error "This should not happen"
 	k = collect(keys(e.other))[1]
@@ -49,7 +73,7 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e:
 end
 
 function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Flux.OneHotMatrix}
-	contributing = participate(m) .& mask(m)
+	contributing = participate(m) .& prunemask(m)
 	items = map(i -> i.ix, ds.data.data)
 	items = items[contributing]
 	isempty(items) && Dict{Symbol, String}()
@@ -62,7 +86,7 @@ end
 
 # function repr(::MIME"text/json":SparseArrayMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
 function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-	repr_boolean(:and, ds.data.s[participate(m)])
+	repr_boolean(:and, ds.data.s[participate(m) .& prunemask(m)])
 end
 
 function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
@@ -71,25 +95,34 @@ end
 
 
 function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
-    ismissing(ds.data) && Dict{Symbol, String}()
+    ismissing(ds.data) && return(Dict{Symbol, String}())
 
     #get indexes of contributing clusters
-	contributing = participate(m) .& mask(m)
-	cluster_membership = m.mask.cluster_membership
-	contributing_clusters = unique(m.mask.cluster_membership[contributing])
-	cluster2instance = idmap(m.mask.cluster_membership)
+	contributing_indexes = participate(m) .& prunemask(m)
+	all(.!contributing_indexes) && return(Dict{Symbol, String}())
+	if isnothing(m.mask.cluster_membership)
+		ss = repr(mim, child_mask(m), ds.data, e.item)
+		s = isarray(ss) ? ss : [ss]
+		return(s)
+	else
+		cluster_membership = m.mask.cluster_membership
+		contributing_clusters = unique(cluster_membership[contributing_indexes])
+		cluster2instance = idmap(cluster_membership)
 
-	#now we need to express the OR relationship within clusters 
-	#and AND relationship across clusters
-	ss = map(contributing_clusters) do k
-		ss = map(cluster2instance[k]) do i
-			mm = deepcopy(child_mask(m))
-			invalidate!(mm,setdiff(1:nobs(ds.data), i))
-			repr(mim, mm, ds.data, e.item)
+		#now we need to express the OR relationship within clusters 
+		#and AND relationship across clusters
+		ss = map(contributing_clusters) do k
+			ss = map(cluster2instance[k]) do i
+				mm = deepcopy(child_mask(m))
+				invalidate!(mm,setdiff(1:nobs(ds.data), i))
+				repr(mim, mm, ds.data, e.item)
+			end
+			repr_boolean(:or, ss)
 		end
-		repr_boolean(:or, ss)
+		ss = repr_boolean(:and, ss)
+		ss = isarray(ss) ? ss : [ss]
+		return(ss)
 	end
-	repr_boolean(:and, ss, thin = false)
 end
 
 function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)

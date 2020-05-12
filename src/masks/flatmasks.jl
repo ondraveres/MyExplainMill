@@ -25,12 +25,6 @@ function FlatView(m::AbstractExplainMask; noleaves = false, onlyleaves = false)
 	masks = noleaves ? filter(x -> isa(x, BagMask), masks) : masks
 	masks = onlyleaves ? filter(x -> !isa(x, BagMask), masks) : masks
 
-	# if onlydepth > 0
-	# 	depths = map(1:length(masks)) do i
-	# 		depth(parents, allparents(masks, parents, i))
-	# 	end
-	# 	masks = masks[depths .== onlydepth]
-	# end
 	isempty(masks) && return(nothing)
 	FlatView(firstparents(masks, parents))
 end
@@ -69,7 +63,7 @@ function Base.getindex(m::FlatView, ii::Vector{Int})
 end
 
 Base.length(m::FlatView) = length(m.itemmap)
-Base.fill!(m::FlatView, v) = map(x -> fill!(x, v), m)
+Base.fill!(m::FlatView, v) = map(x -> fill!(x.first.mask.mask, v), m.masks)
 
 function parent(m::FlatView, i) 
 	j = m.itemmap[i]
@@ -83,4 +77,4 @@ function Base.map(f, m::FlatView)
 end
 
 useditems(m::FlatView) = findall(map(i -> m[i], 1:length(m)))
-participate(m::FlatView) = reduce(vcat, map(i -> participate(i.first), m.masks))
+participate(m::FlatView) = reduce(vcat, map(i -> participate_item(i.first.mask), m.masks))

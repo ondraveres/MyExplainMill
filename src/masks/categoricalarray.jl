@@ -11,8 +11,9 @@ function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bo
 end
 
 function prune(ds::ArrayNode{T,M}, m::CategoricalMask) where {T<:Flux.OneHotMatrix, M}
+	msk = prunemask(m) .& participate(m)
 	ii = map(enumerate(ds.data.data)) do (j,i)
-		prunemask(m)[j] ? i.ix : i.of
+		msk[j] ? i.ix : i.of
 	end
 	x = Flux.onehotbatch(ii, 1:ds.data.height)
 	ArrayNode(x, ds.metadata)

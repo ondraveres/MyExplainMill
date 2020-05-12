@@ -15,6 +15,12 @@ function Mask(ds::ProductNode, m::ProductModel, initstats, cluster; verbose::Boo
 	ProductMask(s)
 end
 
+function Mask(ds::ProductNode, initstats; verbose::Bool = false)
+	ks = keys(ds.data)
+	s = (;[k => Mask(ds.data[k], initstats, verbose = verbose) for k in ks]...)
+	ProductMask(s)
+end
+
 NodeType(::Type{T}) where T <: ProductMask = InnerNode()
 children(n::ProductMask) = (; n.childs...)
 childrenfields(::Type{ProductMask}) = (:childs,)

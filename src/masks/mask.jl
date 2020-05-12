@@ -35,6 +35,12 @@ end
 
 participate(m::Mask) = m.participate
 mask(m::Mask) = m.mask
+participate_item(m::Mask{Nothing}) = m.participate
+function participate_item(m::Mask{Vector{Int}})
+	map(1:length(m)) do i 
+		only(unique(m.participate[m.cluster_membership .== i]))
+	end
+end
 
 Base.length(m::Mask) = length(m.stats)
 Base.getindex(m::Mask{Nothing}, i::Int) = m.mask[i]
@@ -90,10 +96,14 @@ end
 function Duff.update!(d::Mask, v::AbstractArray)
 	s = d.stats
 	for i in 1:length(d.mask)
-		# !d.participate[i] && continue
+		!d.participate[i] && continue
 		f = v[d.outputid[i]]
 		j = _cluster_membership(d.cluster_membership, i)
 		Duff.update!(s, f, d.mask[i], j)
 	end
 end
+
+HierarchicalUtils.NodeType(::Mask) = LeafNode();
+HierarchicalUtils.noderepr(::Mask{Nothing, D}) where {D} = "Simple Mask";
+HierarchicalUtils.noderepr(::Mask{Vector{Int}, D}) where {D} = "Mask with clustering";
 

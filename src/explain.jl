@@ -1,90 +1,67 @@
-function explain(ds, f, clustering_model;  n = 1000, pruning = :importantfirst, threshold = 0, clustering = true)
-	explain(ds, f, clustering_model, n, pruning, threshold, clustering)
+function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:breadthfirst)
+	ms = ExplainMill.stats(e, ds, model, i, n)
+	soft_model = ds -> softmax(model(ds))
+	f = () -> sum(min.(ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold, 0))	
+	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
+	ms
 end
 
-function explain(ds, predictor_fun, clustering_model, n, pruning, threshold, clustering)
-	if minimum(predictor_fun(ds)) < threshold
-		@info "stopped explanation as the output is below threshold"
-		return(nothing)
+
+####
+# A hacky POC, where DAF statistics are calculated layer by layer. 
+####
+function updatestats!(e::DafExplainer, fv::FlatView, ds, ms, soft_model, i, n)
+	f = e.hard ? () -> output(soft_model(prune(ds, ms)))[i,:] : () -> output(soft_model(ds, ms))[i,:]
+	for _ in 1:n
+		map(m -> sample!(m.mask), fv) 
+		o = @timeit to "evaluate" f()
+		map(m -> Duff.update!(m.mask, o), fv) 
 	end
-	pruning_mask = @timeit to "dafstats" dafstats(ds, predictor_fun, n, clustering_model, clustering)
-
-	flatmask = FlatView(pruning_mask)
-	significance = map(x -> Duff.meanscore(x.mask.stats), flatmask)
-
-	@info "Score estimation failed on $(sum(isnan.(significance))) out of $(length(significance))"
-
-	f = () -> sum(min.(output(predictor_fun(prune(ds, pruning_mask))) .- threshold, 0))
-	@info "output - threshold before explanation: $(round(f(), digits = 3))"
-	@info "total number of feature: $(length(flatmask))"
-	@timeit to "importantfirst!" importantfirst!(f, flatmask, significance)
-	@info "output after explanation (should be zero): $(f())"
-	pruning_mask
 end
 
-function importantfirst!(f, flatmask, significance)
-	fill!(flatmask, false)
-	previous = f()
-	@info "output on empty sample = $previous"
-	previous == 0 && return()
-	i  = 0
-	changed = false
-	used = Int[]
-	ii = sortperm(significance, rev = true);
-	while previous < 0 && i < 10 && !changed
-		i += 1
-		changed = addminimum!(f, flatmask, significance, ii, strict_improvement = previous < 10)
-		used = useditems(flatmask)
-		previous = f()
-		@info "$(i): output = $(previous) added $(length(used)) features"
-	end
-	changed = addminimum!(f, flatmask, significance, ii, strict_improvement = false)
-	used = useditems(flatmask)
-	previous = f()
-	@info "$(i): output = $(previous) added $(length(used)) features"
-	removeexcess!(f, flatmask, ii[used])
-	@info "keeping $(length(used)) features"
-end
+function explaindepthwise(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+	ms = ExplainMill.stats(e, ds, model, i, 0)
+	soft_model = ds -> softmax(model(ds))
+	f = () -> sum(min.(ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold, 0))	
 
-function removeexcess!(f, flatmask, ii =  1:length(flatmask))
-	@debug "enterring removeexcess"
-	previous =  f()
-	previous < 0 && return(false)
-	changed = false
-	for i in ii
-		flatmask[i] == false && continue
-		flatmask[i] = false
-		o = f()
-		@show (i, o)
-		if o < 0
-			flatmask[i] = true
-		end
-		changed = true
-		# @debug i = i f = o
-	end
-	return(changed)
-end
+	# sort all explainable masks by depth and types
+	parents = parent_structure(ms)
+	masks = map(x -> x.first, parents)
+	#get rid of masks, which does not have any explainable item
+	masks = filter(x -> !isa(x, AbstractNoMask), masks)
 
-function addminimum!(f, flatmask, significance, ii = 1:length(flatmask); strict_improvement::Bool = true)
-	# @debug "enterring addminimum"
-	changed = false
-	previous =  f()
-	previous > 0 && return(changed)
-	for i in ii
-		all(flatmask[i]) && continue
-		flatmask[i] = true
-		o = f()
-		# @show (i, significance[i], o)
-		if strict_improvement && o <= previous
-			flatmask[i] = false
-		else 
-			previous = o
-			changed = true
-		end
-		if o >= 0
-			break
-		end
+	dp = map(masks) do x
+		length(allparents(masks, parents, idofnode(x, parents)))
 	end
-	return(changed)
+
+	max_depth = maximum(dp)
+	fullmask = FlatView(ms)
+	fill!(fullmask, true)
+	#Let's first learn the BagNodes
+	for j in 1:max_depth
+		updateparticipation!(ms)
+		m = filter(x -> isa(x, BagMask), masks[dp .== j])
+		isempty(m) && continue
+		updatestats!(e, FlatView(firstparents(m, parents)), ds, ms, soft_model, i, n)
+		fv, significance = prepare_breadthfirst!(m, ms, parents, x -> scorefun(e, x))
+		@info "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
+		importantfirst!(f, fv, significance; participateonly = true)
+	end
+	updateparticipation!(ms)
+
+	#then, we switch to leaves and we will explain only participating leaves
+	m = filter(x -> !isa(x, BagMask), masks)
+	if !isempty(m)
+		fv, significance = prepare_breadthfirst!(m, ms, parents, x -> scorefun(e, x))
+		foreach(x -> x.mask.mask .= x.mask.participate, m)
+		used = sortindices(useditems(fv), significance, rev = false)
+		@assert all(fv[used])
+		removeexcess!(f, fv, used)
+	end
+
+	used = useditems(fullmask)
+	@info "Explanation uses $(length(used)) features out of $(length(fullmask))"
+	f() < 0 && @error "output of explaination is $(f()) and should be zero"
+	ms
 end
 
