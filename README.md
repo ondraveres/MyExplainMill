@@ -1,3 +1,5 @@
+[![Build Status](https://teamcity.int.avast.com/app/rest/builds/buildType:VirusLab_AiResearch_Skunk_ExplainMill_Test/statusIcon)](https://teamcity.int.avast.com/viewType.html?buildTypeId=VirusLab_AiResearch_Skunk_ExplainMill_Test)
+
 # ExplainMill.jl
 
 This library provides an explanation of hierarchical multi-instance learning
