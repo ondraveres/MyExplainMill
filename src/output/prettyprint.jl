@@ -51,6 +51,12 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.On
 	print_explained(io, ds, e.other[k])
 end
 
+function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix, E<:ExtractDict}
+	!isnothing(e.other)  &&  @error "This should not happen"
+	c = COLORS[(length(pad)%length(COLORS))+1]
+	paddedprint(io, "matrix should be printed", color = c)
+end
+
 function print_explained(io, ds::ArrayNode{T}, e; pad = []) where {T<:Mill.NGramMatrix}
     c = COLORS[(length(pad)%length(COLORS))+1]
 	s = filter(!isempty, ds.data.s)
@@ -74,7 +80,7 @@ function print_explained(io, ds::BagNode, e; pad = [])
 	end
 end
 
-function print_explained(io::IO, n::AbstractProductNode, e; pad=[])
+function print_explained(io::IO, n::AbstractProductNode, e::E; pad=[]) where {E<:ExtractDict}
     c = COLORS[(length(pad)%length(COLORS))+1]
     paddedprint(io, "ProductNode", color=c)
     m = length(n.data)

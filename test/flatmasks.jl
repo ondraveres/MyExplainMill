@@ -13,11 +13,15 @@ end
 
 initstats = d -> ones(d)
 
+ms = Mask(ds, model, d -> collect(d:-1:1), ExplainMill._nocluster);
+
 @testset "mapping between flat structure and nodes" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(randn(2,5))
 	ds = BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5]))
-	ms = Mask(ds, initstats);
+	model = reflectinmodel(ds, d -> Dense(d, 4), d -> SegmentedMeanMax(d))
+	ms = Mask(ds, model, d -> rand(d), ExplainMill._nocluster);
+	# ms = Mask(ds, initstats);
 
 	fv = FlatView(ms)
 

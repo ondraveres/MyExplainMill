@@ -80,8 +80,19 @@ function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) wh
 
 	idxs = unique(items);
 	d = reversedict(e.keyvalemap);
+	idxs = filter(i -> haskey(d, i), idxs)
+	isempty(idxs) && Dict{Symbol, String}()
 	s = map(i -> d[i], idxs)
 	repr_boolean(:and, s)
+end
+
+function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Matrix}
+	contributing = participate(m) .& prunemask(m)
+	repr_boolean(:and, "$(contributing)")
+end
+
+function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Matrix}
+	return(Dict{Symbol,String}())
 end
 
 # function repr(::MIME"text/json":SparseArrayMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
@@ -91,6 +102,12 @@ end
 
 function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
 	repr_boolean(:and, unique(ds.data.s))
+end
+
+function repr(::MIME"text/json", m::Mask, ds::ArrayNode, e::ExtractDict)
+	ks = keys(e.vec)
+	s = join(map(i -> "$(i[1]) = $(i[2])" , zip(ks, ds.data[:])))
+	repr_boolean(:and, unique(s))
 end
 
 
@@ -151,6 +168,7 @@ function e2boolean(pruning_mask, dss, extractor)
 		repr(MIME("text/json"),pruning_mask, dss, extractor);
 	end
 	d = filter(!isempty, d)
+	isempty(d) && return([Dict{Symbol,Any}()])
 	d = unique(d)
 	d = length(d) > 1 ? ExplainMill.repr_boolean(:or, d) : d
 end

@@ -10,11 +10,49 @@ nnodes(d::Dict) = isempty(d) ? 0 : 1 + mapreduce(nnodes, +, values(d))
 
 keys2symbol(d::Dict{String,A}) where {A} = Dict([Symbol(k) => v for (k,v) in d]...)
 keys2symbol(d::Dict{Symbol,A}) where {A} = d
+function keys2symbol(d::Dict) 
+	Dict([Symbol(k) => v for (k,v) in d]...)
+end
 
-promote_keys(d1::Dict{String,A}, d2::Dict{String, B}) where {A,B} = (d1, d2)
-promote_keys(d1::Dict{Symbol,A}, d2::Dict{Symbol, B}) where {A,B} = (d1, d2)
-promote_keys(d1::Dict{String,A}, d2::Dict{Symbol, B}) where {A,B} = (keys2symbol(d1), d2)
-promote_keys(d1::Dict{Symbol,A}, d2::Dict{String, B}) where {A,B} = (d1, keys2symbol(d2))
+promote_keys(d1::Dict, d2::Dict) = (keys2symbol(d1), keys2symbol(d2))
+
+function jsondiff(a, b)
+	@show a
+	@show b
+	error("bug in handling")
+end
+
+function jsondiff(x, d2::Dict)
+	isempty(d2) && return(x)
+	length(d2) != 1 && error("handle new special case")
+	k = only(keys(d2))
+	v = d2[k]
+	if k == :or
+		x ∈ v && return(nothing)
+		return(x)
+	elseif k == :and
+		x ∈ v && return(nothing)
+		return(x)
+	else
+		error("handle new special case with key $(k)")
+	end
+end
+
+function jsondiff(d2::Dict, x)
+	isempty(d2) && return(d2)
+	length(d2) != 1 && error("handle new special case")
+	k = only(keys(d2))
+	v = d2[k]
+	if k == :or
+		x ∈ v && return(nothing)
+		return(d2)
+	elseif k == :and
+		x ∈ v && return(Dict(:and => setdiff(v, x)))
+		return(d2)
+	else
+		error("handle new special case with key $(k)")
+	end
+end
 
 function jsondiff(d1::Dict, d2::Dict)
 	d1, d2 = promote_keys(d1, d2)
@@ -41,7 +79,17 @@ function jsondiff(d1::Array{T}, d2::Array{U}) where {T<:Union{AbstractString, Nu
 end
 
 function jsondiff(d1::Array, d2::Array)
-	@assert length(d1) == length(d2) == 1
+	if (length(d1) !=1) || (length(d2) != 1)
+		os = map(d1) do a 
+			os = map(d2) do b 
+				jsondiff(a,b)
+			end
+			i =argmin(nleaves.(os))
+			os[i]
+		end
+		os = filter(i -> nleaves(i) != 0, os)
+		return(os)
+	end
 	o = jsondiff(only(d1), only(d2))
 	isnothing(o) && return(nothing)
 	isempty(o) && return(nothing)

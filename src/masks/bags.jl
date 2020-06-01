@@ -10,7 +10,7 @@ function Mask(ds::BagNode, m::BagModel, initstats, cluster; verbose::Bool = fals
 	isnothing(ds.data) && return(EmptyMask())
 	nobs(ds.data) == 0 && return(EmptyMask())
 	child_mask = Mask(ds.data, m.im, initstats, cluster)
-	cluster_assignments = cluster(m.im, ds.data)
+	cluster_assignments = cluster(m, ds)
 	if verbose
 		n, m = nobs(ds.data), length(unique(cluster_assignments))
 		println("number of instances: ", n, " ratio: ", round(m/n, digits = 3))

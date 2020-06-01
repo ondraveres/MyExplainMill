@@ -1,8 +1,13 @@
+"""
+Fatima, Shaheen S., Michael Wooldridge, and Nicholas R. Jennings. "A linear approximation method for the Shapley value." Artificial Intelligence 172.14 (2008): 1673-1699.
+"""
 struct DafExplainer
 	hard::Bool
+	banzhaf::Bool
 end
 
-DafExplainer() = DafExplainer(true)
+DafExplainer() = DafExplainer(true, false)
+DafExplainer(b::Bool) = DafExplainer(b, false)
 
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, n, clustering = ExplainMill._nocluster; threshold = 0.1)
 	soft_model = (ds...) -> softmax(model(ds...));
@@ -13,10 +18,10 @@ end
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, n, clustering = ExplainMill._nocluster; threshold = 0.1)
 	ms = ExplainMill.Mask(ds, model, Duff.Daf, clustering)
 	updatesamplemembership!(ms, nobs(ds))
-	@timeit to "dafstats" dafstats(ms, () -> f(ds, ms), n)
+	@timeit to "dafstats" dafstats(e, ms, () -> f(ds, ms), n)
 end
 
-function dafstats(pruning_mask::AbstractExplainMask, f, n)
+function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f, n)
 	dafs = []
 	mapmask(pruning_mask) do m
 		m != nothing && push!(dafs, m)
@@ -25,9 +30,25 @@ function dafstats(pruning_mask::AbstractExplainMask, f, n)
 		@timeit to "sample!" sample!(pruning_mask)
 		updateparticipation!(pruning_mask)
 		o = @timeit to "evaluate" f()
-		@timeit to "update!" Duff.update!(dafs, o, pruning_mask)
+		@timeit to "update!" Duff.update!(e, dafs, o, pruning_mask)
 	end
 	return(pruning_mask)
+end
+
+function Duff.update!(e::DafExplainer, dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
+	for d in dafs 
+		Duff.update!(e, d, v)
+	end
+end
+
+function Duff.update!(e::DafExplainer, d::Mask, v::AbstractArray)
+	s = d.stats
+	for i in 1:length(d.mask)
+		!e.banzhaf && !d.participate[i] && continue
+		f = v[d.outputid[i]]
+		j = _cluster_membership(d.cluster_membership, i)
+		Duff.update!(s, f, d.mask[i] & d.participate[i], j)
+	end
 end
 
 scorefun(e::DafExplainer, x::AbstractExplainMask) = Duff.meanscore(x.mask.stats)
@@ -37,11 +58,6 @@ function StatsBase.sample!(pruning_mask::AbstractExplainMask)
 	mapmask(sample!, pruning_mask)
 end
 
-function Duff.update!(dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
-	for d in dafs 
-		Duff.update!(d, v)
-	end
-end
 
 """
 	updatesamplemembership!(pruning_mask, n)

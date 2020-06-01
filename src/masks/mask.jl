@@ -92,17 +92,6 @@ function StatsBase.sample!(m::Mask{Vector{Int64}})
 	end 
 end
 
-
-function Duff.update!(d::Mask, v::AbstractArray)
-	s = d.stats
-	for i in 1:length(d.mask)
-		!d.participate[i] && continue
-		f = v[d.outputid[i]]
-		j = _cluster_membership(d.cluster_membership, i)
-		Duff.update!(s, f, d.mask[i], j)
-	end
-end
-
 HierarchicalUtils.NodeType(::Mask) = LeafNode();
 HierarchicalUtils.noderepr(::Mask{Nothing, D}) where {D} = "Simple Mask";
 HierarchicalUtils.noderepr(::Mask{Vector{Int}, D}) where {D} = "Mask with clustering";

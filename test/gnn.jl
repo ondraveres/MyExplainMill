@@ -25,7 +25,7 @@ end
 
 
 	m = BagMask(BagMask(ProductMask((
-		a = MatrixMask(rand(2)), 
+		a = MatrixMask(rand(2), 2, 1), 
 		c = CategoricalMask(rand(5)),
 		# s = SparseArrayMask(rand(nnz(sn.data)), identifycolumns(sn.data)), 
 		z = NGramMatrixMask(rand(5)),

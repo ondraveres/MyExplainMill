@@ -16,20 +16,20 @@ end
 
 	selects first `k` items. If `k` is not set, it is determined such that the output is positive
 """	
-function greedy!(f, fv::FlatView, significance::Vector{T}) where {T<:Number}
+function greedy!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true) where {T<:Number}
 	fill!(fv, false)
 	fval = f()
 	@info "output on empty sample = $(fval)"
 	fval == 0 && return()
-	ii = sortperm(significance, rev = true);
+	ii = sortperm(significance, rev = rev);
 	addminimum!(f, fv, significance, ii, strict_improvement = false)
 	used = useditems(fv)
 	@info "Explanation uses $(length(used)) features out of $(length(fv))"
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function greedy!(f, ms::AbstractExplainMask, scorefun, k...)
+function greedy!(f, ms::AbstractExplainMask, scorefun, k...; rev::Bool = true)
 	fv = FlatView(ms)
 	significance = map(scorefun, fv)
-	greedy!(f, fv, significance, k...)
+	greedy!(f, fv, significance, k...; rev = rev)
 end
