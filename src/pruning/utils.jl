@@ -164,9 +164,19 @@ function oscilateremove!(f, flatmask, n::Int)
 	end
 end
 
-function sfs!(f, flatmask)
+function sfs!(f, flatmask; random_removal::Bool = false)
 	fill!(flatmask, false)
 	while f() < 0 
 		!addone!(f, flatmask) && break
+	end
+
+	if random_removal
+		used_old = useditems(flatmask)
+		while true
+			removeexcess!(f, flatmask, shuffle(used_old))
+			used = useditems(flatmask)
+			length(used) == length(used_old) && break
+			used_old = used
+		end
 	end
 end

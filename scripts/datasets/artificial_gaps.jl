@@ -25,7 +25,7 @@ _s = ArgParseSettings()
 @add_arg_table! _s begin
   ("--dataset"; default="mutagenesis";arg_type=String);
   ("--task"; default="one_of_1_2trees";arg_type=String);
-  ("--incarnation"; default=1;arg_type=Int);
+  ("--incarnation"; default=2;arg_type=Int);
   ("-k"; default=20;arg_type=Int);
 end
 settings = parse_args(ARGS, _s; as_symbols=true)
@@ -101,11 +101,12 @@ function loadclass(k, n = typemax(Int))
 	dss =  map(extractor, sample(samples[ci[k]], min(n, length(ci[k])), replace = false))
 	reduce(catobs, dss)
 end
+
 function onlycorrect(dss, i, min_confidence = 0)
 	correct = ExplainMill.predict(soft_model, dss, [1,2]) .== i;
 	dss = dss[correct[:]];
 	min_confidence == 0 && return(dss)
-	correct = ExplainMill.confidencegap(soft_model, dss, i) .> min_confidence;
+	correct = ExplainMill.confidencegap(soft_model, dss, i) .>= min_confidence;
 	dss[correct[:]]
 end
 
@@ -120,29 +121,33 @@ ds = loadclass(strain, 1000)
 i = strain
 concept_gap = minimum(map(c -> ExplainMill.confidencegap(soft_model, extractor(c), i), concepts))
 sample_gap = minimum(map(c -> ExplainMill.confidencegap(soft_model, extractor(c), i), samples[labels .== 2]))
-threshold_gap = floor(concept_gap, digits = 2) 
+threshold_gap = floor(0.9*concept_gap, digits = 2) 
 ds = onlycorrect(ds, strain, threshold_gap)
 @info "minimum gap on concepts = $(concept_gap) on samples = $(sample_gap)"
 
 exdf = isfile(resultsdir("stats.bson")) ? BSON.load(resultsdir("stats.bson"))[:exdf] : DataFrame()
 
+explainers = [(ExplainMill.ConstExplainer(), "const")]
+# for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [0], [:oscilatingsfs, :sfs], 1:nobs(ds))
+for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [0], [:flatsfs, :flatsfsrr, :flatsfsos, :sfsrr], 1:nobs(ds))
+	global exdf
+	exdf = addexperiment(exdf, e, ds[j], logsoft_model, i, n, threshold_gap, name, pruning_method, j, settings)
+end 
+BSON.@save resultsdir("stats.bson") exdf
+
+
 # explainers = [(ExplainMill.ConstExplainer(), "const"), (ExplainMill.StochasticExplainer(), "stochastic"), (ExplainMill.GradExplainer(), "grad"), (ExplainMill.GradExplainer2(), "grad2"), (ExplainMill.GradExplainer3(), "grad3")]
 explainers = [(ExplainMill.StochasticExplainer(), "stochastic"), (ExplainMill.GradExplainer2(), "grad2")]
-for ((e, name), n, pruning_method, j) in (Iterators.product(explainers, [0], [:greedy, :importantfirst, :oscilatingimportantfirst, :breadthfirst2, :oscilatingbreadthfirst], 1:nobs(ds)))
+for ((e, name), n, pruning_method, j) in (Iterators.product(explainers, [0], [:greedy, :importantfirst, :oscilatingimportantfirst, :greedybreadthfirst, :breadthfirst2, :oscilatingbreadthfirst], 1:nobs(ds)))
 	global exdf
 	exdf = addexperiment(exdf, e, ds[j], logsoft_model, i, n, threshold_gap, name, pruning_method, j, settings)
 end 
 BSON.@save resultsdir("stats.bson") exdf
 
-explainers = [(ExplainMill.ConstExplainer(), "const")]
-for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [0], [:oscilatingsfs, :sfs], 1:nobs(ds))
-	global exdf
-	exdf = addexperiment(exdf, e, ds[j], logsoft_model, i, n, threshold_gap, name, pruning_method, j, settings)
-end 
-BSON.@save resultsdir("stats.bson") exdf
 
 explainers = [(ExplainMill.GnnExplainer(), "gnn"), (ExplainMill.DafExplainer(true), "daf_prune"), (ExplainMill.DafExplainer(true, true), "banzhaf")]
-for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [100, 200, 500], [:greedy, :importantfirst, :oscilatingimportantfirst, :breadthfirst2, :oscilatingbreadthfirst], 1:nobs(ds))
+# for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [100, 200, 500], [:greedy, :importantfirst, :oscilatingimportantfirst, :breadthfirst2, :oscilatingbreadthfirst], 1:nobs(ds))
+for ((e, name), n, pruning_method, j) in Iterators.product(explainers, [200], [:greedy, :importantfirst, :oscilatingimportantfirst, :greedybreadthfirst, :breadthfirst2, :oscilatingbreadthfirst], 1:nobs(ds))
 	global exdf
 	exdf = addexperiment(exdf, e, ds[j], logsoft_model, i, n, threshold_gap, name, pruning_method, j, settings)
 end 

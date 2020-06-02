@@ -11,12 +11,12 @@ using Distributed
 @everywhere begin 
 	function loadproblem(d)
 		@show d
-		ii = filter(i -> isfile(joinpath(rdir,d,i,"stats.bson")), readdir(joinpath(rdir,d)))
+		ii = filter(i -> isfile(joinpath(rdir,d,i,"stats2.bson")), readdir(joinpath(rdir,d)))
 		dfs = map(ii) do i 
 			try
-				return(BSON.load(joinpath(rdir,d,i,"stats.bson"))[:exdf])
-			except
-				@error "failed in $(joinpath(d,i,"stats.bson"))"
+				return(BSON.load(joinpath(rdir,d,i,"stats2.bson"))[:exdf])
+			catch
+				@error "failed in $(joinpath(d,i,"stats2.bson"))"
 				return(nothing)
 			end
 		end
@@ -44,5 +44,6 @@ end;
 os = filter(!isempty, os)
 df = reduce(vcat, os)
 ns = setdiff(names(df), [:dataset, :task, :name, :pruning_method, :n]);
-df = by(df, [:dataset, :task, :name, :pruning_method, :n], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
+# df = by(df, [:dataset, :task, :name, :pruning_method, :n], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
 serialize("results.jls", df)
+include("show.jl")

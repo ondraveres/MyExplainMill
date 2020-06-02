@@ -44,7 +44,7 @@ function breadthfirst!(f, ms::AbstractExplainMask, scorefun)
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false)
+function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false, random_removal::Bool = false)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	masks = map(x -> x.first, parents)
@@ -64,7 +64,7 @@ function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = f
 		isempty(m) && continue
 		fv, significance = prepare_breadthfirst!(m, ms, parents, scorefun)
 		@info "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
-		importantfirst!(f, fv, significance; participateonly = true)
+		importantfirst!(f, fv, significance; participateonly = true, random_removal = random_removal)
 		oscilate && oscilate!(f, fv)
 	end
 
@@ -73,7 +73,7 @@ function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = f
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function sequentialfs!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false)
+function sequentialfs!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false, random_removal::Bool = false)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	masks = map(x -> x.first, parents)
@@ -93,7 +93,7 @@ function sequentialfs!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = fa
 		isempty(m) && continue
 		fv, significance = prepare_breadthfirst!(m, ms, parents, scorefun)
 		@info "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
-		sfs!(f, fv)
+		sfs!(f, fv, random_removal = random_removal)
 		oscilate && oscilate!(f, fv)
 		@info "$(f()) uses $(length(useditems(fv))) with output $(f())"
 	end
@@ -101,4 +101,18 @@ function sequentialfs!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = fa
 	used = useditems(fullmask)
 	@info "Explanation uses $(length(used)) features out of $(length(fullmask))"
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
+end
+
+function sfs!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false, random_removal::Bool = false)
+	# sort all explainable masks by depth and types
+	parents = parent_structure(ms)
+	masks = map(x -> x.first, parents)
+
+	#get rid of masks, which does not have any explainable item
+	masks = filter(x -> !isa(x, AbstractNoMask), masks)
+	fv = FlatView(ms)
+	@info "sfs: length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
+	sfs!(f, fv, random_removal = random_removal)
+	oscilate && oscilate!(f, fv)
+	@info "$(f()) uses $(length(useditems(fv))) with output $(f())"
 end

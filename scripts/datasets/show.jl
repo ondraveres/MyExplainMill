@@ -1,4 +1,4 @@
-using DataFrames, Statistics, Serialization, PGFPlotsX
+using DataFrames, Statistics, Serialization, PrettyTables, Printf
 
 fixunderscore(x::Vector{String}) = replace.(x, "_" =>" ")
 fixunderscore(x::Vector) = replace.(String.(x), "_" =>" ")
@@ -7,19 +7,40 @@ fixunderscore(x::Symbol) = fixunderscore(String(x))
 
 fixtasks(x::String) = replace(x, "paths" => "1trees")
 
-namesdict = Dict(
-	:breadthfirst2 => "bf",
-	:greedy => "gr",
+pruningdict = Dict(
+	:sfsrr => "LbyL-GArr",
+	:oscilatingsfs => "LbyL-GAos",
+	:sfs => "LbyL-GAdd",
+	:flatsfsrr => "GArr",
+	:flatsfsos => "GAos",
+	:flatsfs => "GAdd",
+	:greedy => "HAdd",
+	:importantfirst => "HArr",
+	:oscilatingimportantfirst => "HAos",
+	:breadthfirst2 => "LbyL-HArr",
+	:greedybreadthfirst => "LbyL-HAdd",
+	:oscilatingbreadthfirst => "LbyL-HAos",
 	:abstemious => "ab",
 	:importantlast => "il",
-	:importantfirst => "if",
-	:oscilatingimportantfirst => "oif",
-	:oscilatingbreadthfirst => "obf",
-	:oscilatingsfs => "ofs",
-	:sfs => "fs",
 	)
 
-function fixnames(x::Symbol)
+function fixpruning(x::Symbol)
+	if !haskey(pruningdict, x)
+		@error "unknown $x"
+		return(nothing)
+	end
+	return(pruningdict[x])
+end
+
+namesdict = Dict(
+	"stochastic" => "Stochastic",
+ 	"grad2" => "Grad",
+ 	"gnn" => "GNN", 
+ 	"pevnak" => "BanzhafT",
+ 	"banzhaf" => "Banzhaf"
+	)
+
+function fixnames(x)
 	if !haskey(namesdict, x)
 		@error "unknown $x"
 		return(nothing)
@@ -27,110 +48,60 @@ function fixnames(x::Symbol)
 	return(namesdict[x])
 end
 
+
+function meanandconfidence(x)
+	x = skipmissing(x)
+	# ci = quantile(x, 0.975) - quantile(x, 0.025)
+	# ci = quantile(x, 0.95) - quantile(x, 0.05)
+	ci = confint(OneSampleTTest(Float64.(collect(x))))
+	@sprintf("\$%.2f\\pm %.2f\$", mean(x), ci[2] - ci[1])
+end
+
 df = deserialize("results.jls")
 df[!,:task] = fixtasks.(df[!,:task])
-ns = setdiff(names(df), [:dataset, :task, :name, :pruning_method, :n])
 #####
 #	Basic visualization
 #####
-# df₁ = filter(row -> row[:name] ∈ ["const","stochastic", "grad", "grad2", "grad3"], df)
-df₁ = filter(row -> row[:name] ∈ ["stochastic", "grad2"], df)
-df₃ = filter(row -> row[:name] ∈ ["const"] && row.pruning_method == :sfs , df)
-df₃[!,:name] .= "stochastic"
-# df₂ = filter(row -> row[:pruning_method] ∈ [:greedy, :importantfirst, :breadthfirst2, :breadthfirst] && (row[:n] == 200), df)
-df₂ = filter(row -> row[:n] == 200, df)
-dff = vcat(df₁, df₂, df₃)
-# dff = filter(row -> row[:name] != "daf_layerwise", dff)
-dff = filter(row -> row.pruning_method ∉ [:breadthfirst, :abstemious, :importantlast] , dff)
-dff = by(dff, [:name, :pruning_method], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
+uninformative = [:sfs, :oscilatingsfs, :sfsrr, :flatsfsrr, :flatsfsos, :flatsfs]
+heuristic  = [:greedy, :importantfirst, :oscilatingimportantfirst, :breadthfirst2, :oscilatingbreadthfirst, :greedybreadthfirst]
 
-for (k, title, ymax, ofname) in [
-			(:excess_leaves, "Excessive terms in explanation", 0.7, "excess_leaves"), 
-			(:excess_leaves, "Excessive terms in explanation", 30, "excess_leaves_full"), 
-			(:time, "{time of explanation}", 2, "time"), 
-			(:misses_leaves, "Missing terms in explanation" ,2 , "misess_leaves")
-			]
-	# global dff
-	p = @pgf Axis(
-		{	ybar,
-			ymax = ymax,
-			ymin = 0,
-			"legend style"={
-				at={"(0.5,-0.2)"},
-				anchor="north",
-				"legend columns"=-1,
-				}, 
-			ylabel= fixunderscore(k),
-			"symbolic x coords"= fixnames.(sort(unique(dff[!,:pruning_method]))), 
-			xtick="data",
-		    # title = title,
-			"x tick label style"={rotate=45,anchor="east"}, 
-			"bar width"="3pt",
-	    },
-	    );
 
-	for m in ["gnn", "banzhaf", "grad2", "stochastic"]
-		dt = filter(row -> row[:name] == m, dff)
-		dt = by(dt, [:pruning_method], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
-		push!(p, Plot(Coordinates(fixnames.((dt[!,:pruning_method])), dt[!,k])))
+flat_methods = [:flatsfsrr, :flatsfsos, :flatsfs, :greedy, :importantfirst, :oscilatingimportantfirst]
+
+function filtercase(df, ranking::Nothing, level_by_level)
+	pms = level_by_level ? [:sfs, :oscilatingsfs, :sfsrr] : [:flatsfs, :flatsfsrr, :flatsfsos]
+	df₁ = filter(r -> r.name == "stochastic" && r.pruning_method ∈ pms, df)
+	DataFrame(
+	 ranking = "",
+	 add_e = meanandconfidence(filter(r -> r.pruning_method == pms[1], df₁)[!,:excess_leaves]),
+	 add_t = meanandconfidence(filter(r -> r.pruning_method == pms[1], df₁)[!,:time]),
+	 addrr_e = meanandconfidence(filter(r -> r.pruning_method == pms[2], df₁)[!,:excess_leaves]),
+	 addrr_t = meanandconfidence(filter(r -> r.pruning_method == pms[2], df₁)[!,:time]),
+	 addrrft_e = meanandconfidence(filter(r -> r.pruning_method == pms[3], df₁)[!,:excess_leaves]),
+	 addrrft_t = meanandconfidence(filter(r -> r.pruning_method == pms[3], df₁)[!,:time]),
+	)
+end
+
+function filtercase(df, ranking::String, level_by_level)
+	pms = level_by_level ? [:breadthfirst2, :oscilatingbreadthfirst, :greedybreadthfirst] : [:greedy, :importantfirst, :oscilatingimportantfirst,]
+	df₁ = filter(r -> r.name == ranking && r.pruning_method ∈ pms, df)
+	DataFrame(
+	 ranking = fixnames(ranking),
+	 add_e = meanandconfidence(filter(r -> r.pruning_method == pms[1], df₁)[!,:excess_leaves]),
+	 add_t = meanandconfidence(filter(r -> r.pruning_method == pms[1], df₁)[!,:time]),
+	 addrr_e = meanandconfidence(filter(r -> r.pruning_method == pms[2], df₁)[!,:excess_leaves]),
+	 addrr_t = meanandconfidence(filter(r -> r.pruning_method == pms[2], df₁)[!,:time]),
+	 addrrft_e = meanandconfidence(filter(r -> r.pruning_method == pms[3], df₁)[!,:excess_leaves]),
+	 addrrft_t = meanandconfidence(filter(r -> r.pruning_method == pms[3], df₁)[!,:time]),
+	)
+end
+
+adf = mapreduce(vcat, [false, true]) do b
+	mapreduce(vcat, [nothing,  "gnn", "grad2", "banzhaf", "pevnak", "stochastic" ]) do r
+		filtercase(df, r, b)
 	end
-	# labels = fixunderscore(sort(unique(String.(dff[!,:name]))))
-	labels = ["gnn", "banzhaf", "grad2", "stochastic"]
-	push!(p, Legend(labels))
-	PGFPlotsX.save("$(ofname).pdf",p)
 end
 
-
-df₁ = filter(row -> row[:name] ∈ ["stochastic", "grad2"], df)
-df₃ = filter(row -> row[:name] ∈ ["const"] && row.pruning_method == :sfs , df)
-df₃[!,:name] .= "stochastic"
-df₂ = filter(row -> row[:n] == 200, df)
-dff = vcat(df₁, df₂, df₃)
-dff = filter(row -> row.pruning_method ∉ [:breadthfirst, :abstemious, :importantlast] , dff)
-dss = sort(unique(dff[!,:dataset]))
-tasks = sort(unique(dff[!,:task]))
-
-k = :excess_leaves
-# k = :time
-title = "Excessive terms in explanation"
-@pgf gp = GroupPlot({group_style = { group_size = "$(length(dss)) by $(length(tasks))"}});
-for (j,ts) in enumerate(tasks)
-	for (i,ds) in enumerate(dss)
-		dtt = filter(row -> row.task == ts && row.dataset == ds, dff)
-		if isempty(dtt)
-			push!(gp, @pgf nothing)
-			continue
-		end
-		t = j == 1 ? ds : ""
-		ylab = i == 1 ? fixunderscore(ts) : ""
-		p = @pgf Axis(
-		{	ybar,
-			enlargelimits=0.25,
-			# ymax = 2,
-			ymin = 0,
-			title = t,
-			ylabel = ylab,
-			"legend style"={
-				at={"(0.5,-0.2)"},
-				anchor="north",
-				"legend columns"=-1,
-				}, 
-			"symbolic x coords"= fixnames.(sort(unique(dtt[!,:pruning_method]))), 
-			xtick="data",
-			"x tick label style"={rotate=45,anchor="east"}, 
-			"bar width"="2pt",
-	    },
-	    );
-
-		for m in sort(unique(dtt[!,:name]))
-			dt = filter(row -> row[:name] == m, dtt)
-			push!(p, Plot(Coordinates(fixnames.(dt[!,:pruning_method]), dt[!,k])))
-		end
-		labels = fixunderscore(sort(unique(String.(dtt[!,:name]))))
-		(j == length(tasks) && i == length(dss)) && push!(p, Legend(labels))
-		push!(gp, p)
-	end	
-end
-gp
-# PGFPlotsX.save("group_excess.pdf",gp)
-PGFPlotsX.save("group_time.pdf",gp)
+# pretty_table(adf, backend = :latex, formatters = ft_printf("%.2f"))
+pretty_table(adf, backend = :latex)
+# pretty_table(adf)

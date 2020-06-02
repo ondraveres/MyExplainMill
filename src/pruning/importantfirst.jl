@@ -1,6 +1,6 @@
 using Random
 
-function importantfirst!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true, participateonly::Bool = false, oscilate::Bool = false) where {T<:Number}
+function importantfirst!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true, participateonly::Bool = false, oscilate::Bool = false, random_removal::Bool = true) where {T<:Number}
 	ii = participateonly ? sortindices(findall(participate(fv)), significance, rev = rev) : sortperm(significance, rev = rev)
 	fill!(fv, false)
 	addminimum!(f, fv, significance, ii, strict_improvement = false)
@@ -8,11 +8,13 @@ function importantfirst!(f, fv::FlatView, significance::Vector{T}; rev::Bool = t
 	@info "importantfirst: output = $(f()) added $(length(used)) features"
 	@assert all(fv[used])
 	used_old = used
-	while true
-		removeexcess!(f, fv, shuffle(used))
-		used = useditems(fv)
-		length(used) == length(used_old) && break
-		used_old = used
+	if random_removal
+		while true
+			removeexcess!(f, fv, shuffle(used))
+			used = useditems(fv)
+			length(used) == length(used_old) && break
+			used_old = used
+		end
 	end
 	@info "importantfirst: output = $(f()) keeping $(length(used)) features"
 	oscilate && oscilate!(f, fv)

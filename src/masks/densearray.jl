@@ -47,7 +47,7 @@ end
 # end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::MatrixMask)
-    ArrayNode(m.m(mask.mask .* ds.data))
+    ArrayNode(m.m(mulmask(mask) .* ds.data))
 end
 
 index_in_parent(m::MatrixMask, i) = CartesianIndices((m.rows, m.cols))[i][2]
