@@ -60,7 +60,9 @@ function prune(ds::BagNode, mask::BagMask)
 end
 
 function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds)))
-	#first, let's find the set of valid childs 
+	if !any(presentobs)
+		return(ds[0:-1])
+	end
 	present_childs = prunemask(mask)[:]
 	for (i,b) in enumerate(ds.bags) 
 	    presentobs[i] && continue
@@ -71,7 +73,7 @@ function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds
 	if ismissing(x.data)
 		bags.bags .= [0:-1]
 	end
-	BagNode(x, bags)
+	BagNode(x, bags[presentobs])
 end
 
 function (m::Mill.BagModel)(x::BagNode, mask::BagMask)

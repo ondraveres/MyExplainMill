@@ -13,7 +13,10 @@ participate(::EmptyMask) = Vector{Bool}()
 
 prune(ds, mask::EmptyMask) = ds
 
-Base.getindex(ds, mask::EmptyMask, presentobs = Vector{Bool}()) = ds
+function Base.getindex(ds, mask::EmptyMask, presentobs = fill(true, nobs(ds))) 
+	all(presentobs) && return(ds)
+	ds[presentobs]
+end
 
 mapmask(f, mask::EmptyMask) = nothing
 

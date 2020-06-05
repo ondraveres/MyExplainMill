@@ -218,6 +218,13 @@ end
 	an = Mask(a, d -> rand(d))
 	prunemask(an) .= [true, false, true, false, true]
 	@test a[an].data.s == ["a", "", "c", "", "e"]
+	@test a[an,[true,false,true,true,false]].data.s == ["a", "c", ""]
+
+	bs = BagNode(a, AlignedBags([1:2,3:3,4:5]))
+	ms = Mask(bs, d -> rand(d))
+	@test nobs(bs[ms, fill(false, 3)]) == 0
+	@test nobs(bs[ms, [true,false,true]]) == 2
+	@test nobs(bs[ExplainMill.EmptyMask(), [true,false,true]]) == 2
 end
 
 @testset "testing infering of sample membership" begin
