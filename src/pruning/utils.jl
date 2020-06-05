@@ -37,6 +37,27 @@ function addminimum!(f, flatmask, significance, ii; strict_improvement::Bool = t
 	return(changed)
 end
 
+function addminimumbi!(f, flatmask, significance, ii; strict_improvement::Bool = true)
+	changed = false
+	previous =  f()
+	previous > 0 && return(changed)
+	for i in ii
+		all(flatmask[i]) && continue
+		flatmask[i] = true
+		o = f()
+		if strict_improvement && o <= previous
+			flatmask[i] = false
+		else 
+			previous = o
+			changed = true
+		end
+		if o >= 0
+			break
+		end
+	end
+	return(changed)
+end
+
 """
 	addone!(f, flatmask)
 
@@ -111,9 +132,9 @@ function settobest!(fv, visited_states::Dict{K,V}) where {K,V}
 end
 
 
-function oscilate!(f, flatmask)
+function oscilate!(f, flatmask, max_n = typemax(Int))
 	visited_states = Dict(sort(useditems(flatmask)) => f())
-	n, max_n = 1, length(useditems(flatmask))
+	n, max_n = 1, min(max_n, length(useditems(flatmask)))
 	for i in 1:100
 		if mod(i, 2) == 0
 			oscilateadd!(f, flatmask, n)
@@ -170,13 +191,16 @@ function sfs!(f, flatmask; random_removal::Bool = false)
 		!addone!(f, flatmask) && break
 	end
 
-	if random_removal
-		used_old = useditems(flatmask)
-		while true
-			removeexcess!(f, flatmask, shuffle(used_old))
-			used = useditems(flatmask)
-			length(used) == length(used_old) && break
-			used_old = used
-		end
+	random_removal && randomremoval!(f, flatmask)
+end
+
+
+function randomremoval!(f, flatmask)
+	used_old = useditems(flatmask)
+	while true
+		removeexcess!(f, flatmask, shuffle(used_old))
+		used = useditems(flatmask)
+		length(used) == length(used_old) && break
+		used_old = used
 	end
 end

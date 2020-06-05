@@ -9,22 +9,26 @@ using Distributed
 @everywhere rdir = "/home/tomas.pevny/data/sims/"
 
 @everywhere begin 
-	function loadproblem(d)
-		@show d
-		ii = filter(i -> isfile(joinpath(rdir,d,i,"stats2.bson")), readdir(joinpath(rdir,d)))
-		dfs = map(ii) do i 
-			try
-				return(BSON.load(joinpath(rdir,d,i,"stats2.bson"))[:exdf])
-			catch
-				@error "failed in $(joinpath(d,i,"stats2.bson"))"
-				return(nothing)
+	function loadproblem(d, i)
+		try 
+			files = filter(s -> startswith(s, "stats4_"), readdir(joinpath(rdir,d,i)))
+			# files = filter(s -> startswith(s, "gnn_"), readdir(joinpath(rdir,d,i)))
+			isempty(files) && return(DataFrame())
+			os = mapreduce(vcat, files) do f 
+				BSON.load(joinpath(rdir,d,i,f))[:exdf]
 			end
+			exdf = os
+			return(exdf)
+		catch me 
+			println("failed on $d $i")
+			display(me)
+			return(DataFrame())
 		end
-		if !isempty(filter(s -> isa(s, Type), dfs))
-			m = ii[isa.(dfs, Type)]
-			@error "rerun $d $(m) as there is a type"
-		end
-		dfs = filter(s -> isa(s, DataFrame), dfs)
+	end
+
+	function loadproblem(d)
+		ii = readdir(joinpath(rdir,d))
+		dfs = map(i -> loadproblem(d, i), ii)
 		dfs = filter(s -> size(s,1) > 0, dfs)
 		vcat(dfs...)
 	end
@@ -35,15 +39,50 @@ function checkmodel(d)
 	@show (d, length(ii))
 end
 
-os = map(readdir(rdir)) do problem
+function checkcompletness!(miss, df, combinations, name, pr)
+	for c in eachrow(combinations)
+		o = filter(r -> r.dataset == c.dataset
+				&& r.task == c.task 
+				&& r.incarnation == c.incarnation 
+				&& r.name == name 
+				&& r.pruning_method == pr, df)
+		if isempty(o) 
+			println((name, pr, c.dataset, c.task, c.incarnation))
+			push!(miss, (name, pr, c.dataset, c.task, c.incarnation))
+		end
+	end
+end
+
+function checkcompletness(df)
+	heuristic  = [:greedy, :importantfirst, :oscilatingimportantfirst, :greedybreadthfirst, :breadthfirst2, :oscilatingbreadthfirst]
+	uninformative = [:flatsfs, :flatsfsrr, :flatsfsos, :sfs, :sfsrr, :oscilatingsfs]
+	combinations = by(df, [:dataset, :task, :incarnation], df -> ())
+	miss = []
+	for (name, pr) in Iterators.product(["stochastic"], vcat(heuristic, uninformative))
+		subdf = filter(r -> r.name == name && r.pruning_method == pr, df)
+		checkcompletness!(miss, subdf, combinations, name, pr)
+	end
+
+	for (name, pr) in Iterators.product(["grad2", "banzhaf", "pevnak", "gnn"], heuristic)
+		subdf = filter(r -> r.name == name && r.pruning_method == pr, df)
+		checkcompletness!(miss, subdf, combinations, name, pr)
+	end
+	miss
+end
+
+os = map(["deviceid", "hepatitis", "mutagenesis"]) do problem
 	os = pmap(readdir(joinpath(rdir, problem))) do task 
 		loadproblem(joinpath(problem, task))
 	end
+	os = filter(!isempty, os)
+	isempty(os) && return(DataFrame())
 	reduce(vcat, os)
 end;
+size.(os)
 os = filter(!isempty, os)
 df = reduce(vcat, os)
-ns = setdiff(names(df), [:dataset, :task, :name, :pruning_method, :n]);
+df = filter(r -> r.name != "gnn1000", df)
+# ns = setdiff(names(df), [:dataset, :task, :name, :pruning_method, :n]);
 # df = by(df, [:dataset, :task, :name, :pruning_method, :n], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
-serialize("results.jls", df)
+# serialize("results.jls", df)
 include("show.jl")

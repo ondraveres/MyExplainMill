@@ -56,10 +56,10 @@ mulmask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = σ.(m.stats[m.cluster_
 @deprecate mask prunemask
 
 prunemask(m::AbstractExplainMask) = prunemask(m.mask)
-prunemask(m::Mask{Nothing,M}) where {M<:RealArray} = m.mask[:]
+prunemask(m::Mask{Nothing,M}) where {M<:RealArray} = reshape(m.mask,:)
 prunemask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = m.mask[m.cluster_membership,:][:]
 
-prunemask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = m.mask[:]
+prunemask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = reshape(m.mask,:)
 prunemask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = m.mask[m.cluster_membership,:][:]
 
 mulmask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = prunemask(m)

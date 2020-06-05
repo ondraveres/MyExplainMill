@@ -59,6 +59,21 @@ function prune(ds::BagNode, mask::BagMask)
 	BagNode(x, bags)
 end
 
+function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds)))
+	#first, let's find the set of valid childs 
+	present_childs = prunemask(mask)[:]
+	for (i,b) in enumerate(ds.bags) 
+	    presentobs[i] && continue
+	    present_childs[b] .= false
+	end
+	x = ds.data[mask.child, present_childs]
+	bags = Mill.adjustbags(ds.bags, present_childs)
+	if ismissing(x.data)
+		bags.bags .= [0:-1]
+	end
+	BagNode(x, bags)
+end
+
 function (m::Mill.BagModel)(x::BagNode, mask::BagMask)
 	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
 	xx = ArrayNode(transpose(mulmask(mask)) .* m.im(x.data, mask.child).data)

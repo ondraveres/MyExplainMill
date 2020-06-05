@@ -14,7 +14,7 @@ function stats(e::GnnExplainer, ds, model, i, n, clustering = ExplainMill._noclu
 	ps = Flux.Params(map(x -> x.mask.stats, ms))
 	reinit!(ps)
 	y = gnntarget(model, ds, i)
-	opt = ADAM()
+	opt = ADAM(0.01, (0.5, 0.999))
 	loss() = Flux.logitcrossentropy(model(ds, mask).data, y)
 	println("logitcrossentropy sample: ", Flux.logitcrossentropy(model(ds).data, y))
 	@timeit to "optimizing mask" for step in 1:n

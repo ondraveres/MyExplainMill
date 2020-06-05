@@ -13,6 +13,8 @@ participate(::EmptyMask) = Vector{Bool}()
 
 prune(ds, mask::EmptyMask) = ds
 
+Base.getindex(ds, mask::EmptyMask, presentobs = Vector{Bool}()) = ds
+
 mapmask(f, mask::EmptyMask) = nothing
 
 invalidate!(mask::EmptyMask, observations::Vector{Int}) = nothing

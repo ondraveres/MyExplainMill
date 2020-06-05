@@ -37,10 +37,11 @@ end
 function parent_structure(ms)
 	nodes = collect(NodeIterator(ms))
 	nodes = filter(n -> !isa(n,ExplainMill.EmptyMask), nodes)
+	nodes = unique(nodes)
 	cs = zeros(Int, length(nodes))
 	foreach(enumerate(nodes)) do (i,n)
 		for c in children(n)
-			ii = findall(map(x -> c == x, nodes))
+			ii = findall(map(x -> c === x, nodes))
 			isempty(ii) && continue
 			cs[only(ii)] = i
 		end

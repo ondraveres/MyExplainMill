@@ -76,7 +76,7 @@ function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) wh
 	contributing = participate(m) .& prunemask(m)
 	items = map(i -> i.ix, ds.data.data)
 	items = items[contributing]
-	isempty(items) && Dict{Symbol, String}()
+	isempty(items) && return(Dict{Symbol, String}())
 
 	idxs = unique(items);
 	d = reversedict(e.keyvalemap);
@@ -87,8 +87,11 @@ function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) wh
 end
 
 function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Matrix}
-	contributing = participate(m) .& prunemask(m)
-	repr_boolean(:and, "$(contributing)")
+	items = participate(m) .& prunemask(m)
+	items = findall(items)
+	items = filter(i -> any(ds.data[i,:] .!= 0), items)
+	isempty(items) && return(Dict{Symbol, String}())
+	repr_boolean(:and, Dict([Symbol(i) => "["*join(ds.data[i,:],",")*"]" for i in items]))
 end
 
 function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Matrix}
@@ -142,6 +145,25 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
 	end
 end
 
+
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e::JsonGrinder.ExtractKeyAsField)
+    ismissing(ds.data) && return(Dict{Symbol, String}())
+
+    #get indexes of contributing clusters
+	contributing_indexes = participate(m) .& prunemask(m)
+	all(.!contributing_indexes) && return(Dict{Symbol, String}())
+	if isnothing(m.mask.cluster_membership)
+		ss = repr(mim, child_mask(m), ds.data, e)
+		s = isarray(ss) ? ss : [ss]
+		return(s)
+	else
+		error("this is not implemented")
+		return(ss)
+	end
+end
+
+repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e::JsonGrinder.ExtractKeyAsField) = Dict{Symbol,String}()
+
 function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
     ismissing(ds.data) && return(Dict{Symbol,String}())
     nobs(ds.data) == 0 && return(Dict{Symbol,String}())
@@ -149,7 +171,7 @@ function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
     repr_boolean(:and, ss, thin = false)
 end
 
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::AbstractProductNode, e)
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(Dict{Symbol,String}())
 	s = map(sort(collect(keys(ds.data)))) do k
         subs = repr(mim, m[k], ds[k], e[k])
@@ -157,7 +179,21 @@ function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::AbstractProductN
     end
     Dict(filter(!isnothing, s))
 end
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e::JsonGrinder.ExtractKeyAsField) where {T<:NamedTuple, M}
+	nobs(ds) == 0 && return(Dict{Symbol,String}())
+	(Dict(
+		Symbol(repr(mim, m[:key], ds[:key], e.key)) => repr(mim, m[:item], ds[:item], e.item),
+	))
+end
 
+function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e::MultipleRepresentation) where {T<:Tuple, M}
+	nobs(ds) == 0 && return(Dict{Symbol,String}())
+	s = map(sort(collect(keys(ds.data)))) do k
+        subs = repr(mim, m.childs[k], ds.data[k], e.extractors[k])
+        isempty(subs) ? nothing : k => subs
+    end
+    Dict(filter(!isnothing, s))
+end
 
 function e2boolean(pruning_mask, dss, extractor)
 	d = map(1:nobs(dss)) do i 

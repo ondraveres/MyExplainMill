@@ -13,15 +13,26 @@ function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose = f
 	NGramMatrixMask(Mask(cluster_assignments, initstats))
 end
 
+function Mask(ds::ArrayNode{T,M}, initstats; verbose = false) where {T<:Mill.NGramMatrix{String}, M}
+	NGramMatrixMask(Mask(nobs(ds.data), initstats))
+end
+
 function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
 	participate(mask)[observations] .= false
 end
 
 function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatrix{String}, M}
 	x = deepcopy(ds.data)
-	x.s[.!prunemask(m)[:]] .= ""
+	x.s[.!prunemask(m)] .= ""
 	ArrayNode(x, ds.metadata)
 end
+
+function Base.getindex(ds::ArrayNode{T,M}, m::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
+	x = deepcopy(ds.data)
+	x.s[.!prunemask(m)] .= ""
+	ArrayNode(x, ds.metadata)
+end
+
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
     ArrayNode(m.m(ds.data) .* transpose(mulmask(mask)))

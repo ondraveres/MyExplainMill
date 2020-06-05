@@ -10,10 +10,25 @@ function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bo
 	CategoricalMask(Mask(cluster_assignments, initstats))
 end
 
+function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
+	nobs(ds) == 0 && return(EmptyMask())
+	CategoricalMask(Mask(nobs(ds.data), initstats))
+end
+
 function prune(ds::ArrayNode{T,M}, m::CategoricalMask) where {T<:Flux.OneHotMatrix, M}
-	msk = prunemask(m) .& participate(m)
+	msk = prunemask(m)
 	ii = map(enumerate(ds.data.data)) do (j,i)
 		msk[j] ? i.ix : i.of
+	end
+	x = Flux.onehotbatch(ii, 1:ds.data.height)
+	ArrayNode(x, ds.metadata)
+end
+
+function Base.getindex(ds::ArrayNode{T,M}, m::CategoricalMask, presentobs=fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix, M}
+	pm = prunemask(m)
+	ii = map(findall(presentobs)) do j
+		i = ds.data.data[j]
+		pm[j] ? i.ix : i.of
 	end
 	x = Flux.onehotbatch(ii, 1:ds.data.height)
 	ArrayNode(x, ds.metadata)

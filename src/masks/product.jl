@@ -4,7 +4,8 @@ end
 
 Flux.@functor(ProductMask)
 
-Base.getindex(m::ProductMask, i) = m.childs[i]
+Base.getindex(m::ProductMask, i::Symbol) = m.childs[i]
+Base.getindex(m::ProductMask, i::Int) = m.childs[i]
 
 mask(::ProductMask) = nothing
 participate(::ProductMask) = nothing
@@ -61,6 +62,19 @@ end
 
 function prune(ds::ProductNode{T,M}, mask::ProductMask) where {T<:Tuple, M}
 	s = tuple([prune(ds.data[k], mask.childs[k]) for k in 1:length(ds.data)]...)
+	ProductNode(s)
+end
+
+function Base.getindex(ds::ProductNode{T,M}, mask::ProductMask, presentobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+	ks = keys(ds.data)
+	s = (;[k => ds.data[k][mask.childs[k], presentobs] for k in ks]...)
+	ProductNode(s)
+end
+
+prunemask(m::ProductMask) = nothing
+
+function Base.getindex(ds::ProductNode{T,M}, mask::ProductMask, presentobs=fill(true, nobs(ds))) where {T<:Tuple, M}
+	s = tuple([ds.data[k][mask.childs[k], presentobs] for k in 1:length(ds.data)]...)
 	ProductNode(s)
 end
 

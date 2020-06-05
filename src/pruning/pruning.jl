@@ -18,7 +18,7 @@ function prune!(f, ms, scorefun, method)
 	elseif method == :breadthfirst
 		@timeit to "breadthfirst" ExplainMill.breadthfirst!(f, ms, scorefun)
 	elseif method == :breadthfirst2
-		@timeit to "breadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun)
+		@timeit to "breadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun, random_removal = true)
 	elseif method == :greedybreadthfirst
 		@timeit to "breadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun, random_removal = false)
 	elseif method == :oscilatingbreadthfirst

@@ -1,4 +1,4 @@
-using DataFrames, Statistics, Serialization, PrettyTables, Printf
+using DataFrames, Statistics, Serialization, PrettyTables, Printf, HypothesisTests
 
 fixunderscore(x::Vector{String}) = replace.(x, "_" =>" ")
 fixunderscore(x::Vector) = replace.(String.(x), "_" =>" ")
@@ -33,11 +33,14 @@ function fixpruning(x::Symbol)
 end
 
 namesdict = Dict(
-	"stochastic" => "Stochastic",
+	"stochastic" => "Rnd",
  	"grad2" => "Grad",
  	"gnn" => "GNN", 
- 	"pevnak" => "BanzhafT",
- 	"banzhaf" => "Banzhaf"
+ 	"gnn2" => "GNN2", 
+ 	"gnn3" => "GNN3", 
+ 	"pevnak" => "Bant",
+ 	"banzhaft" => "Bant",
+ 	"banzhaf" => "Banz"
 	)
 
 function fixnames(x)
@@ -54,11 +57,12 @@ function meanandconfidence(x)
 	# ci = quantile(x, 0.975) - quantile(x, 0.025)
 	# ci = quantile(x, 0.95) - quantile(x, 0.05)
 	ci = confint(OneSampleTTest(Float64.(collect(x))))
-	@sprintf("\$%.2f\\pm %.2f\$", mean(x), ci[2] - ci[1])
+	s = @sprintf("%.2f",ci[2] - ci[1])
+	s = s[2:end]
+	v = @sprintf("%.2f", mean(x))
+	@sprintf("\$%s\\pm %s\$", v, s)
 end
 
-df = deserialize("results.jls")
-df[!,:task] = fixtasks.(df[!,:task])
 #####
 #	Basic visualization
 #####
@@ -96,8 +100,9 @@ function filtercase(df, ranking::String, level_by_level)
 	)
 end
 
+df[!,:task] = fixtasks.(df[!,:task])
 adf = mapreduce(vcat, [false, true]) do b
-	mapreduce(vcat, [nothing,  "gnn", "grad2", "banzhaf", "pevnak", "stochastic" ]) do r
+	mapreduce(vcat, [nothing,  "gnn", "gnn2", "grad2", "banzhaf", "banzhaft", "stochastic" ]) do r
 		filtercase(df, r, b)
 	end
 end

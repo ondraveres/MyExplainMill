@@ -44,7 +44,7 @@ function breadthfirst!(f, ms::AbstractExplainMask, scorefun)
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false, random_removal::Bool = false)
+function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = false, random_removal::Bool = true)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	masks = map(x -> x.first, parents)
@@ -68,6 +68,8 @@ function breadthfirst2!(f, ms::AbstractExplainMask, scorefun; oscilate::Bool = f
 		oscilate && oscilate!(f, fv)
 	end
 
+	random_removal && randomremoval!(f, fullmask)
+	# oscilate && oscilate!(f, fullmask)
 	used = useditems(fullmask)
 	@info "Explanation uses $(length(used)) features out of $(length(fullmask))"
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"

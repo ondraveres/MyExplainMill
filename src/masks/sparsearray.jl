@@ -20,6 +20,12 @@ end
 function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:SparseMatrixCSC, M}
 	nnz(ds.data) == 0 && return(EmptyMask())
 	columns = identifycolumns(ds.data)
+	SparseArrayMask(Mask(nnz(ds.data), initstats), columns)
+end
+
+function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:SparseMatrixCSC, M}
+	nnz(ds.data) == 0 && return(EmptyMask())
+	columns = identifycolumns(ds.data)
 	SparseArrayMask(Mask(length(columns), initstats), columns)
 end
 
@@ -40,6 +46,12 @@ function prune(ds::ArrayNode{T,M}, mask::SparseArrayMask) where {T<:SparseMatrix
 	x = deepcopy(ds.data)
 	x.nzval[.!mask.mask.mask] .= 0
 	ArrayNode(x, ds.metadata)
+end
+
+function Base.getindex(ds::ArrayNode{T,M}, m::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
+	x = deepcopy(ds.data)
+	x.nzval[.!m.mask.mask] .= 0
+	ArrayNode(x[:,presentobs], ds.metadata)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::SparseArrayMask)
