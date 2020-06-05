@@ -87,7 +87,7 @@ function filtercase(df, ranking::Nothing, level_by_level)
 end
 
 function filtercase(df, ranking::String, level_by_level)
-	pms = level_by_level ? [:breadthfirst2, :oscilatingbreadthfirst, :greedybreadthfirst] : [:greedy, :importantfirst, :oscilatingimportantfirst,]
+	pms = level_by_level ? [:greedybreadthfirst, :breadthfirst2, :oscilatingbreadthfirst] : [:greedy, :importantfirst, :oscilatingimportantfirst,]
 	df₁ = filter(r -> r.name == ranking && r.pruning_method ∈ pms, df)
 	DataFrame(
 	 ranking = fixnames(ranking),

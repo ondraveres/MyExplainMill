@@ -2,9 +2,9 @@ using Serialization
 function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:breadthfirst)
 	ms = ExplainMill.stats(e, ds, model, i, n)
 	soft_model = ds -> softmax(model(ds))
-	f = () -> ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold
+	f = () -> ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold
 	if nobs(ds) > 1
-		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold, 0))	
+		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 	end
 	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
 	# if f() < 0
@@ -16,9 +16,9 @@ end
 function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:breadthfirst)
 	ms = ExplainMill.stats(e, ds, model, i, n)
 	soft_model = ds -> softmax(model(ds))
-	f = () -> ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold
+	f = () -> ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold
 	if nobs(ds) > 1
-		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold, 0))	
+		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 	end
 	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
 	# if f() < 0
@@ -32,7 +32,7 @@ end
 # A hacky POC, where DAF statistics are calculated layer by layer. 
 ####
 function updatestats!(e::DafExplainer, fv::FlatView, ds, ms, soft_model, i, n)
-	f = e.hard ? () -> output(soft_model(prune(ds, ms)))[i,:] : () -> output(soft_model(ds, ms))[i,:]
+	f = e.hard ? () -> output(soft_model(ds[ms]))[i,:] : () -> output(soft_model(ds, ms))[i,:]
 	for _ in 1:n
 		map(m -> sample!(m.mask), fv) 
 		o = @timeit to "evaluate" f()
@@ -43,7 +43,7 @@ end
 function explaindepthwise(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
 	ms = ExplainMill.stats(e, ds, model, i, 0)
 	soft_model = ds -> softmax(model(ds))
-	f = () -> sum(min.(ExplainMill.confidencegap(soft_model, prune(ds, ms), i) .- threshold, 0))	
+	f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
