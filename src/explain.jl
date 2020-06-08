@@ -1,5 +1,4 @@
-using Serialization
-function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:breadthfirst)
+function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:LbyL_HAdd)
 	ms = ExplainMill.stats(e, ds, model, i, n)
 	soft_model = ds -> softmax(model(ds))
 	f = () -> ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold
@@ -7,13 +6,10 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering
 		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 	end
 	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
-	# if f() < 0
-	# 	serialize("/tmp/explain.jls",(e, ds, model, i, n, clustering, threshold, pruning_method))
-	# end
 	ms
 end
 
-function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:breadthfirst)
+function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = 0.1, pruning_method=:LbyL_HAdd)
 	ms = ExplainMill.stats(e, ds, model, i, n)
 	soft_model = ds -> softmax(model(ds))
 	f = () -> ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold
@@ -21,9 +17,6 @@ function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i
 		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 	end
 	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
-	# if f() < 0
-	# 	serialize("/tmp/explain.jls",(e, ds, model, i, n, clustering, threshold, pruning_method))
-	# end
 	ms
 end
 

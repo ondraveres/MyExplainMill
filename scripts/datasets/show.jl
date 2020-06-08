@@ -101,12 +101,14 @@ function filtercase(df, ranking::String, level_by_level)
 end
 
 df[!,:task] = fixtasks.(df[!,:task])
-adf = mapreduce(vcat, [false, true]) do b
-	mapreduce(vcat, [nothing,  "gnn", "gnn2", "grad2", "banzhaf", "banzhaft", "stochastic" ]) do r
-		filtercase(df, r, b)
+
+function maketable(df)
+	mapreduce(vcat, [false, true]) do b
+		mapreduce(vcat, [nothing,  "gnn", "gnn2", "grad2", "banzhaf", "stochastic" ]) do r
+			filtercase(df, r, b)
+		end
 	end
 end
-
 # pretty_table(adf, backend = :latex, formatters = ft_printf("%.2f"))
 pretty_table(adf, backend = :latex)
 # pretty_table(adf)

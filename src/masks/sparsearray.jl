@@ -23,12 +23,6 @@ function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:Sp
 	SparseArrayMask(Mask(nnz(ds.data), initstats), columns)
 end
 
-function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:SparseMatrixCSC, M}
-	nnz(ds.data) == 0 && return(EmptyMask())
-	columns = identifycolumns(ds.data)
-	SparseArrayMask(Mask(length(columns), initstats), columns)
-end
-
 function identifycolumns(x::SparseMatrixCSC)
 	columns = findall(!iszero, x);
 	columns = [c.I[2] for c in columns]

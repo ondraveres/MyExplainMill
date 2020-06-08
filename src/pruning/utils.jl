@@ -132,14 +132,14 @@ function settobest!(fv, visited_states::Dict{K,V}) where {K,V}
 end
 
 
-function oscilate!(f, flatmask, max_n = typemax(Int))
+function finetune!(f, flatmask, max_n = typemax(Int))
 	visited_states = Dict(sort(useditems(flatmask)) => f())
 	n, max_n = 1, min(max_n, length(useditems(flatmask)))
 	for i in 1:100
 		if mod(i, 2) == 0
-			oscilateadd!(f, flatmask, n)
+			finetuneadd!(f, flatmask, n)
 		else
-			oscilateremove!(f, flatmask, n)
+			finetuneremove!(f, flatmask, n)
 		end
 		ii = sort(useditems(flatmask))
 
@@ -153,10 +153,10 @@ function oscilate!(f, flatmask, max_n = typemax(Int))
 		end
 	end
 	settobest!(flatmask, visited_states)
-	@info "oscilate: output = $(f()) keeping $(length(useditems(flatmask))) features"
+	@info "finetune: output = $(f()) keeping $(length(useditems(flatmask))) features"
 end
 
-function oscilateadd!(f, flatmask, n::Int)
+function finetuneadd!(f, flatmask, n::Int)
 	for _ in 1:n 
 		addone!(f, flatmask)
 	end
@@ -170,7 +170,7 @@ function oscilateadd!(f, flatmask, n::Int)
 	end
 end
 
-function oscilateremove!(f, flatmask, n::Int)
+function finetuneremove!(f, flatmask, n::Int)
 	for _ in 1:n 
 		removeone!(f, flatmask)
 	end

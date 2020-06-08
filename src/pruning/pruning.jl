@@ -1,40 +1,48 @@
 include("utils.jl")
 include("greedy.jl")
-include("importantfirst.jl")
-include("breadthfirst.jl")
+include("flatsearch.jl")
+include("levelbylevel.jl")
 
 
+# :sfsrr => "LbyL-GArr",
+# :oscilatingsfs => "LbyL-GAos",
+# :sfs => "LbyL-GAdd",
+# :flatsfsrr => "GArr",
+# :flatsfsos => "GAos",
+# :flatsfs => "GAdd",
+# :greedy => "HAdd",
+# :importantfirst => "HArr",
+# :oscilatingimportantfirst => "HAos",
+# :breadthfirst2 => "LbyL-HArr",
+# :greedybreadthfirst => "LbyL-HAdd",
+# :oscilatingbreadthfirst => "LbyL-HAos",
+# :abstemious => "ab",
+# :importantlast => "il",
 function prune!(f, ms, scorefun, method)
-	if method == :greedy
-		@timeit to "greedy" ExplainMill.greedy!(f, ms, scorefun)
-	elseif method == :abstemious
-		@timeit to "greedy" ExplainMill.greedy!(f, ms, scorefun; rev = false)
-	elseif method == :importantfirst
-		@timeit to "importantfirst" ExplainMill.importantfirst!(f, ms, scorefun)
-	elseif method == :oscilatingimportantfirst
-		@timeit to "oscilatingimportantfirst" ExplainMill.importantfirst!(f, ms, scorefun; oscilate = true)
-	elseif method == :importantlast
-		@timeit to "importantfirst" ExplainMill.importantfirst!(f, ms, scorefun; rev = false)
-	elseif method == :breadthfirst
-		@timeit to "breadthfirst" ExplainMill.breadthfirst!(f, ms, scorefun)
-	elseif method == :breadthfirst2
-		@timeit to "breadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun, random_removal = true)
-	elseif method == :greedybreadthfirst
-		@timeit to "breadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun, random_removal = false)
-	elseif method == :oscilatingbreadthfirst
-		@timeit to "oscilatebreadthfirst2" ExplainMill.breadthfirst2!(f, ms, scorefun, oscilate = true)
-	elseif method == :sfs
-		@timeit to "sfs" ExplainMill.sequentialfs!(f, ms, scorefun)
-	elseif method == :sfsrr
-		@timeit to "sfs" ExplainMill.sequentialfs!(f, ms, scorefun, random_removal = true)
-	elseif method == :oscilatingsfs
-		@timeit to "oscilatingsfs" ExplainMill.sequentialfs!(f, ms, scorefun, oscilate = true, random_removal = true)
-	elseif method == :flatsfs
-		@timeit to "sfs" ExplainMill.sfs!(f, ms, scorefun)
-	elseif method == :flatsfsrr
-		@timeit to "sfs" ExplainMill.sfs!(f, ms, scorefun, random_removal = true)
-	elseif method == :flatsfsos
-		@timeit to "oscilatingsfs" ExplainMill.sfs!(f, ms, scorefun, oscilate = true, random_removal = true)
+	if method == :Flat_HAdd
+		ExplainMill.flatsearch!(f, ms, scorefun, random_removal = false, fine_tuning = false)
+	elseif method == :Flat_HArr
+		ExplainMill.flatsearch!(f, ms, scorefun, random_removal = true, fine_tuning = false)
+	elseif method == :Flat_HArrft
+		ExplainMill.flatsearch!(f, ms, scorefun, random_removal = true, fine_tuning = true)
+	elseif method == :Flat_Gadd
+		ExplainMill.flatsfs!(f, ms, scorefun)
+	elseif method == :Flat_Garr
+		ExplainMill.flatsfs!(f, ms, scorefun, random_removal = true)
+	elseif method == :Flat_Garrft
+		ExplainMill.flatsfs!(f, ms, scorefun, random_removal = true, fine_tuning = true)
+	elseif method == :LbyL_HAdd
+		ExplainMill.levelbylevelsearch!(f, ms, scorefun, random_removal = false, fine_tuning = false)
+	elseif method == :LbyL_HArr
+		ExplainMill.levelbylevelsearch!(f, ms, scorefun, random_removal = true, fine_tuning = false)
+	elseif method == :LbyL_HArrft
+		ExplainMill.levelbylevelsearch!(f, ms, scorefun, random_removal = true, fine_tuning = true)
+	elseif method == :Flat_Gadd
+		ExplainMill.levelbylevelsfs!(f, ms, scorefun)
+	elseif method == :Flat_Garr
+		ExplainMill.levelbylevelsfs!(f, ms, scorefun, random_removal = true)
+	elseif method == :Flat_Garrft
+		ExplainMill.levelbylevelsfs!(f, ms, scorefun, random_removal = true, fine_tuning = true)
 	else
 		error("Uknown pruning method $(method)")
 	end
