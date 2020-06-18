@@ -13,3 +13,5 @@ function Base.match(s::String, e, v::T; path = (), verbose = false) where {T<:La
 end
 
 _nocluster(m::LazyModel{N}, ds::LazyNode{N}) where {N} = nobs(ds)
+
+(m::LazyModel)(ds::LazyNode, ::ExplainMill.EmptyMask) = m(ds)

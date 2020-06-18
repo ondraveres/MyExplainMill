@@ -8,20 +8,18 @@ fixunderscore(x::Symbol) = fixunderscore(String(x))
 fixtasks(x::String) = replace(x, "paths" => "1trees")
 
 pruningdict = Dict(
-	:sfsrr => "LbyL-GArr",
-	:oscilatingsfs => "LbyL-GAos",
-	:sfs => "LbyL-GAdd",
-	:flatsfsrr => "GArr",
-	:flatsfsos => "GAos",
-	:flatsfs => "GAdd",
-	:greedy => "HAdd",
-	:importantfirst => "HArr",
-	:oscilatingimportantfirst => "HAos",
-	:breadthfirst2 => "LbyL-HArr",
-	:greedybreadthfirst => "LbyL-HAdd",
-	:oscilatingbreadthfirst => "LbyL-HAos",
-	:abstemious => "ab",
-	:importantlast => "il",
+	:sfsrr => :LbyL_GArr,
+	:oscilatingsfs => :LbyL_GArrft,
+	:sfs => :LbyL_GAdd,
+	:flatsfsrr => :Flat_GArr,
+	:flatsfsos => :Flat_GArrft,
+	:flatsfs => :Flat_GAdd,
+	:greedy => :Flat_HAdd,
+	:importantfirst => :Flat_HArr,
+	:oscilatingimportantfirst => :Flat_HArrft,
+	:breadthfirst2 => :LbyL_HArr,
+	:greedybreadthfirst => :LbyL_HAdd,
+	:oscilatingbreadthfirst => :LbyL_HArrft,
 	)
 
 function fixpruning(x::Symbol)
@@ -101,6 +99,8 @@ function filtercase(df, ranking::String, level_by_level)
 end
 
 df[!,:task] = fixtasks.(df[!,:task])
+df[!,:name] = fixnames.(df[!,:name])
+df[!,:pruning_method] = fixpruning.(df[!,:pruning_method])
 
 function maketable(df)
 	mapreduce(vcat, [false, true]) do b

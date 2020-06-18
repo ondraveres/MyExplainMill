@@ -10,19 +10,16 @@ using Distributed
 
 @everywhere begin 
 	function loadproblem(d, i)
-		try 
-			files = filter(s -> startswith(s, "stats4_"), readdir(joinpath(rdir,d,i)))
-			# files = filter(s -> startswith(s, "gnn_"), readdir(joinpath(rdir,d,i)))
-			isempty(files) && return(DataFrame())
-			os = mapreduce(vcat, files) do f 
+		# files = filter(s -> startswith(s, "stats4_"), readdir(joinpath(rdir,d,i)))
+			files = filter(s -> startswith(s, "gnn_"), readdir(joinpath(rdir,d,i)))
+		isempty(files) && return(DataFrame())
+		os = mapreduce(vcat, files) do f 
+			try 
 				BSON.load(joinpath(rdir,d,i,f))[:exdf]
+			catch
+				println("failed on $(joinpath(rdir,d,i,f))")
+				DataFrame()
 			end
-			exdf = os
-			return(exdf)
-		catch me 
-			println("failed on $d $i")
-			display(me)
-			return(DataFrame())
 		end
 	end
 
@@ -81,8 +78,9 @@ end;
 size.(os)
 os = filter(!isempty, os)
 df = reduce(vcat, os)
-df = filter(r -> r.name != "gnn1000", df)
-# ns = setdiff(names(df), [:dataset, :task, :name, :pruning_method, :n]);
-# df = by(df, [:dataset, :task, :name, :pruning_method, :n], df -> DataFrame([k => mean(skipmissing(df[!,k])) for k in ns]...))
-# serialize("results.jls", df)
-include("show.jl")
+
+heuristic  = [:greedy, :importantfirst, :oscilatingimportantfirst, :greedybreadthfirst, :breadthfirst2, :oscilatingbreadthfirst]
+uninformative = [:flatsfs, :flatsfsrr, :flatsfsos, :sfs, :sfsrr, :oscilatingsfs]
+dff = filter(r -> r.name ∈ ["Rnd", "Grad", "GNN", "Banz", "GNN2"], df)
+dff = filter(r -> r.pruning_method ∈ vcat(heuristic, uninformative), dff)
+

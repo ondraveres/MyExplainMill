@@ -1,5 +1,4 @@
 include("utils.jl")
-include("greedy.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
 

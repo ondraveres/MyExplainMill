@@ -21,5 +21,10 @@ function confidencegap(model, ds, correct_class::Int)
 		ii[1] == i ? x[ii[2]] : x[ii[1]]
 	end
 	o = o[i:i,:] .- mx
-    nobs(ds) == 1 ? o[1] : o
+    o
+end
+
+function confidencegap1(model, ds, correct_class::Int)
+	@assert nobs(ds) == 1 
+	confidencegap(model, ds, correct_class)[1]
 end

@@ -64,6 +64,30 @@ function _fishergrad!(o, z, mm, ois, subm, dt::Vector, subdt, stochastic)
 	n
 end
 
+# function _fishergrad!(o, z, mm, ois, subm, dt::Mill.AbstractNode, subdt, stochastic)
+# 	@assert nobs(dt) == 1
+# 	zz = subm(subdt);
+# 	dd = replacein(dt, subdt, zz);
+# 	f, pds = Mill.partialeval(mm, dd, zz)
+# 	o .= 0
+# 	n = 1
+# 	js = stochastic ? [rand(1:nobs(zz))] : collect(1:nobs(zz))
+# 	for j in js
+# 		t = zz.data[:,j]
+# 		for i in 1:size(z,2)
+# 			zz.data[:,j] .= z[:,i]
+# 			for oi in ois
+# 				gs = gradient(() -> f(pds).data[oi], Params([zz.data]));
+# 				_o = gs[zz.data][:,j]
+# 				o[:,:,i] .+= _o * _o'
+# 			end
+# 			n += 1
+# 		end
+# 		zz.data[:,j] .= t
+# 	end
+# 	n
+# end
+
 function _fishergrad!(o, z, mm, ois, subm, dt::Mill.AbstractNode, subdt, stochastic)
 	@assert nobs(dt) == 1
 	zz = subm(subdt);
@@ -76,15 +100,20 @@ function _fishergrad!(o, z, mm, ois, subm, dt::Mill.AbstractNode, subdt, stochas
 		t = zz.data[:,j]
 		for i in 1:size(z,2)
 			zz.data[:,j] .= z[:,i]
+			y, back = pullback(() -> f(pds).data, Params([zz.data]))
+			sen = deepcopy(y) .= 0
 			for oi in ois
-				gs = gradient(() -> f(pds).data[oi], Params([zz.data]));
+				sen[i] = 1
+				gs = back(sen)
 				_o = gs[zz.data][:,j]
 				o[:,:,i] .+= _o * _o'
+				sen[i] = 0 
 			end
 			n += 1
 		end
 		zz.data[:,j] .= t
 	end
+	o ./= length(ois)
 	n
 end
 

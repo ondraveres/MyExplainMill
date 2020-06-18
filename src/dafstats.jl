@@ -7,6 +7,7 @@ struct DafExplainer
 end
 
 DafExplainer() = DafExplainer(true, false)
+BanzExplainer() = DafExplainer(true, true)
 DafExplainer(b::Bool) = DafExplainer(b, false)
 
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, n, clustering = ExplainMill._nocluster; threshold = 0.1)

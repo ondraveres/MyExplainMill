@@ -29,6 +29,7 @@ function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::
 	end
 
 	random_removal && randomremoval!(f, fullmask)
+	fine_tuning && finetune!(f, fullmask, 5)
 	used = useditems(fullmask)
 	@info "Explanation uses $(length(used)) features out of $(length(fullmask))"
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
