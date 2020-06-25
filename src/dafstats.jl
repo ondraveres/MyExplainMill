@@ -2,32 +2,34 @@
 Fatima, Shaheen S., Michael Wooldridge, and Nicholas R. Jennings. "A linear approximation method for the Shapley value." Artificial Intelligence 172.14 (2008): 1673-1699.
 """
 struct DafExplainer
+	n::Int
 	hard::Bool
 	banzhaf::Bool
 end
 
-DafExplainer() = DafExplainer(true, false)
-BanzExplainer() = DafExplainer(true, true)
-DafExplainer(b::Bool) = DafExplainer(b, false)
+DafExplainer(n::Int) = DafExplainer(n, true, false)
+DafExplainer() = DafExplainer(200)
+BanzExplainer(n::Int) = DafExplainer(n, true, true)
+BanzExplainer() = DafExplainer(200)
 
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = 0.1)
 	soft_model = (ds...) -> softmax(model(ds...));
 	f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
-	stats(e, ds, model, f, n, clustering)
+	stats(e, ds, model, f, clustering)
 end
 
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, clustering = ExplainMill._nocluster; threshold = 0.1)
 	ms = ExplainMill.Mask(ds, model, Duff.Daf, clustering)
 	updatesamplemembership!(ms, nobs(ds))
-	@timeit to "dafstats" dafstats(e, ms, () -> f(ds, ms), n)
+	@timeit to "dafstats" dafstats(e, ms, () -> f(ds, ms))
 end
 
-function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f, n)
+function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f)
 	dafs = []
 	mapmask(pruning_mask) do m
 		m != nothing && push!(dafs, m)
 	end
-	for _j in 1:n
+	for _j in 1:e.n
 		@timeit to "sample!" sample!(pruning_mask)
 		updateparticipation!(pruning_mask)
 		o = @timeit to "evaluate" f()

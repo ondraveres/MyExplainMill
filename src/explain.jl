@@ -6,8 +6,8 @@
 	i is the index of the class which we are explaining and `n` is the number of repetitions / gradient 
 	iterations in the calculation of stats.
 """
-function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
-	ms = ExplainMill.stats(e, ds, model, i, n)
+function explain(e, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
+	ms = ExplainMill.stats(e, ds, model, i)
 	soft_model = ds -> softmax(model(ds))
 	f = if nobs(ds) == 1
 			threshold = (threshold == nothing) ? 0.9*ExplainMill.confidencegap1(soft_model, ds, i) : threshold
@@ -20,8 +20,8 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering
 	ms
 end
 
-function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
-	ms = ExplainMill.stats(e, ds, model, i, n)
+function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
+	ms = ExplainMill.stats(e, ds, model, i)
 	soft_model = ds -> softmax(model(ds))
 	f = if nobs(ds) == 1
 			threshold = (threshold == nothing) ? 0.9*ExplainMill.confidencegap1(soft_model, ds, i) : threshold
@@ -32,4 +32,10 @@ function explain(e::GradExplainer, ds::AbstractNode, model::AbstractMillModel, i
 		end
 	@timeit to "pruning" prune!(f, ms, x -> ExplainMill.scorefun(e, x), pruning_method)
 	ms
+end
+
+
+function explain(e, ds::AbstractNode, model::AbstractMillModel, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
+	i = argmax(softmax(model(ds).data)[:])
+	explain(e, ds, model, clustering; threshold = threshold, pruning_method=pruning_method, gap = gap)
 end

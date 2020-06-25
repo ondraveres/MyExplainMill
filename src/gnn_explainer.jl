@@ -1,13 +1,15 @@
 using Zygote, HierarchicalUtils, Setfield
 
 struct GnnExplainer
+	n::Int
 	α::Float32
 	β::Float32
 end
 
-GnnExplainer() = GnnExplainer(1f0, 5f-3)
+GnnExplainer(n::Int) = GnnExplainer(n, 1f0, 5f-3)
+GnnExplainer(n) = GnnExplainer(200)
 
-function stats(e::GnnExplainer, ds, model, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluster; threshold = 0.1)
 	soft_model = (ds...) -> softmax(model(ds...));
 	mask = ExplainMill.Mask(ds, model, d -> rand(Float32, d, 1), clustering)
 	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))
@@ -17,7 +19,7 @@ function stats(e::GnnExplainer, ds, model, i, n, clustering = ExplainMill._noclu
 	opt = ADAM(0.01, (0.5, 0.999))
 	loss() = Flux.logitcrossentropy(model(ds, mask).data, y)
 	println("logitcrossentropy sample: ", Flux.logitcrossentropy(model(ds).data, y))
-	@timeit to "optimizing mask" for step in 1:n
+	@timeit to "optimizing mask" for step in 1:e.n
 		gs = gradient(loss, ps)
 		for p in ps
 			gs[p] .+= gradient(x -> regularization(x, e.α, e.β), p)[1]
