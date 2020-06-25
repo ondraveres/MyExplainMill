@@ -37,5 +37,5 @@ end
 
 function explain(e, ds::AbstractNode, model::AbstractMillModel, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HAdd, gap = 0.9f0)
 	i = argmax(softmax(model(ds).data)[:])
-	explain(e, ds, model, clustering; threshold = threshold, pruning_method=pruning_method, gap = gap)
+	explain(e, ds, model, i, clustering; threshold = threshold, pruning_method=pruning_method, gap = gap)
 end
