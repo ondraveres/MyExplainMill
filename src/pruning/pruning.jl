@@ -43,6 +43,6 @@ function prune!(f, ms, scorefun, method)
 	elseif method == :Flat_Garrft
 		ExplainMill.levelbylevelsfs!(f, ms, scorefun, random_removal = true, fine_tuning = true)
 	else
-		error("Uknown pruning method $(method)")
+		error("Uknown pruning method $(method). Possible values (Flat_HArr, Flat_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft, LbyL_HAdd, LbyL_HArr, LbyL_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft)")
 	end
 end

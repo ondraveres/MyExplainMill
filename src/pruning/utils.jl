@@ -1,5 +1,4 @@
 function removeexcess!(f, flatmask, ii)
-	@debug "enterring removeexcess"
 	previous =  f()
 	previous < 0 && return(false)
 	changed = false
@@ -7,7 +6,6 @@ function removeexcess!(f, flatmask, ii)
 		flatmask[i] == false && continue
 		flatmask[i] = false
 		o = f()
-		# @show (i,o)
 		if o < 0
 			flatmask[i] = true
 		end
@@ -66,7 +64,7 @@ end
 function addone!(f, flatmask)
 	o = f()
 	best, j =  typemin(o), -1
-	ii = setdiff(1:length(flatmask), ExplainMill.useditems(flatmask))
+	ii = setdiff(findall(participate(flatmask)), useditems(flatmask))
 	for i in ii
 		all(flatmask[i]) && continue
 		flatmask[i] = true
@@ -179,7 +177,7 @@ function finetuneremove!(f, flatmask, n::Int)
 
 	while true
 		!addone!(f, flatmask)
-		if f() > 0
+		if f() >= 0
 			break
 		end
 	end

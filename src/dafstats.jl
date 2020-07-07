@@ -46,11 +46,12 @@ end
 
 function Duff.update!(e::DafExplainer, d::Mask, v::AbstractArray)
 	s = d.stats
-	for i in 1:length(d.mask)
+	m = prunemask(d)
+	for i in 1:length(m)
 		!e.banzhaf && !d.participate[i] && continue
 		f = v[d.outputid[i]]
 		j = _cluster_membership(d.cluster_membership, i)
-		Duff.update!(s, f, d.mask[i] & d.participate[i], j)
+		Duff.update!(s, f, m[i] & d.participate[i], j)
 	end
 end
 

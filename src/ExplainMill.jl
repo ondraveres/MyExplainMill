@@ -49,6 +49,7 @@ include("pruning/pruning.jl")
 include("utils/entropy.jl")
 include("utils/setops.jl")
 include("explain.jl")
+include("distances/fisher.jl")
 
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
