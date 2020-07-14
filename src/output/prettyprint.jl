@@ -51,6 +51,12 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Flux.On
 	end
 end
 
+function extract_scalar_inv(e::E, vals::T) where {E<:ExtractScalar, T<:Vector}
+	# basically inverting the formula in
+	# https://github.com/pevnak/JsonGrinder.jl/blob/master/src/extractors/extractscalar.jl#L34
+	convert.(e.datatype, round.(e.datatype, vals ./ e.s) .+ e.c)
+end
+
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix, E<:ExtractScalar}
 	c = COLORS[(length(pad)%length(COLORS))+1]
 	x = ds.data
@@ -59,10 +65,9 @@ function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix,
 		s = "∅"
 		paddedprint(io, s, color = c)
 	else
-		# todo: check that this is correct, so far I tried it only for empty sets
+		# todo: test if it's behaving correctly, because it looks like it's producing 0 instead of missing data
 		idxs = unique(idxs)
-		d = reversedict(e.keyvalemap)
-		s = join(map(i -> d[i], idxs), " and ")
+		s = join(extract_scalar_inv(e, x[idxs]), " and ")
 		paddedprint(io, s, color = c)
 	end
 end
@@ -109,12 +114,14 @@ function print_explained(io::IO, n::AbstractProductNode, e::E; pad=[]) where {E<
     ks = sort(collect(keys(n.data)))
     for i in 1:(m-1)
         println(io)
-        paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
+		e_name = infer_extr_name(e, ks[i])
+        paddedprint(io, "  ├── $(e_name): ", color=c, pad=pad)
         print_explained(io, n[ks[i]], e[infer_extr_name(e, ks[i])], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
     end
     println(io)
-    paddedprint(io, "  └── $(ks[end]): ", color=c, pad=pad)
-    print_explained(io, n[ks[end]], e[infer_extr_name(e, ks[end])], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
+	e_name = infer_extr_name(e, ks[end])
+    paddedprint(io, "  └── $(e_name): ", color=c, pad=pad)
+    print_explained(io, n[ks[end]], e[e_name], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
 
