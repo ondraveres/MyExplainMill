@@ -98,7 +98,6 @@ function print_explained(io, ds::BagNode, e; pad = [])
 	else
 	    paddedprint(io, "List of\n", color=c)
 	    paddedprint(io, "    └── ", color=c, pad=pad)
-		# @info "explained args" ds.data e.item
 	    print_explained(io, ds.data, e.item, pad = [pad; (c, "      ")])
 	end
 end
@@ -111,12 +110,10 @@ function print_explained(io::IO, n::AbstractProductNode, e::E; pad=[]) where {E<
     for i in 1:(m-1)
         println(io)
         paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
-		# @info "explained args" n[ks[i]] e[ks[i]] ks[i]
         print_explained(io, n[ks[i]], e[infer_extr_name(e, ks[i])], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
     end
     println(io)
     paddedprint(io, "  └── $(ks[end]): ", color=c, pad=pad)
-    # @info "explained args" n[ks[end]] e[ks[end]] ks[end]
     print_explained(io, n[ks[end]], e[infer_extr_name(e, ks[end])], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
