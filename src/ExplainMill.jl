@@ -1,5 +1,6 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux, Zygote
+using HierarchicalUtils
 using JsonGrinder, Setfield
 
 using TimerOutputs
@@ -52,12 +53,10 @@ include("explain.jl")
 include("distances/fisher.jl")
 
 include("hierarchical_utils.jl")
-
-
-export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
-
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false)
 Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
+
+export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
 
 end # module

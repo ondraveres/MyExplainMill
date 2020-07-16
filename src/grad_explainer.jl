@@ -1,7 +1,7 @@
 #####
 #		A hacky immplementation of an explanation using the gradient
 #####
-using Zygote, HierarchicalUtils, Setfield
+using Zygote, Setfield
 
 struct GradExplainer
 end

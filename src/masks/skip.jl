@@ -1,9 +1,6 @@
 struct EmptyMask <: AbstractNoMask
 end
 
-NodeType(::Type{EmptyMask}) = LeafNode()
-noderepr(n::EmptyMask) = "skipped"
-
 function StatsBase.sample!(pruning_mask::EmptyMask)
 end
 

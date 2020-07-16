@@ -1,5 +1,3 @@
-using HierarchicalUtils
-
 function idofnode(n, ns)
 	ii = findall(map(x -> x === n, ns))
 	isempty(ii) && return(0)
@@ -35,7 +33,7 @@ function firstparents(parents_of_interest, nodes2parents)
 end
 
 function parent_structure(ms)
-	nodes = collect(NodeIterator(ms))
+	nodes = NodeIterator(ms) |> collect
 	nodes = filter(n -> !isa(n,ExplainMill.EmptyMask), nodes)
 	nodes = unique(nodes)
 	cs = zeros(Int, length(nodes))

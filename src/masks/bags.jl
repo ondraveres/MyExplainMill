@@ -25,10 +25,6 @@ function Mask(ds::BagNode, initstats; verbose::Bool = false)
 	BagMask(child_mask, ds.bags, Mask(nobs(ds.data), initstats))
 end
 
-NodeType(::Type{T}) where T <: BagMask = SingletonNode()
-children(n::BagMask) = (n.child,)
-childrenfields(::Type{T}) where T <: BagMask = (:child,)
-
 function Base.getindex(m::BagMask, i::Mill.VecOrRange)
     nb, ii = Mill.remapbag(m.bags, i)
     isempty(ii) && return(EmptyMask())

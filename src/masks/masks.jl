@@ -4,9 +4,6 @@ abstract type AbstractNoMask <: AbstractExplainMask end;
 
 RealArray = Union{Vector{T}, Matrix{T}} where {T<:Real}
 
-NodeType(::Type{T}) where T <: AbstractListMask = LeafNode()
-noderepr(n::T) where {T <: AbstractExplainMask} = "$(T.name)"
-
 participate(m::AbstractExplainMask) = participate(m.mask)
 Base.fill!(m::AbstractExplainMask, v) = Base.fill!(m.mask, v)
 Base.fill!(m::AbstractNoMask, v) = nothing

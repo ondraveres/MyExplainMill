@@ -1,20 +1,19 @@
-using Test, ExplainMill, Mill, SparseArrays, Flux, Random, StatsBase
-using ExplainMill: FlatView, index_in_parent
-using ExplainMill: Mask, ProductMask, CategoricalMask, NGramMatrixMask, BagMask, EmptyMask
-"""
-	verifies that all parents are BagMasks (ProductMasks are igonored)
-"""
+# using Test, ExplainMill, Mill, SparseArrays, Flux, Random, StatsBase
+# using ExplainMill: FlatView, index_in_parent
+# using ExplainMill: Mask, ProductMask, CategoricalMask, NGramMatrixMask, BagMask, EmptyMask
 
+"""
+    verifies that all parents are BagMasks (ProductMasks are igonored)
+"""
 function testparentship(masks)
-	ns, ii = [v.first for v in masks],[v.second for v in masks]
-	ii = filter(i -> i != 0, ii)
-	all(map(x -> isa(x, ExplainMill.BagMask), ns[ii]))
+    ns, ii = [v.first for v in masks],[v.second for v in masks]
+    ii = filter(i -> i != 0, ii)
+    all(map(x -> isa(x, ExplainMill.BagMask), ns[ii]))
 end
 
 initstats = d -> ones(d)
 
-ms = Mask(ds, model, d -> collect(d:-1:1), ExplainMill._nocluster);
-
+# ms = Mask(ds, model, d -> collect(d:-1:1), ExplainMill._nocluster);
 @testset "mapping between flat structure and nodes" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(randn(2,5))
@@ -24,6 +23,7 @@ ms = Mask(ds, model, d -> collect(d:-1:1), ExplainMill._nocluster);
 	# ms = Mask(ds, initstats);
 
 	fv = FlatView(ms)
+    @show fv
 
 	@test length(fv) == 25
 	for i in 1:5
@@ -84,6 +84,7 @@ end
 	@test fv.masks[1].first.mask.mask == Bool[1, 1, 0, 0, 1]
 	@test (fv.masks[2]).first.mask.mask== Bool[1, 1, 0, 0, 1, 0, 0, 1, 1, 0]
 end
+
 @testset "index in parent" begin
 	ds = ArrayNode(reshape(collect(1:10), 2, 5))
 	m = Mask(ds, initstats);

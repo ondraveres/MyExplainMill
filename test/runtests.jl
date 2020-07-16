@@ -1,4 +1,11 @@
-using Test, ExplainMill
+using ExplainMill
+# TODO export these?
+using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask, prunemask
+using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
+using Test
+using Mill, Flux
+using Duff
+using SparseArrays
 
 include("maskstructure.jl")
 include("flatmasks.jl")

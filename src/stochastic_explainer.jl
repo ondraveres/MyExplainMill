@@ -1,4 +1,4 @@
-using Zygote, HierarchicalUtils, Setfield
+using Zygote, Setfield
 
 struct StochasticExplainer
 end

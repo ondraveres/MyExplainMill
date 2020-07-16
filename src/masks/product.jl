@@ -34,10 +34,6 @@ function Mask(ds::ProductNode{T,M}, initstats; verbose::Bool = false) where {T<:
 	ProductMask(s)
 end
 
-NodeType(::Type{T}) where T <: ProductMask = InnerNode()
-children(n::ProductMask) = n.childs
-childrenfields(::Type{ProductMask}) = (:childs,)
-
 function mapmask(f, mask::ProductMask{T}) where {T<:NamedTuple}
 	ks = keys(mask.childs)
 	s = (;[k => mapmask(f, mask.childs[k]) for k in ks]...)
