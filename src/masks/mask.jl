@@ -1,3 +1,4 @@
+
 """
 struct Mask{I<:Union{Nothing, Vector{Int}}}
 	mask::Array{Bool,1}
@@ -25,29 +26,33 @@ daf --- Shappley value statistics for each item (cluster of items)
 cluster_membership --- this identifies to which cluster the item belongs to.
 	This is created if clustering of items is on
 """
-struct Mask{I<:Union{Nothing, Vector{Int}}}
+struct Mask{I<:Union{Nothing, Vector{Int}}, D}
 	mask::Array{Bool,1}
 	participate::Array{Bool,1}
 	outputid::Array{Int,1}
-	daf::Daf
+	stats::D
 	cluster_membership::I
 end
 
 participate(m::Mask) = m.participate
-mask(m::Mask) = m.mask
+participate_item(m::Mask{Nothing}) = m.participate
+function participate_item(m::Mask{Vector{Int}})
+	map(1:length(m)) do i 
+		maximum(m.participate[m.cluster_membership .== i])
+	end
+end
 
-Base.getindex(m::Mask{Nothing}, i::Int) = m.mask[i]
-Base.getindex(m::Mask{Vector{Int}}, i::Int) = m.mask[m.cluster_membership .== i]
-Base.setindex!(m::Mask{Nothing}, v, i::Int) = m.mask[i] = v
-Base.setindex!(m::Mask{Vector{Int}}, v, i::Int) = m.mask[m.cluster_membership .== i] .= v
+Base.length(m::Mask) = length(m.stats)
+Base.fill!(m::Mask, v) = Base.fill!(m.mask, v)
+Base.getindex(m::Mask, i) = m.mask[i]
+Base.setindex!(m::Mask, v, i) = m.mask[i] = v
 
 ####
 #	Explaination without clustering, where each item is independent of others
 ####
-Mask(d::Int) = Mask(fill(true, d), fill(true, d), fill(1, d), Daf(d), nothing)
+Mask(d::Int, initstats) = Mask(fill(true, d), fill(true, d), fill(0, d), initstats(d), nothing)
 
-
-function StatsBase.sample!(m::Mask{Nothing})
+function StatsBase.sample!(m::Mask)
 	m.mask .= sample([true, false], length(m.mask))
 end
 
@@ -58,34 +63,29 @@ function normalize_clusterids(x)
 	k2id = Dict([u[i] => i for i in 1:length(u)])
 	map(k -> k2id[k], x)
 end
+
 ####
 #	Explaination, where items are clustered together
 ####
-function Mask(cluster_membership::Vector{Int})
+function Mask(cluster_membership::Vector{T}, initstats) where {T<:Integer} 
 	cluster_membership = normalize_clusterids(cluster_membership)
 	n = length(unique(cluster_membership))
 	!isempty(setdiff(1:n, unique(cluster_membership))) && @show cluster_membership
 	d = length(cluster_membership)
-	Mask(fill(true, d), fill(true, d), fill(1, d), Daf(n), cluster_membership)
+	Mask(fill(true, n), fill(true, d), fill(0, d), initstats(n), cluster_membership)
 end
 
 _cluster_membership(ij::Vector{Int}, i) = ij[i]
 _cluster_membership(ij::Nothing, i) = i
 
-function Duff.update!(d::Mask, v::AbstractArray)
-	s = d.daf
-	for i in 1:length(d.mask)
-		!d.participate[i] && continue
-		f = v[d.outputid[i]]
-		j = _cluster_membership(d.cluster_membership, i)
-		Duff.update!(s, f, d.mask[i], j)
-	end
+function invalidate!(mask::Mask, i)
+	mask.participate[i] .= false
 end
 
-function StatsBase.sample!(m::Mask{Vector{Int64}})
-	ci = m.cluster_membership
-	_mask = sample([true, false], maximum(ci))
-	for (i,k) in enumerate(ci)
-		m.mask[i] = _mask[k]
-	end
-end
+# function StatsBase.sample!(m::Mask{Vector{Int64}})
+# 	ci = m.cluster_membership
+# 	_mask = sample([true, false], maximum(ci))
+# 	for (i,k) in enumerate(ci)
+# 		m.mask[i] = _mask[k]
+# 	end
+# end

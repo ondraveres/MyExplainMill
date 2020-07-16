@@ -1,49 +1,60 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux
-using HierarchicalUtils
-# using Mill: paddedprint, COLORS
-# import Mill: dsprint
+using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux, Zygote
+using JsonGrinder, Setfield
+
 using TimerOutputs
 
 const to = TimerOutput();
 
-abstract type AbstractExplainMask end;
-abstract type AbstractListMask <: AbstractExplainMask end;
+output(ds::ArrayNode) = ds.data
+output(x::AbstractArray) = x
+NNlib.softmax(ds::ArrayNode) = ArrayNode(softmax(ds.data))
 
-participate(m::AbstractExplainMask) = participate(m.mask)
-mask(m::AbstractExplainMask) = mask(m.mask)
-
-function cluster_instances(x)
+function dbscan_cosine(x, ϵ)
 	nobs(x) == 1 && return([1])
 	d = pairwise(CosineDist(), x, dims = 2)
-	dbscan(d, 0.2, 1).assignments
+	dbscan(d, ϵ, 1).assignments
 end
 
-
-function mapmask(f, m::AbstractListMask)
-	(mask = f(m.mask),)
+function idmap(ids::Vector{T}) where{T}
+	d = Dict{T,Vector{Int}}()
+	for (i,v) in enumerate(ids)
+		if haskey(d, v)
+			d[v] = vcat(d[v], [i])
+		else
+			d[v] = [i]
+		end
+	end
+	return(d)
 end
-
-invalidate!(m::AbstractExplainMask) = invalidate!(m, Vector{Int}())
-
-include("mask.jl")
-include("densearray.jl")
-include("sparsearray.jl")
-include("categoricalarray.jl")
-include("NGramMatrix.jl")
-include("skip.jl")
-include("bags.jl")
-include("product.jl")
-include("explain.jl")
-include("removemissing.jl")
-include("prettyprint.jl")
-include("sigmoid.jl")
 
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
-export explain, dafstats, print_explained
+include("masks/masks.jl")
+include("output/logic_output.jl")
+include("output/prettyprint.jl")
+include("dafstats.jl")
+include("gnn_explainer.jl")
+include("const_explainer.jl")
+include("grad_explainer.jl")
+include("stochastic_explainer.jl")
+include("prunemissing.jl")
+include("sigmoid.jl")
+include("predict.jl")
+include("sampler.jl")
+include("stats.jl")
+include("matching.jl")
+include("ensemble.jl")
+include("pruning/pruning.jl")
+include("utils/entropy.jl")
+include("utils/setops.jl")
+include("explain.jl")
+include("distances/fisher.jl")
 
 include("hierarchical_utils.jl")
+
+
+export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
 
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false)
