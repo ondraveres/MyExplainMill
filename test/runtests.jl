@@ -3,7 +3,8 @@ using ExplainMill
 using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask, prunemask
 using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
 using Test
-using Mill, Flux
+using Mill
+using Flux
 using Duff
 using SparseArrays
 
