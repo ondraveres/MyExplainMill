@@ -1,6 +1,3 @@
-using ExplainMill, Flux, Test, Mill
-using ExplainMill: sigmoid, scale201, fuseaffine!, minimax, rescale
-
 @testset "rescaling on basic layers" begin 
 	x = randn(3,100)
 	c_min, c_max = minimax(x)

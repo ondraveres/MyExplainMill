@@ -1,7 +1,3 @@
-# using Test, ExplainMill, Mill, SparseArrays, Flux, Random, StatsBase
-# using ExplainMill: FlatView, index_in_parent
-# using ExplainMill: Mask, ProductMask, CategoricalMask, NGramMatrixMask, BagMask, EmptyMask
-
 """
     verifies that all parents are BagMasks (ProductMasks are igonored)
 """

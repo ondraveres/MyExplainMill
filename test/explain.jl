@@ -1,9 +1,3 @@
-using ExplainMill, Mill, SparseArrays
-using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask
-using Test
-using MLDataPattern
-using StatsBase, Flux, Duff
-
 @testset "test that sampling with clusters as expected" begin
 	m = Mask(fill(true, 4), fill(true, 4), fill(1, 4), Daf(2), [1,2,1,2])
 	for i in 1:10
