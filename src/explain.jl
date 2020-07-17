@@ -87,3 +87,38 @@ function explain(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, ext
 
 	ms
 end
+
+function explainy(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, extractor::JsonGrinder.AbstractExtractor, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0, max_repetitions = 10)
+	i = unique(Flux.onecold(softmax(model(ds).data)))
+	length(i) > 1 && error("We can explain only data with the same output class.")
+	i = only(i)
+	ms = ExplainMill.stats(e, ds, model, i, clustering)
+	soft_model = ds -> softmax(model(ds))
+	tps = [ds[i] for i in 1:nobs(ds)]
+
+	function optfun(tps, fps)
+		yara = ExplainMill.e2boolean(ms, ds, extractor)
+		fval = mean(map(dd -> match(yara, extractor, dd), tps)) - 1
+		isempty(fps) && return(fval)
+		y = any(map(dd -> match(yara, extractor, dd), fps))
+		y ? typeof(fval)(-1) : fval
+	end
+
+	n = 0
+	allfps, fps = similar(negative_ds, 0), similar(negative_ds, 0)
+	while true
+		prune!(() -> optfun(tps, allfps), ms, x -> ExplainMill.scorefun(e, x), pruning_method)
+		fps = filter(ds -> match(yara, extractor, ds), negative_ds)
+		isempty(fps) && break
+		allfps = union(fps, allfps)
+		@info "number of false positives  $(length(fps))"
+		n += 1
+
+		if optfun(fps) < 0
+			@info "Failed to find a feasible explanation"
+			return(nothing)
+		end
+	end
+
+	ms
+end
