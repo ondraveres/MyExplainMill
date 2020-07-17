@@ -20,13 +20,14 @@ islogical(s::Vector) = s
 sortunique(s::Vector{T}) where {T<:AbstractString} = sort(unique(s))
 sortunique(s::Vector{T}) where {T<:Number} = sort(unique(s))
 sortunique(s::Vector{T}) where {T<:Dict} = unique(s)
-function sortunique(s::Vector)
-	if mapreduce(typeof, promote_type, s) <:AbstractString
-		return(sortunique(String.(s)))
-	else 
-		return(unique(s))
-	end
-end
+sortunique(s) = s
+# function sortunique(s::Vector)
+# 	if mapreduce(typeof, promote_type, s) <:AbstractString
+# 		return(sortunique(String.(s)))
+# 	else 
+# 		return(unique(s))
+# 	end
+# end
 
 function repr_boolean(op::Symbol, s::Vector{T}; thin::Bool = true) where {T}
 	s = filter(!isempty, s)

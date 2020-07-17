@@ -1,5 +1,7 @@
 Mask(::T, m::AbstractMillModel, initstats, cluster; verbose::Bool = false) where {T<:LazyNode} = ExplainMill.EmptyMask()
 
+Mask(::T, initstats; verbose::Bool = false) where {T<:LazyNode} = ExplainMill.EmptyMask()
+
 function Base.repr(::MIME{Symbol("text/json")}, ::ExplainMill.EmptyMask, ds::T, e) where {T<:LazyNode}
 	repr_boolean(:and, ds.data)
 end
