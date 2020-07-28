@@ -14,7 +14,7 @@ include("levelbylevel.jl")
 # :oscilatingimportantfirst => "HAos",
 # :breadthfirst2 => "LbyL-HArr",
 # :greedybreadthfirst => "LbyL-HAdd",
-# :oscilatingbreadthfirst => "LbyL-HAos",
+# :oscilatingbreadthfirst => "LbyL_HAos",
 # :abstemious => "ab",
 # :importantlast => "il",
 function prune!(f, ms, scorefun, method)
@@ -36,13 +36,32 @@ function prune!(f, ms, scorefun, method)
 		ExplainMill.levelbylevelsearch!(f, ms, scorefun, random_removal = true, fine_tuning = false)
 	elseif method == :LbyL_HArrft
 		ExplainMill.levelbylevelsearch!(f, ms, scorefun, random_removal = true, fine_tuning = true)
-	elseif method == :Flat_Gadd
+	elseif method == :LbyL_Gadd
 		ExplainMill.levelbylevelsfs!(f, ms, scorefun)
-	elseif method == :Flat_Garr
+	elseif method == :LbyL_Garr
 		ExplainMill.levelbylevelsfs!(f, ms, scorefun, random_removal = true)
-	elseif method == :Flat_Garrft
+	elseif method == :LbyL_Garrft
 		ExplainMill.levelbylevelsfs!(f, ms, scorefun, random_removal = true, fine_tuning = true)
 	else
 		error("Uknown pruning method $(method). Possible values (Flat_HArr, Flat_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft, LbyL_HAdd, LbyL_HArr, LbyL_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft)")
 	end
+end
+
+function prune!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, gap, threshold, method)
+	soft_model(x) = softmax(model(x))
+	if nobs(ds) == 1
+		threshold = (threshold == nothing) ? gap*ExplainMill.confidencegap1(soft_model, ds, i) : threshold
+		f = () -> ExplainMill.confidencegap1(soft_model, ds[ms], i) - threshold
+		return(prune!(f, ms, scorefun, method))
+	end
+
+	threshold = (threshold == nothing) ? gap*ExplainMill.confidencegap(soft_model, ds, i) : threshold
+	if method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
+		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
+		return(prune!(f, ms, scorefun, method))
+	end
+
+	fine_tuning = method == :LbyL_HArrft
+	random_removal = method ∈ [:LbyL_HArr, :LbyL_HArrft]
+	levelbylevelsearch!(ms, model, ds, threshold, i, scorefun; fine_tuning = fine_tuning, random_removal = random_removal)
 end

@@ -19,7 +19,7 @@ end
 
 	model = reflectinmodel(ds, d -> Dense(d, 1))
 
-	pruning_mask = Mask(ds)
+	pruning_mask = Mask(ds, d -> DafStats(d))
 	dafs = []
 	mapmask(pruning_mask) do m
 		m != nothing && push!(dafs, m)

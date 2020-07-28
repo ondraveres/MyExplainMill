@@ -27,7 +27,7 @@ function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluste
 		Flux.Optimise.update!(opt, ps, gs)
 		# mod(step, 100) == 0 && (print("step: ",step);iteration_stats(model, ds, mask, y, ps))
  	end
- 	print("step: ",n); iteration_stats(model, ds, mask, y, ps)
+ 	print("step: ", e.n); iteration_stats(model, ds, mask, y, ps)
  	mask
 end
 
