@@ -72,7 +72,7 @@ GradExplainer2() = GradExplainer2(0.999f0)
 
 iσ(p) =  log(p) - log(1-p);
 
-function stats(e::GradExplainer2, ds, model, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::GradExplainer2, ds, model, i, clustering = ExplainMill._nocluster)
 	soft_model = (ds...) -> softmax(model(ds...));
 	mask = ExplainMill.Mask(ds, model, d -> fill(iσ(e.p), d, 1), clustering)
 	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))
@@ -95,7 +95,7 @@ end
 
 GradExplainer3() = GradExplainer3(0.999f0)
 
-function stats(e::GradExplainer3, ds, model, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::GradExplainer3, ds, model, i, clustering = ExplainMill._nocluster)
 	soft_model = (ds...) -> softmax(model(ds...));
 	mask = ExplainMill.Mask(ds, model, d -> fill(iσ(e.p), d, 1), clustering)
 	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))

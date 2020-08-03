@@ -3,7 +3,7 @@ using Random
 function flatsearch!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true, participateonly::Bool = false, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true) where {T<:Number}
 	ii = participateonly ? sortindices(findall(participate(fv)), significance, rev = rev) : sortperm(significance, rev = rev)
 	fill!(fv, false)
-	addminimum!(f, fv, significance, ii, strict_improvement = false)
+	addminimumbi!(f, fv, significance, ii)
 	used = useditems(fv)
 	@info "flatsearch: output = $(f()) added $(length(used)) features"
 	@assert all(fv[used])

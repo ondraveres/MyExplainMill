@@ -14,6 +14,15 @@ function removeexcess!(f, flatmask, ii)
 	return(changed)
 end
 
+"""
+	addminimum!(f, flatmask, significance, ii; strict_improvement::Bool = true)
+
+	turns on first `k` subtrees (also called features or how you like it)
+	such that the output of `f` is greater or equal than zero. The search 
+	is performed linearly from start to `k`, which means that complexity
+	is `O(n)`, where `n` is length of `ii`.
+	ii --- are indexes that are flipped in `flatmask` during the search
+"""
 function addminimum!(f, flatmask, significance, ii; strict_improvement::Bool = true)
 	changed = false
 	previous =  f()
@@ -35,25 +44,39 @@ function addminimum!(f, flatmask, significance, ii; strict_improvement::Bool = t
 	return(changed)
 end
 
-function addminimumbi!(f, flatmask, significance, ii; strict_improvement::Bool = true)
-	changed = false
+function setflatmask!(flatmask, ii, mid)
+	foreach(i -> flatmask[ii[i]] = true, 1:mid)
+	foreach(i -> flatmask[ii[i]] = false, mid + 1:length(ii))
+end
+
+"""
+	addminimumbi!(f, flatmask, significance, ii; strict_improvement::Bool = true)
+
+	turns on first `k` subtrees (also called features or how you like it)
+	such that the output of `f` is greater or equal than zero. The search 
+	is performed by bisection, which means that the complexity
+	is `O(log(n))`, where `n` is length of `ii`.
+	ii --- are indexes that are flipped in `flatmask` during the search
+"""
+function addminimumbi!(f, flatmask, significance, ii)
 	previous =  f()
-	previous > 0 && return(changed)
-	for i in ii
-		all(flatmask[i]) && continue
-		flatmask[i] = true
+	previous > 0 && return(false)
+	right = length(ii)
+	left = 1
+	while true
+		# @show (left, right, right - left)
+		right - left <= 1 && break
+		mid = left + div(right - left, 2)
+		setflatmask!(flatmask, ii, mid)
 		o = f()
-		if strict_improvement && o <= previous
-			flatmask[i] = false
-		else 
-			previous = o
-			changed = true
-		end
 		if o >= 0
-			break
+			right = mid 
+		else
+			left = mid
 		end
 	end
-	return(changed)
+	setflatmask!(flatmask, ii, right)
+	return(true)
 end
 
 """
