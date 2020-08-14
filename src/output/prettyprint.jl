@@ -54,7 +54,17 @@ end
 function extract_scalar_inv(e::E, vals::T) where {E<:ExtractScalar, T<:Vector}
 	# basically inverting the formula in
 	# https://github.com/pevnak/JsonGrinder.jl/blob/master/src/extractors/extractscalar.jl#L34
-	convert.(e.datatype, round.(e.datatype, vals ./ e.s) .+ e.c)
+	if e.datatype <: Integer
+		return convert.(e.datatype, round.(e.datatype, vals ./ e.s) .+ e.c)
+	else
+		convert.(e.datatype, vals ./ e.s .+ e.c)
+	end
+end
+
+# shortcuit for skipping child in case of single child of dict
+function ExplainMill.print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
+	nchildren(e) > 1 && error("This really should not be happening")
+	print_explained(io, ds, e.other |> values |> first, pad = pad)
 end
 
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix, E<:ExtractScalar}
