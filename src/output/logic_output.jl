@@ -1,4 +1,4 @@
-OR(xs) = length(xs) > 1 ? Dict(:or => xs) : xs
+OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : xs
 
 """
 	addor(m::Mask, x)
@@ -11,10 +11,10 @@ OR(xs) = length(xs) > 1 ? Dict(:or => xs) : xs
 """
 addor(m, x) = addor(m, x, participate(m) .& prunemask(m))
 
-function addor(m::Mask{I, D}, x, active)
+function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	xi = m.cluster_membership[active]
 	map(1:length(x)) do i
-		OR(x[xi .== xi[i]])
+		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
 	end
 end
 
@@ -22,21 +22,24 @@ addor(m::Mask{I, D}, x::Missing, active)  where {I<: Vector{Int}, D}= missing
 addor(m::Mask{I, D}, x, active) where {I<: Nothing, D} = x
 addor(m::Mask{I, D}, x::Missing, active) where {I<: Nothing, D}  = missing
 
-# function yarason(m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
-# 	length(e.other) > 1 &&  @error "This should not happen"
-# 	k = collect(keys(e.other))[1]
-# 	yarason(m, ds, e.other[k])
+# below is the version, where "unknown keys are not exported"
+# function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical) where {T<:Flux.OneHotMatrix}
+# 	contributing = participate(m) .& prunemask(m)
+# 	items = map(i -> i.ix, ds.data.data)
+# 	d = reversedict(e.keyvalemap);
+# 	contributing = contributing .& map(i -> haskey(d, i), items)
+# 	!any(contributing) && return(missing)
+# 	idxs = map(i -> d[i], items[contributing])
+# 	addor(m.mask, idxs, contributing)
 # end
 
-
-function yarason(m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Flux.OneHotMatrix}
+function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical, exportobs = fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix}
 	contributing = participate(m) .& prunemask(m)
 	items = map(i -> i.ix, ds.data.data)
-	contributing = contributing .& filter(i -> haskey(d, i), idxs)
+	!any(contributing) && return(fill(missing, sum(exportobs)))
 	d = reversedict(e.keyvalemap);
-	!any(contributing) && return(missing)
-	idxs = map(i -> d[i], items[contributing])
-	addor(m.mask, idxs, contributing)
+	idxs = map(i -> contributing[i] ? get(d, items[i], "__UNKNOWN__") : missing, findall(exportobs))
+	addor(m.mask, idxs, exportobs)
 end
 
 # function yarason(m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Matrix}
@@ -47,19 +50,24 @@ end
 # 	Dict([Symbol(i) => "["*join(ds.data[i,:],",")*"]" for i in items])
 # end
 
-# function yarason(ds::ArrayNode{T}, m, e) where {T<:Matrix}
-# 	error("")
-# 	return(Dict{Symbol,String}())
-# end
-
-# function repr(::MIME"text/json":SparseArrayMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e) where {T<:Mill.NGramMatrix}
+function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
 	contributing =  participate(m) .& prunemask(m)
-	addor(m.mask, ds.data.s[contributing], contributing)
+	x = map(i -> contributing[i] ? ds.data.s[i] : missing, exportobs)
+	addor(m.mask, x, exportobs)
 end
 
-function yarason(ds::ArrayNode{T}, m::EmptyMask, e) where {T<:Mill.NGramMatrix}
-	ds.data.s
+function yarason(ds::ArrayNode{T}, m::EmptyMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
+	ds.data.s[exportobs]
+end
+
+function yarason(ds::LazyNode, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds)))
+	contributing =  participate(m) .& prunemask(m)
+	x = map(i -> contributing[i] ? ds.data[i] : missing, exportobs)
+	addor(m.mask, x, exportobs)
+end
+
+function yarason(ds::LazyNode, m::EmptyMask, e, exportobs = fill(true, nobs(ds)))
+	ds.data[exportobs]
 end
 
 # function yarason(m::Mask, ds::ArrayNode, e::ExtractDict)
@@ -68,7 +76,7 @@ end
 # 	repr_boolean(:and, unique(s))
 # end
 
-function yarason(ds::BagNode, m::AbstractExplainMask, e::ExctractBag)
+function yarason(ds::BagNode, m::AbstractExplainMask, e::ExtractArray)
     ismissing(ds.data) && return(missing)
 
     #get indexes of contributing clusters

@@ -1,5 +1,10 @@
 [![Build Status](https://teamcity.int.avast.com/app/rest/builds/buildType:VirusLab_AiResearch_Skunk_ExplainMill_Test/statusIcon)](https://teamcity.int.avast.com/viewType.html?buildTypeId=VirusLab_AiResearch_Skunk_ExplainMill_Test)
 
+# TODO
+
+* Should we explicitly model missing in categorical variable as an n + 2 item?
+* Remove skipping of Dictionary in JsonGrinder and replace it with the IdentityModel()
+
 # ExplainMill.jl
 
 This library provides an explanation of hierarchical multi-instance learning
@@ -87,6 +92,12 @@ Adding a support for new type of nodes (lists) is currently involved and it
 might undergo further changes. At the moment, it is simple to take it out of
 the explanation. For example if we want to remove PathNode from explanation,
 define constructor as `Duff.Daf(::PathNode) = ExplainMill.SkipDaf()`
+
+##Design thoughts on logic output
+
+* We need to carry observations that will be exported downward, otherwise skipped explanation and export of arrays would not work properly. This can get into interesting situations, where 
+- something can be present because of the upper mask but missing because of the lower mask. In this case, I will emit missing
+
 
 ---
 
