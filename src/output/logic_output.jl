@@ -1,4 +1,5 @@
-OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : xs
+using FillArrays
+OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : only(xs)
 
 """
 	addor(m::Mask, x)
@@ -9,8 +10,6 @@ OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : xs
 	`m` is the mask and 
 	`x` is the output of the explanation of bottom layers
 """
-addor(m, x) = addor(m, x, participate(m) .& prunemask(m))
-
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	xi = m.cluster_membership[active]
 	map(1:length(x)) do i
@@ -21,53 +20,43 @@ end
 addor(m::Mask{I, D}, x::Missing, active)  where {I<: Vector{Int}, D}= missing
 addor(m::Mask{I, D}, x, active) where {I<: Nothing, D} = x
 addor(m::Mask{I, D}, x::Missing, active) where {I<: Nothing, D}  = missing
+addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
+addor(m::EmptyMask, x, active) = x
 
-# below is the version, where "unknown keys are not exported"
-# function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical) where {T<:Flux.OneHotMatrix}
-# 	contributing = participate(m) .& prunemask(m)
-# 	items = map(i -> i.ix, ds.data.data)
-# 	d = reversedict(e.keyvalemap);
-# 	contributing = contributing .& map(i -> haskey(d, i), items)
-# 	!any(contributing) && return(missing)
-# 	idxs = map(i -> d[i], items[contributing])
-# 	addor(m.mask, idxs, contributing)
-# end
+
+"""
+	contributing(m)
+	
+	returns a mask of items contributing to the explanation
+"""
+contributing(m::AbstractExplainMask, l) = participate(m) .& prunemask(m)
+contributing(m::EmptyMask, l) = Fill(true, l)
 
 function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical, exportobs = fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix}
-	contributing = participate(m) .& prunemask(m)
+	c = contributing(m, nobs(ds))
 	items = map(i -> i.ix, ds.data.data)
-	!any(contributing) && return(fill(missing, sum(exportobs)))
+	!any(c) && return(fill(missing, sum(exportobs)))
 	d = reversedict(e.keyvalemap);
-	idxs = map(i -> contributing[i] ? get(d, items[i], "__UNKNOWN__") : missing, findall(exportobs))
-	addor(m.mask, idxs, exportobs)
+	idxs = map(i -> c[i] ? get(d, items[i], "__UNKNOWN__") : missing, findall(exportobs))
+	addor(m, idxs, exportobs)
 end
 
-# function yarason(m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Matrix}
-# 	items = participate(m) .& prunemask(m)
-# 	items = findall(items)
-# 	items = filter(i -> any(ds.data[i,:] .!= 0), items)
-# 	isempty(items) && return(missing)
-# 	Dict([Symbol(i) => "["*join(ds.data[i,:],",")*"]" for i in items])
-# end
+function yarason(ds::ArrayNode{T}, m::AbstractExplainMask,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
+	items = findall(contributing(m, size(ds.data,1)))
+	x = map(j -> ds.data[items,j], findall(exportobs))
+	addor(m, x, exportobs)
+end
 
 function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
-	contributing =  participate(m) .& prunemask(m)
-	x = map(i -> contributing[i] ? ds.data.s[i] : missing, exportobs)
-	addor(m.mask, x, exportobs)
-end
-
-function yarason(ds::ArrayNode{T}, m::EmptyMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
-	ds.data.s[exportobs]
+	c =  contributing(m, nobs(ds))
+	x = map(i -> c[i] ? ds.data.s[i] : missing, findall(exportobs))
+	addor(m, x, exportobs)
 end
 
 function yarason(ds::LazyNode, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds)))
-	contributing =  participate(m) .& prunemask(m)
-	x = map(i -> contributing[i] ? ds.data[i] : missing, exportobs)
-	addor(m.mask, x, exportobs)
-end
-
-function yarason(ds::LazyNode, m::EmptyMask, e, exportobs = fill(true, nobs(ds)))
-	ds.data[exportobs]
+	c =  contributing(m, nobs(ds))
+	x = map(i -> c[i] ? ds.data[i] : missing, findall(exportobs))
+	addor(m, x, exportobs)
 end
 
 # function yarason(m::Mask, ds::ArrayNode, e::ExtractDict)
@@ -79,21 +68,21 @@ end
 function yarason(ds::BagNode, m::AbstractExplainMask, e::ExtractArray)
     ismissing(ds.data) && return(missing)
 
-    #get indexes of contributing clusters
-	contributing = participate(m) .& prunemask(m)
-	!any(contributing) && return(missing)
+    #get indexes of c clusters
+	c = participate(m) .& prunemask(m)
+	!any(c) && return(missing)
 	ss = yarason(ds.data, m.child, e.item)
-	addor(m.mask, ss, contributing)
+	addor(m, ss, c)
 end
 
 function yarason(ds::BagNode, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField)
     ismissing(ds.data) && return(missing)
 
-    #get indexes of contributing clusters
-	contributing = participate(m) .& prunemask(m)
-	all(.!contributing) && return(missing)
+    #get indexes of c clusters
+	c = participate(m) .& prunemask(m)
+	all(.!c) && return(missing)
 	ss = yarason(ds.data, m.child, e.item)
-	addor(m.mask, ss, contributing)
+	addor(m, ss, c)
 end
 
 yarason(ds::BagNode, m::EmptyMask, e::JsonGrinder.ExtractKeyAsField) = missing
