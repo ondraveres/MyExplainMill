@@ -1,15 +1,6 @@
 import Base.repr
-child_mask(m::BagMask) = m.child
-function child_mask(m::BagMask{C,B}) where {C<:EmptyMask, B}
-	m.mask
-end
 
 OR(xs) = length(xs) > 1 ? Dict(:or => xs) : xs
-
-function child_mask(m::EmptyMask)
-	@error "How did I get to here"
-	EmptyMask()
-end
 
 """
 	addor(m::Mask, x)
@@ -85,7 +76,7 @@ function yarason(ds::BagNode, m::AbstractExplainMask, e::ExctractBag)
     #get indexes of contributing clusters
 	contributing = participate(m) .& prunemask(m)
 	!any(contributing) && return(missing)
-	ss = yarason(ds.data, child_mask(m), e.item)
+	ss = yarason(ds.data, m.child, e.item)
 	addor(m.mask, ss, contributing)
 end
 
@@ -95,7 +86,7 @@ function yarason(ds::BagNode, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyA
     #get indexes of contributing clusters
 	contributing = participate(m) .& prunemask(m)
 	all(.!contributing) && return(missing)
-	ss = yarason(ds.data, child_mask(m), e.item)
+	ss = yarason(ds.data, m.child, e.item)
 	addor(m.mask, ss, contributing)
 end
 
