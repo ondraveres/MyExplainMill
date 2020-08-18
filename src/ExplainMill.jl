@@ -1,5 +1,5 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux, Zygote
+using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote
 using HierarchicalUtils
 using JsonGrinder, Setfield
 
