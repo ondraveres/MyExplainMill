@@ -1,5 +1,3 @@
-import Base.repr
-
 OR(xs) = length(xs) > 1 ? Dict(:or => xs) : xs
 
 """
