@@ -1,5 +1,9 @@
 using FillArrays
-OR(xs) = length(xs) > 1 ? LogicalOR(filter(!ismissing, xs)) : only(xs)
+function OR(xs)
+	xs = filter(!ismissing, xs)
+	isempty(xs) && return(missing)
+	length(xs) > 1 ? LogicalOR(xs) : only(xs)
+end
 OR(xs::Missing) = missing
 struct LogicalOR{T}
 	x::T
