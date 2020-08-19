@@ -1,10 +1,11 @@
 using FillArrays
-# OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
-struct OR{T}
+OR(xs) = length(xs) > 1 ? LogicalOR(filter(!ismissing, xs)) : only(xs)
+OR(xs::Missing) = missing
+struct LogicalOR{T}
 	x::T
 end
-Base.:(==)(e1::OR, e2::OR) = e1.x == e2.x
-Base.show(io::IO, mime::MIME"text/plain", a::OR) = println(io, "OR: ",a.x)
+Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.x == e2.x
+Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.x)
 
 # OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
 
@@ -20,9 +21,7 @@ Base.show(io::IO, mime::MIME"text/plain", a::OR) = println(io, "OR: ",a.x)
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	xi = m.cluster_membership[active]
 	map(1:length(x)) do i
-		ismissing(x[i]) && return(missing)
-		v = x[xi .== xi[i]]
-		length(v) > 1 ? OR(v) : only(v)
+		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
 	end
 end
 
