@@ -1,9 +1,10 @@
 [![Build Status](https://teamcity.int.avast.com/app/rest/builds/buildType:VirusLab_AiResearch_Skunk_ExplainMill_Test/statusIcon)](https://teamcity.int.avast.com/viewType.html?buildTypeId=VirusLab_AiResearch_Skunk_ExplainMill_Test)
 
-# TODO
+# Discussion
 
 * Should we explicitly model missing in categorical variable as an n + 2 item?
 * Remove skipping of Dictionary in JsonGrinder and replace it with the IdentityModel()
+* Should we remove automatic joining of scalars and leave it up to mill to "handle" scalars as IdentityModel?
 
 # ExplainMill.jl
 

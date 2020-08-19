@@ -118,9 +118,43 @@ end
 		an = LazyNode(:Test,["a","b","c","d","e"])
 		am = Mask(an, d -> rand(d))
 
-
 		@test matcharrays(yarason(an, am, e) , ["a","b","c","d","e"])
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , ["a","c"])
 		@test matcharrays(yarason(an, am, e, [false, false, false, false, false]) , [])
+
 	end
+
+	@testset "Bags" begin
+		e = ExtractCategorical(["a","b","c","d"])
+		e = ExtractArray(e)
+		an = reduce(catobs, e.([["a","b"],["c"],["d","e"]]))
+		am = Mask(an, d -> rand(d))
+
+		@test matcharrays(yarason(an, am, e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [false, true, false]) , [["c"]])
+
+		am.mask.mask .= [true,false,true,false,true]
+		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
+
+		am.mask.mask .= false
+		@test matcharrays(yarason(an, am, e) , fill([], 3))
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , fill([], 2))
+
+		am.mask.mask .= true
+		am.child.mask.mask .= [true,false,true,false,true]
+		@test matcharrays(yarason(an, am, e) , [["a", missing], ["c"], [missing, "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", missing], [missing, "__UNKNOWN__"]])
+		am.mask.mask .= [true,false,true,false,true]
+		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
+
+		am.mask.mask .= true
+		am.child.mask.mask .= false
+		@test matcharrays(yarason(an, am, e) , [[missing, missing], [missing], [missing, missing]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing, missing], [missing, missing]])
+	end
+
+	
 end

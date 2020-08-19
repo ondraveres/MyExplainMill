@@ -61,39 +61,46 @@ function yarason(ds::LazyNode, m::AbstractExplainMask, e, exportobs = fill(true,
 	addor(m, x, exportobs)
 end
 
+# This hack is needed for cases, where scalars are joined to a single matrix
 # function yarason(m::Mask, ds::ArrayNode, e::ExtractDict)
 # 	ks = keys(e.vec)
 # 	s = join(map(i -> "$(i[1]) = $(i[2])" , zip(ks, ds.data[:])))
 # 	repr_boolean(:and, unique(s))
 # end
 
-function yarason(ds::BagNode, m::AbstractExplainMask, e::ExtractArray)
-    ismissing(ds.data) && return(missing)
+function yarason(ds::BagNode, m::AbstractExplainMask, e::ExtractArray, exportobs = fill(true, nobs(ds)))
+    ismissing(ds.data) && return(fill(missing, sum(exportobs)))
+    nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
 
     #get indexes of c clusters
-	c = participate(m) .& prunemask(m)
-	!any(c) && return(missing)
-	ss = yarason(ds.data, m.child, e.item)
-	addor(m, ss, c)
+	present_childs = contributing(m, nobs(ds.data))
+	for b in ds.bags[.!exportobs]
+	    present_childs[b] .= false
+	end
+
+	x = yarason(ds.data, m.child, e.item, present_childs)
+	x = addor(m, x, present_childs)
+	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
+	map(b -> x[b], bags)
 end
 
-function yarason(ds::BagNode, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField)
-    ismissing(ds.data) && return(missing)
+# function yarason(ds::BagNode, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField)
+#     ismissing(ds.data) && return(missing)
 
-    #get indexes of c clusters
-	c = participate(m) .& prunemask(m)
-	all(.!c) && return(missing)
-	ss = yarason(ds.data, m.child, e.item)
-	addor(m, ss, c)
-end
+#     #get indexes of c clusters
+# 	c = contributing(m, nobs(ds.data))
+# 	all(.!c) && return(missing)
+# 	ss = yarason(ds.data, m.child, e.item)
+# 	addor(m, ss, c)
+# end
 
-yarason(ds::BagNode, m::EmptyMask, e::JsonGrinder.ExtractKeyAsField) = missing
+# yarason(ds::BagNode, m::EmptyMask, e::JsonGrinder.ExtractKeyAsField) = missing
 
-function yarason(m::EmptyMask, ds::BagNode, e)
-    ismissing(ds.data) && return(missing)
-    nobs(ds.data) == 0 && return(missing)
-    yarason(ds.data, m, e.item);
-end
+# function yarason(m::EmptyMask, ds::BagNode, e)
+#     ismissing(ds.data) && return(missing)
+#     nobs(ds.data) == 0 && return(missing)
+#     yarason(ds.data, m, e.item);
+# end
 
 function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(missing)
