@@ -100,13 +100,12 @@ end
 #     yarason(ds.data, m, e.item);
 # end
 
-function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(missing)
 	s = map(sort(collect(keys(ds.data)))) do k
-        subs = yarason(m[k], ds[k], e[k])
-        isempty(subs) ? nothing : k => subs
+        k => yarason(ds[k], m[k], e[k], exportobs)
     end
-    Dict(filter(!isnothing, s))
+    Dict(s)
 end
 
 function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField) where {T<:NamedTuple, M}

@@ -13,6 +13,19 @@ function matcharrays(a::Vector, b::Vector)
 	all(matcharrays(a[i],b[i]) for i in 1:length(a))
 end
 
+function matcharrays(a::Dict, b::Dict)
+	ks = union(keys(a), keys(b))
+	!isempty(setdiff(ks,keys(a))) && (@info "different keys";return(false))
+	!isempty(setdiff(ks,keys(b))) && (@info "different keys";return(false))
+	for i in ks
+		if !matcharrays(a[i],b[i])
+			@info "different in key $i"
+			return(false)
+		end
+	end
+	true
+end
+
 @testset "logical output" begin 
 	@testset "OR relationship" begin 
 		xs = ["a","b","c","d","e"]
@@ -62,7 +75,7 @@ end
 	end
 
 	@testset "NGramMatrix" begin
-	e = nothing
+		e = nothing
 		an = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 		am = Mask(an, d -> rand(d))
 		@test matcharrays(yarason(an, am, e), ["a","b","c","d","e"])
@@ -159,6 +172,35 @@ end
 		@test matcharrays(yarason(an, am, e) , [[missing, missing], [missing], [missing, missing]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing, missing], [missing, missing]])
 	end
+
+	@testset "Product" begin
+		e = ExtractDict(nothing, Dict(:a => ExtractCategorical(["ca","cb","cc","cd"]), 
+			:b => ExtractString(String)))
+		s = map(x -> Dict(:a => x[1], :b => x[2]), zip(["ca","cb","cc","cd","ce"], ["sa","sb","sc","sd","se"]))
+		an = reduce(catobs,e.(s))
+		am = Mask(an, d -> rand(d))
+
+		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
+		@test matcharrays(yarason(an, EmptyMask(), e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
+		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
+		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
+
+		am[:a].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", missing, "cc", missing, "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
+		am[:b].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", missing, "cc", missing, "__UNKNOWN__"],:b => ["sa", missing, "sc", missing, "se"]))
+		am[:a].mask.mask .= true
+		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", missing, "sc", missing, "se"]))
+
+		am[:a].mask.mask .= true
+		am[:b].mask.mask .= true
+		am[:a].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , Dict(:a => ["ca", missing],:b => ["sa", "sd"]))
+		am[:b].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , Dict(:a => ["ca", missing],:b => ["sa", missing]))
+		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
+	end
+
 
 	
 end

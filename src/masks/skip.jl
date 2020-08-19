@@ -6,6 +6,8 @@ function Base.getproperty(F::EmptyMask, d::Symbol)
 	error("EmptyMask does not have a property $(d)")
 end
 
+Base.getindex(m::EmptyMask,i...) = EmptyMask()
+
 function StatsBase.sample!(pruning_mask::EmptyMask)
 end
 
