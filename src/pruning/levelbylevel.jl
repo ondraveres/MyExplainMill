@@ -20,6 +20,7 @@ function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::
 	max_depth = maximum(dp)
 	fullmask = FlatView(ms)
 	fill!(fullmask, true)
+	f() < 0 && error("cannot explain when full sample has negative output")
 	for j in 1:max_depth
 		m = masks[dp .== j]
 		isempty(m) && continue
@@ -51,6 +52,7 @@ function levelbylevelsearch!(ms::AbstractExplainMask, model::AbstractMillModel, 
 	fullmask = FlatView(ms)
 	fill!(fullmask, true)
 	f = () -> sum(min.(ExplainMill.confidencegap(ds -> softmax(model(ds)), ds[ms], i) .- threshold, 0))
+	f() < 0 && error("cannot explain when full sample has negative output")
 	for j in 1:max_depth
 		levelmasks = masks[dp .== j]
 		isempty(levelmasks) && continue
@@ -87,6 +89,7 @@ function levelbylevelsfs!(f, ms::AbstractExplainMask, scorefun; fine_tuning::Boo
 	max_depth = maximum(dp)
 	fullmask = FlatView(ms)
 	fill!(fullmask, true)
+	f() < 0 && error("cannot explain when full sample has negative output")
 	for j in 1:max_depth
 		m = masks[dp .== j]
 		isempty(m) && continue
