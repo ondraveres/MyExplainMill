@@ -32,16 +32,16 @@ end
 		m = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 
 		c = participate(m) .& prunemask(m)
-		@test addor(m, xs[c], c) == [OR(["a", "e"]), OR(["b", "d"]), "c", OR(["b", "d"]), OR(["a", "e"]),]
+		@test matcharrays(addor(m, xs[c], c), [OR(["a", "e"]), OR(["b", "d"]), "c", OR(["b", "d"]), OR(["a", "e"])])
 		m.mask[1] = false
 		c = participate(m) .& prunemask(m)
-		@test addor(m, xs[c], c) == [OR(["b", "d"]), "c", OR(["b", "d"])]
+		@test matcharrays(addor(m, xs[c], c), [OR(["b", "d"]), "c", OR(["b", "d"])])
 		m.mask[1:2] = [true,false]
 		c = participate(m) .& prunemask(m)
-		@test addor(m, xs[c], c) == [OR(["a", "e"]), "c", OR(["a", "e"]),]
+		@test matcharrays(addor(m, xs[c], c), [OR(["a", "e"]), "c", OR(["a", "e"])])
 		m.mask[2:3] = [true, false]
 		c = participate(m) .& prunemask(m)
-		@test addor(m, xs[c], c) == [OR(["a", "e"]), OR(["b", "d"]), OR(["b", "d"]), OR(["a", "e"])]
+		@test matcharrays(addor(m, xs[c], c), [OR(["a", "e"]), OR(["b", "d"]), OR(["b", "d"]), OR(["a", "e"])])
 
 		m = ExplainMill.Mask(5, d -> zeros(d))
 		m.mask[1] = false
@@ -69,16 +69,6 @@ end
 		@test matcharrays(yarason(an, am, e),   [[1.5, 1.5], [1.0, 2.0], [2.5, 1.0], [1.0, 3.0], [3.5, 1.0]])
 		am.mask.mask[1] = false
 		@test matcharrays(yarason(an, am, e),   [[missing, 1.5], [missing, 2.0], [missing, 1.0], [missing, 3.0], [missing, 1.0]])
-	end
-
-	@testset "Sparse" begin
-		an = ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0]))
-		am = Mask(an, d -> rand(d))
-
-		@test_broken matcharrays(yarason(an, am, nothing),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
-		am.mask.mask[1] = false
-		@test_broken matcharrays(yarason(an, am, nothing),   [[1], [2], [0], [4], [0]])
-		@test_broken matcharrays(yarason(an, am, nothing, [true, false, true, false, true]),   [[1], [0], [0]])
 	end
 
 	@testset "NGramMatrix" begin

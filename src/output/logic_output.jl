@@ -1,5 +1,12 @@
 using FillArrays
-OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : only(xs)
+# OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
+struct OR{T}
+	x::T
+end
+Base.:(==)(e1::OR, e2::OR) = e1.x == e2.x
+Base.show(io::IO, mime::MIME"text/plain", a::OR) = println(io, "OR: ",a.x)
+
+# OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
 
 """
 	addor(m::Mask, x)
@@ -13,7 +20,9 @@ OR(xs) = length(xs) > 1 ? Dict(:or => filter(!ismissing, xs)) : only(xs)
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	xi = m.cluster_membership[active]
 	map(1:length(x)) do i
-		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
+		ismissing(x[i]) && return(missing)
+		v = x[xi .== xi[i]]
+		length(v) > 1 ? OR(v) : only(v)
 	end
 end
 
@@ -41,11 +50,25 @@ function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical
 	addor(m, idxs, exportobs)
 end
 
+"""
+	unscale(x,e)
+
+	original values of `x` before the extraction by `e` in json
+"""
 unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
 unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
 unscale(x, e) = x
 
-function yarason(ds::ArrayNode{T}, m::AbstractExplainMask,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
+"""
+	yarason(ds, m, e, exportobs::Vector{Bool})
+
+	Values for items in `ds` corresponding to `true` in `prunemask(m)` 
+	and `participating(m)`, or `missing` otherwise. Values are exported 
+	only for those indicated in binary mask `exportobs`. The export 
+	also takes into the account "clusters", which are exported using the 
+	`OR` as `OR
+"""
+function yarason(ds::ArrayNode{T}, m,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
 	items = contributing(m, size(ds.data,1))
 	x = map(findall(exportobs)) do j 
 		[items[i] ? ds.data[i,j] : missing for i in 1:length(items)]
@@ -53,13 +76,13 @@ function yarason(ds::ArrayNode{T}, m::AbstractExplainMask,  e, exportobs = fill(
 	unscale(x, e)
 end
 
-function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
+function yarason(ds::ArrayNode{T}, m, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
 	c =  contributing(m, nobs(ds))
 	x = map(i -> c[i] ? ds.data.s[i] : missing, findall(exportobs))
 	addor(m, x, exportobs)
 end
 
-function yarason(ds::LazyNode, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds)))
+function yarason(ds::LazyNode, m, e, exportobs = fill(true, nobs(ds)))
 	c =  contributing(m, nobs(ds))
 	x = map(i -> c[i] ? ds.data[i] : missing, findall(exportobs))
 	addor(m, x, exportobs)
@@ -88,23 +111,16 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 	map(b -> x[b], bags)
 end
 
-# function yarason(ds::BagNode, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField)
-#     ismissing(ds.data) && return(missing)
+function yarason(ds::BagNode, m, e::JsonGrinder.ExtractKeyAsField)
+    ismissing(ds.data) && return(missing)
+    #get indexes of c clusters
+	c = contributing(m, nobs(ds.data))
+	all(.!c) && return(missing)
+	ss = yarason(ds.data, m.child, e.item)
+	addor(m, ss, c)
+end
 
-#     #get indexes of c clusters
-# 	c = contributing(m, nobs(ds.data))
-# 	all(.!c) && return(missing)
-# 	ss = yarason(ds.data, m.child, e.item)
-# 	addor(m, ss, c)
-# end
-
-# function yarason(m::EmptyMask, ds::BagNode, e)
-#     ismissing(ds.data) && return(missing)
-#     nobs(ds.data) == 0 && return(missing)
-#     yarason(ds.data, m, e.item);
-# end
-
-function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(missing)
 	s = map(sort(collect(keys(ds.data)))) do k
         k => yarason(ds[k], m[k], e[k], exportobs)
@@ -112,21 +128,12 @@ function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e, exportobs = fi
     Dict(s)
 end
 
-function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e::JsonGrinder.ExtractKeyAsField) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(missing)
 	(Dict(
 		Symbol(yarason(ds[:key], m[:key],  e.key)) => yarason(ds[:item], m[:item], e.item),
 	))
 end
-
-# function yarason(ds::ProductNode{T,M}, m::AbstractExplainMask, e::MultipleRepresentation) where {T<:Tuple, M}
-# 	nobs(ds) == 0 && return(missing)
-# 	s = map(sort(collect(keys(ds.data)))) do k
-#         subs = yarason(m.childs[k], ds.data[k], e.extractors[k])
-#         isempty(subs) ? nothing : k => subs
-#     end
-#     Dict(filter(!isnothing, s))
-# end
 
 # function e2boolean(pruning_mask, dss, extractor)
 # 	d = map(1:nobs(dss)) do i 
