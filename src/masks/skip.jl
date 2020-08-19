@@ -1,6 +1,11 @@
 struct EmptyMask <: AbstractNoMask
 end
 
+function Base.getproperty(F::EmptyMask, d::Symbol)
+	d == :child && return(EmptyMask())
+	error("EmptyMask does not have a property $(d)")
+end
+
 function StatsBase.sample!(pruning_mask::EmptyMask)
 end
 

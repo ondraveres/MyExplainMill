@@ -68,12 +68,12 @@ end
 # 	repr_boolean(:and, unique(s))
 # end
 
-function yarason(ds::BagNode, m::AbstractExplainMask, e::ExtractArray, exportobs = fill(true, nobs(ds)))
+function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds)))
     ismissing(ds.data) && return(fill(missing, sum(exportobs)))
     nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
 
     #get indexes of c clusters
-	present_childs = contributing(m, nobs(ds.data))
+	present_childs = Vector(contributing(m, nobs(ds.data)))
 	for b in ds.bags[.!exportobs]
 	    present_childs[b] .= false
 	end
@@ -93,8 +93,6 @@ end
 # 	ss = yarason(ds.data, m.child, e.item)
 # 	addor(m, ss, c)
 # end
-
-# yarason(ds::BagNode, m::EmptyMask, e::JsonGrinder.ExtractKeyAsField) = missing
 
 # function yarason(m::EmptyMask, ds::BagNode, e)
 #     ismissing(ds.data) && return(missing)

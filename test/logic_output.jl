@@ -134,6 +134,10 @@ end
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [false, true, false]) , [["c"]])
 
+		@test matcharrays(yarason(an, EmptyMask(), e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, EmptyMask(), e, [false, true, false]) , [["c"]])
+
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
