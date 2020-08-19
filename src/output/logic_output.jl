@@ -41,12 +41,16 @@ function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical
 	addor(m, idxs, exportobs)
 end
 
+unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
+unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
+unscale(x, e) = x
+
 function yarason(ds::ArrayNode{T}, m::AbstractExplainMask,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
 	items = contributing(m, size(ds.data,1))
 	x = map(findall(exportobs)) do j 
 		[items[i] ? ds.data[i,j] : missing for i in 1:length(items)]
 	end
-	x
+	unscale(x, e)
 end
 
 function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}

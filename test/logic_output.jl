@@ -50,18 +50,25 @@ end
 	end
 
 	@testset "Matrix" begin
+		e = ExtractScalar(Float32, 0, 1)
 		an = ArrayNode([1 0 3 0 5; 1 2 0 4 0])
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, nothing),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
-		@test matcharrays(yarason(an, EmptyMask(), nothing),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		@test matcharrays(yarason(an, am, e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		@test matcharrays(yarason(an, EmptyMask(), e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
 		am.mask.mask[1] = false
-		@test matcharrays(yarason(an, am, nothing),   [[missing, 1], [missing, 2], [missing, 0], [missing, 4], [missing, 0]])
-		@test matcharrays(yarason(an, am, nothing, [true, false, true, false, true]),   [[missing,1], [missing, 0], [missing, 0]])
+		@test matcharrays(yarason(an, am, e),   [[missing, 1], [missing, 2], [missing, 0], [missing, 4], [missing, 0]])
+		@test matcharrays(yarason(an, am, e, [true, false, true, false, true]),   [[missing,1], [missing, 0], [missing, 0]])
 		@test matcharrays(yarason(an, EmptyMask(), nothing, [true, false, true, false, true]),   [[1, 1], [3, 0],  [5, 0]])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, nothing),   fill([missing, missing], 5))
+		@test matcharrays(yarason(an, am, e),   fill([missing, missing], 5))
+
+		e = ExtractScalar(Float32, 1, 2)
+		am.mask.mask .= true
+		@test matcharrays(yarason(an, am, e),   [[1.5, 1.5], [1.0, 2.0], [2.5, 1.0], [1.0, 3.0], [3.5, 1.0]])
+		am.mask.mask[1] = false
+		@test matcharrays(yarason(an, am, e),   [[missing, 1.5], [missing, 2.0], [missing, 1.0], [missing, 3.0], [missing, 1.0]])
 	end
 
 	@testset "Sparse" begin
@@ -200,7 +207,5 @@ end
 		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , Dict(:a => ["ca", missing],:b => ["sa", missing]))
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
 	end
-
-
 	
 end
