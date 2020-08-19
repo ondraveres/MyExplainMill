@@ -24,6 +24,8 @@ Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.x
 """
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	xi = m.cluster_membership[active]
+	# @show x
+	# @show xi
 	map(1:length(x)) do i
 		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
 	end
@@ -91,6 +93,8 @@ function yarason(ds::LazyNode, m, e, exportobs = fill(true, nobs(ds)))
 	addor(m, x, exportobs)
 end
 
+# This hack is needed for cases, where an ExtractDict has a single child
+
 # This hack is needed for cases, where scalars are joined to a single matrix
 # function yarason(m::Mask, ds::ArrayNode, e::ExtractDict)
 # 	ks = keys(e.vec)
@@ -101,6 +105,7 @@ end
 function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds)))
     ismissing(ds.data) && return(fill(missing, sum(exportobs)))
     nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
+    !any(exportobs) && return(missing)
 
     #get indexes of c clusters
 	present_childs = Vector(contributing(m, nobs(ds.data)))
@@ -110,6 +115,7 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 
 	x = yarason(ds.data, m.child, e.item, present_childs)
 	x = addor(m, x, present_childs)
+	ismissing(x) && return(fill(missing, sum(exportobs)))
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
 	map(b -> x[b], bags)
 end
@@ -123,12 +129,33 @@ function yarason(ds::BagNode, m, e::JsonGrinder.ExtractKeyAsField)
 	addor(m, ss, c)
 end
 
+
+const OTHERS = Union{BagNode, ArrayNode}
+function yarason(ds::OTHERS, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S<:Nothing,V}
+	k = only(keys(e.other))
+	yarason(ds, m, e[k])
+end
+
+function yarason(ds::OTHERS, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {V<:Nothing,S}
+	k = only(keys(e.vec))
+	yarason(ds, m, e[k])
+end
+
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(missing)
+	!any(exportobs) && return(missing)
 	s = map(sort(collect(keys(ds.data)))) do k
         k => yarason(ds[k], m[k], e[k], exportobs)
     end
-    Dict(s)
+    fragmentdict(Dict(s), sum(exportobs))
+end
+
+function fragmentdict(d::Dict, l)
+	isempty(d) && return(fill(d, l))
+	ks = collect(keys(d))
+	map(1:l) do i
+		Dict(map(k -> k => ismissing(d[k]) ? missing : d[k][i], ks))
+	end
 end
 
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
