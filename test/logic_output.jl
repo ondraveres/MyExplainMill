@@ -4,15 +4,13 @@ using Setfield
 using Test
 using SparseArrays
 
-function matcharrays(a, b)
+const SN = Union{String,T} where T<:Number
+matcharrays(a::Missing, b::Missing) = true
+matcharrays(a::Missing, b::SN) = false
+matcharrays(a, b) = a == b
+function matcharrays(a::Vector, b::Vector)
 	(length(a) != length(b)) && return(false)
-	for i in 1:length(a)
-		ismissing(a[i]) && ismissing(b[i]) && continue
-		ismissing(a[i]) && return(false)
-		ismissing(b[i]) && return(false)
-		(a[i] != b[i]) && return(false)
-	end
-	return(true)
+	all(matcharrays(a[i],b[i]) for i in 1:length(a))
 end
 
 @testset "logical output" begin 
@@ -45,12 +43,12 @@ end
 		@test matcharrays(yarason(an, am, nothing),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
 		@test matcharrays(yarason(an, EmptyMask(), nothing),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
 		am.mask.mask[1] = false
-		@test matcharrays(yarason(an, am, nothing),   [[1], [2], [0], [4], [0]])
-		@test matcharrays(yarason(an, am, nothing, [true, false, true, false, true]),   [[1], [0], [0]])
+		@test matcharrays(yarason(an, am, nothing),   [[missing, 1], [missing, 2], [missing, 0], [missing, 4], [missing, 0]])
+		@test matcharrays(yarason(an, am, nothing, [true, false, true, false, true]),   [[missing,1], [missing, 0], [missing, 0]])
 		@test matcharrays(yarason(an, EmptyMask(), nothing, [true, false, true, false, true]),   [[1, 1], [3, 0],  [5, 0]])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, nothing),   [[], [], [], [], []])
+		@test matcharrays(yarason(an, am, nothing),   fill([missing, missing], 5))
 	end
 
 	@testset "Sparse" begin
@@ -64,14 +62,15 @@ end
 	end
 
 	@testset "NGramMatrix" begin
+	e = nothing
 		an = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, nothing), ["a","b","c","d","e"])
-		@test matcharrays(yarason(an, EmptyMask(), nothing), ["a","b","c","d","e"])
-		@test matcharrays(yarason(an, EmptyMask(), nothing, [true, false, true,false,false]), ["a","c"])
+		@test matcharrays(yarason(an, am, e), ["a","b","c","d","e"])
+		@test matcharrays(yarason(an, EmptyMask(), e), ["a","b","c","d","e"])
+		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]), ["a","c"])
 		am.mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, nothing), ["a", missing, "c", missing, "e"])
-		@test matcharrays(yarason(an, am, nothing, [true,false,true,false,true]), ["a","c","e"])
+		@test matcharrays(yarason(an, am, e), ["a", missing, "c", missing, "e"])
+		@test matcharrays(yarason(an, am, e, [true,false,true,false,true]), ["a","c","e"])
 
 		am.mask.mask .= false
 		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
@@ -79,9 +78,9 @@ end
 
 		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 		am.mask.mask[2] = false
-		@test matcharrays(yarason(an, am, nothing), [OR(["a", "e"]), missing, "c", missing, OR(["a", "e"])])
-		@test matcharrays(yarason(an, am, nothing, [true, true, true,false,false]), ["a", missing, "c"])
-		@test matcharrays(yarason(an, am, nothing, [false, false, false,false,false]), [])
+		@test matcharrays(yarason(an, am, e), [OR(["a", "e"]), missing, "c", missing, OR(["a", "e"])])
+		@test matcharrays(yarason(an, am, e, [true, true, true,false,false]), ["a", missing, "c"])
+		@test matcharrays(yarason(an, am, e, [false, false, false,false,false]), [])
 
 		am.mask.mask .= false
 		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
