@@ -119,8 +119,9 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 
 	# @show present_childs
     # !any(exportobs) && return(fill(missing, sum(exportobs)))
+    @show sum(present_childs)
 	x = yarason(ds.data, m.child, e.item, present_childs)
-	# @show x
+	@show length(x)
 	x = addor(m, x, present_childs)
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
 	# @show bags
@@ -145,7 +146,7 @@ function skipedict(e)
 end
 
 function yarason(ds::OTHERS, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S,V<:Nothing}
-	yarason(ds, m, skipedict(e))
+	yarason(ds, m, skipedict(e), exportobs)
 end
 
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
@@ -155,8 +156,8 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs 
 	# this awful hack is here if there is a dict of dict with a single key
 	if !isnothing(e.other) && isnothing(e.vec) && length(keys(e.other)) == 1 
 		ks = keys(ds.data)
-		length(ks) > 1 && return(yarason(ds, m, skipedict(e)))
-		only(ks) != only(keys(e.other)) && return(yarason(ds, m, skipedict(e)))
+		length(ks) > 1 && return(yarason(ds, m, skipedict(e), exportobs))
+		only(ks) != only(keys(e.other)) && return(yarason(ds, m, skipedict(e), exportobs))
 	end
 	#end of hack
 	s = map(sort(collect(keys(ds.data)))) do k
