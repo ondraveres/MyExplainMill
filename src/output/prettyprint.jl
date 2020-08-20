@@ -67,9 +67,49 @@ function extract_scalar_inv(e::E, vals::T) where {E<:ExtractScalar, T<:Vector}
 end
 
 # shortcuit for skipping child in case of single child of dict
-function ExplainMill.print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
+function print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
 	nchildren(e) > 1 && error("This really should not be happening")
 	print_explained(io, ds, e.other |> values |> first, pad = pad)
+end
+
+function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pad=[]) where {S<:Dict,V<:Union{Dict,Nothing}}
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io, "ProductNode", color=c)
+    ks = sort(collect(keys(n.data)))
+	# must do the hack, there's no other way
+	scalar_names = keys(e.vec)
+	if :scalars ∈ ks
+		ks = [filter(k->k!=:scalars, ks)..., scalar_names...]
+	end
+	m = length(ks)
+    for i in 1:(m-1)
+        println(io)
+		s_child = infer_sample_child(e, n, ks[i])
+        paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
+        print_explained(io, s_child, e[ks[i]], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
+    end
+
+    println(io)
+	s_child = infer_sample_child(e, n, ks[end])
+    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    print_explained(io, s_child, e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
+end
+
+# when S<:Nothing we don't have to care about :scalars
+function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pad=[]) where {S<:Nothing,V<:Dict}
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io, "ProductNode", color=c)
+	m = length(n.data)
+    ks = sort(collect(keys(n.data)))
+    for i in 1:(m-1)
+        println(io)
+        paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
+        print_explained(io, n[ks[i]], e[ks[i]], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
+    end
+
+    println(io)
+    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    print_explained(io, n[ks[end]], e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix, E<:ExtractScalar}
@@ -122,30 +162,6 @@ function print_explained(io, ds::BagNode, e; pad = [])
 	    print_explained(io, ds.data, e.item, pad = [pad; (c, "      ")])
 	end
 end
-
-function print_explained(io::IO, n::AbstractProductNode, e::E; pad=[]) where {E<:ExtractDict}
-    c = COLORS[(length(pad)%length(ExplainMill.COLORS))+1]
-    paddedprint(io, "ProductNode", color=c)
-    ks = sort(collect(keys(n.data)))
-	# must do the hack, there's no other way
-	scalar_names = keys(e.vec)
-	if :scalars ∈ ks
-		ks = [filter(k->k!=:scalars, ks)..., scalar_names...]
-	end
-	m = length(ks)
-    for i in 1:(m-1)
-        println(io)
-		s_child = infer_sample_child(e, n, ks[i])
-        paddedprint(io, "  ├── $(e_name): ", color=c, pad=pad)
-        print_explained(io, s_child, e[ks[i]], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
-    end
-
-    println(io)
-	s_child = infer_sample_child(e, n, ks[end])
-    paddedprint(io, "  └── $(e_name): ", color=c, pad=pad)
-    print_explained(io, s_child, e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
-end
-
 
 function print_explained(io::IO, ds::T, e; pad = []) where {T<:Mill.LazyNode}
     c = COLORS[(length(pad)%length(COLORS))+1]
