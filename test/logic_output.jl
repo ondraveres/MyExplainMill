@@ -163,6 +163,12 @@ end
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
+		
+		am.mask.mask .= [false, false, false, true,true]
+		yarason(an, am, e, [true,true,false])
+		yarason(an, am, e, [true,true,false])
+		@test matcharrays(yarason(an, am, e) , [missing, missing])
+		@test matcharrays(yarason(an, am, e) , [missing, missing])
 
 		am.mask.mask .= true
 		am.child.mask.mask .= false
@@ -186,17 +192,22 @@ end
 		am[:a].mask.mask[[2,4]] .= false
 		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", missing, "cc", missing, "__UNKNOWN__"],:b => ["sa", missing, "sc", missing, "se"]))
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:a].mask.mask .= true
-		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", missing, "sc", missing, "se"]))
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
 
 		am[:a].mask.mask .= true
 		am[:b].mask.mask .= true
 		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , Dict(:a => ["ca", missing],:b => ["sa", "sd"]))
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) ,[Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sd")])
 		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , Dict(:a => ["ca", missing],:b => ["sa", missing]))
-		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
+		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
+
+		#this test en interesting corner-case when dict has a dict underneath
+		am = Mask(an, d -> rand(d))
+		ee = ExtractDict(nothing, Dict(:data => e))
+		@test matcharrays(yarason(an, am, ee), yarason(an, am, e))
 	end
 	
 end
