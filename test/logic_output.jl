@@ -177,13 +177,14 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
-		@test matcharrays(yarason(an, EmptyMask(), e) , Dict(:a => ["ca", "cb", "cc", "cd", "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
-		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
-		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  Dict(:a => ["ca", "cc"],:b => ["sa", "sc"]))
+		expected = [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")]
+		@test matcharrays(yarason(an, am, e) , expected)
+		@test matcharrays(yarason(an, EmptyMask(), e) , expected)
+		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  expected[[1,3]])
+		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  expected[[1,3]])
 
 		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", missing, "cc", missing, "__UNKNOWN__"],:b => ["sa", "sb", "sc", "sd", "se"]))
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:b].mask.mask[[2,4]] .= false
 		@test matcharrays(yarason(an, am, e) , Dict(:a => ["ca", missing, "cc", missing, "__UNKNOWN__"],:b => ["sa", missing, "sc", missing, "se"]))
 		am[:a].mask.mask .= true
