@@ -145,11 +145,5 @@ function print_explained(io::IO, ds::T, e; pad = []) where {T<:Mill.LazyNode}
 	end
 end
 
-# shortcuit for skipping child in case of single child of dict
-function print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
-	nchildren(e) > 1 && error("This really should not be happening")
-	print_explained(io, ds, e.other |> values |> first, pad = pad)
-end
-
 print_explained(ds::AbstractNode, e) = print_explained(stdout, ds, e)
 print_explained(ds::Missing, e) = print_explained(stdout, ds, e)
