@@ -85,7 +85,7 @@ function yarason(ds::ArrayNode{T}, m,  e, exportobs = fill(true, nobs(ds))) wher
 	unscale(x, e)
 end
 
-function yarason(ds::ArrayNode{T}, m, e, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
+function yarason(ds::ArrayNode{T}, m, e::ExtractString, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
 	c =  contributing(m, nobs(ds))
 	x = map(i -> c[i] ? ds.data.s[i] : missing, findall(exportobs))
 	addor(m, x, exportobs)
@@ -138,14 +138,16 @@ end
 # end
 
 
-const OTHERS = Union{BagNode, ArrayNode}
-
 function skipedict(e)
 	println("skipedict $(only(keys(e.other)))")
 	only(values(e.other))
 end
 
-function yarason(ds::OTHERS, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S,V<:Nothing}
+function yarason(ds::BagNode, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S<:Nothing, V}
+	yarason(ds, m, skipedict(e), exportobs)
+end
+
+function yarason(ds::ArrayNode, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S<:Nothing, V}
 	yarason(ds, m, skipedict(e), exportobs)
 end
 
