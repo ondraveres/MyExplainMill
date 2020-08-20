@@ -29,8 +29,9 @@ end
 
 function Base.getindex(ds::ArrayNode{T,M}, m::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
 	x = ds.data
+	pm = prunemask(m) 
 	s = map(findall(presentobs)) do i 
-		prunemask(m)[i] ? x.s[i] : ""
+		pm[i] ? x.s[i] : ""
 	end
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
