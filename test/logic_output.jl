@@ -72,7 +72,7 @@ end
 	end
 
 	@testset "NGramMatrix" begin
-		e = nothing
+		e = ExtractString(String)
 		an = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 		am = Mask(an, d -> rand(d))
 		@test matcharrays(yarason(an, am, e), ["a","b","c","d","e"])
@@ -131,7 +131,6 @@ end
 		@test matcharrays(yarason(an, am, e) , ["a","b","c","d","e"])
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , ["a","c"])
 		@test matcharrays(yarason(an, am, e, [false, false, false, false, false]) , [])
-
 	end
 
 	@testset "Bags" begin
@@ -164,16 +163,14 @@ end
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
 		
-		am.mask.mask .= [false, false, false, true,true]
-		yarason(an, am, e, [true,true,false])
-		yarason(an, am, e, [true,true,false])
-		@test matcharrays(yarason(an, am, e) , [missing, missing])
-		@test matcharrays(yarason(an, am, e) , [missing, missing])
-
 		am.mask.mask .= true
 		am.child.mask.mask .= false
 		@test matcharrays(yarason(an, am, e) , [[missing, missing], [missing], [missing, missing]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing, missing], [missing, missing]])
+
+		an = BagNode(ArrayNode(zeros(2,0)), fill(0:-1, 3))
+		am = Mask(an, d -> rand(d))
+		@test matcharrays(yarason(an, am, e), fill(missing, 3))
 	end
 
 	@testset "Product" begin
@@ -203,11 +200,6 @@ end
 		am[:b].mask.mask[[2,4]] .= false
 		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
-
-		#this test en interesting corner-case when dict has a dict underneath
-		am = Mask(an, d -> rand(d))
-		ee = ExtractDict(nothing, Dict(:data => e))
-		@test matcharrays(yarason(an, am, ee), yarason(an, am, e))
 	end
 	
 end

@@ -1,4 +1,4 @@
-zerobs() = missing 
+zeroobs() = missing 
 emptyexportobs() = Vector{Missing}()
 
 
@@ -97,8 +97,6 @@ function yarason(ds::LazyNode, m, e, exportobs = fill(true, nobs(ds)))
 	addor(m, x, exportobs)
 end
 
-# This hack is needed for cases, where an ExtractDict has a single child
-
 # This hack is needed for cases, where scalars are joined to a single matrix
 # function yarason(m::Mask, ds::ArrayNode, e::ExtractDict)
 # 	ks = keys(e.vec)
@@ -109,6 +107,7 @@ end
 function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds)))
     nobs(ds) == 0 && return(zeroobs())
     ismissing(ds.data) && return(fill(missing, sum(exportobs)))
+    nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
     !any(exportobs) && emptyexportobs()
 
     #get indexes of c clusters
@@ -117,14 +116,9 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 	    present_childs[b] .= false
 	end
 
-	# @show present_childs
-    # !any(exportobs) && return(fill(missing, sum(exportobs)))
-    @show sum(present_childs)
 	x = yarason(ds.data, m.child, e.item, present_childs)
-	@show length(x)
 	x = addor(m, x, present_childs)
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
-	# @show bags
 	map(b -> x[b], bags)
 end
 
@@ -137,33 +131,11 @@ end
 # 	addor(m, ss, c)
 # end
 
-
-function skipedict(e)
-	println("skipedict $(only(keys(e.other)))")
-	only(values(e.other))
-end
-
-function yarason(ds::BagNode, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S<:Nothing, V}
-	yarason(ds, m, skipedict(e), exportobs)
-end
-
-function yarason(ds::ArrayNode, m, e::ExtractDict{S,V}, exportobs = fill(true, nobs(ds))) where {S<:Nothing, V}
-	yarason(ds, m, skipedict(e), exportobs)
-end
-
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(zeroobs())
 	!any(exportobs) && emptyexportobs()
-
-	# this awful hack is here if there is a dict of dict with a single key
-	if !isnothing(e.other) && isnothing(e.vec) && length(keys(e.other)) == 1 
-		ks = keys(ds.data)
-		length(ks) > 1 && return(yarason(ds, m, skipedict(e), exportobs))
-		only(ks) != only(keys(e.other)) && return(yarason(ds, m, skipedict(e), exportobs))
-	end
-	#end of hack
 	s = map(sort(collect(keys(ds.data)))) do k
-		@show (k, e[k])
+		# @show (k, e[k])
         k => yarason(ds[k], m[k], e[k], exportobs)
     end
     arrayofdicts(Dict(s), sum(exportobs))
