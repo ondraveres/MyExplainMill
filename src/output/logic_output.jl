@@ -1,7 +1,6 @@
 zeroobs() = missing 
 emptyexportobs() = Vector{Missing}()
 
-
 using FillArrays
 function OR(xs)
 	xs = unique(xs)
@@ -126,7 +125,7 @@ end
 # 	repr_boolean(:and, unique(s))
 # end
 
-function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds)))
+function yarason(ds::BagNode, m, e::T, exportobs = fill(true, nobs(ds))) where {T<:Union{JsonGrinder.ExtractKeyAsField, JsonGrinder.ExtractArray}}
     nobs(ds) == 0 && return(zeroobs())
     ismissing(ds.data) && return(fill(missing, sum(exportobs)))
     nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
@@ -138,20 +137,14 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 	    present_childs[b] .= false
 	end
 
-	x = yarason(ds.data, m.child, e.item, present_childs)
+	x = yarason(ds.data, m.child, _echild(e), present_childs)
 	x = addor(m, x, present_childs)
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
 	map(b -> unique(x[b]), bags)
 end
 
-# function yarason(ds::BagNode, m, e::JsonGrinder.ExtractKeyAsField)
-#     ismissing(ds.data) && return(missing)
-#     #get indexes of c clusters
-# 	c = contributing(m, nobs(ds.data))
-# 	all(.!c) && return(missing)
-# 	ss = yarason(ds.data, m.child, e.item)
-# 	addor(m, ss, c)
-# end
+_echild(e::JsonGrinder.ExtractArray) = e.item
+_echild(e::JsonGrinder.ExtractKeyAsField) = e
 
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(zeroobs())
@@ -194,13 +187,10 @@ function logicaland(a::String, b::String)
 	a 
 end
 
-
-
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
-	nobs(ds) == 0 && return(zeroobs())
-	(Dict(
-		Symbol(yarason(ds[:key], m[:key],  e.key)) => yarason(ds[:item], m[:item], e.item),
-	))
+	k = yarason(ds[:key], m[:key],  e.key, exportobs)
+	d = yarason(ds[:item], m[:item],  e.item, exportobs)
+	map(x -> Dict(x[1] => x[2]), zip(k, d))
 end
 
 # function e2boolean(pruning_mask, dss, extractor)

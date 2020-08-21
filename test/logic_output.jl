@@ -1,5 +1,5 @@
 using ExplainMill, Mill, JsonGrinder
-using ExplainMill: Mask, yarason, participate, prunemask, addor, OR, EmptyMask
+using ExplainMill: Mask, yarason, participate, prunemask, addor, OR, EmptyMask, logicaland
 using Setfield
 using Test
 using SparseArrays
@@ -226,26 +226,37 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		# expected = [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")]
-		@test matcharrays(yarason(an, am, e) , expected)
-		@test matcharrays(yarason(an, EmptyMask(), e) , expected)
-		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  expected[[1,3]])
-		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  expected[[1,3]])
-
-		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
-		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
-		am[:a].mask.mask .= true
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
-
-		am[:a].mask.mask .= true
-		am[:b].mask.mask .= true
-		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) ,[Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sd")])
-		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
-		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
+		@test matcharrays(yarason(an, am, e) , s)
 	end
+
+	@testset "ExtractKeyAsField" begin
+		e = JsonGrinder.ExtractKeyAsField(
+			JsonGrinder.ExtractString(String),
+			JsonGrinder.ExtractArray(
+				JsonGrinder.ExtractString(String)),
+		)
+		s = [Dict(
+			"ka" => ["a1", "a2", "a3"],
+			),
+			Dict(
+			"kc" => ["c1"],
+			"ka" => ["a1", "a2"],
+			),]
+		
+		an = reduce(catobs,e.(s))
+		am = Mask(an, d -> rand(d))
+
+		@test matcharrays(yarason(an, am, e), [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		@test matcharrays(yarason(an, am, e, [true, false]) , [[Dict("ka" => ["a1", "a2", "a3"])]])
+		am.mask.mask .= [false, true, true]
+		@test matcharrays(yarason(an, am, e), [[], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		am.mask.mask .= [true, false, true]
+		@test matcharrays(yarason(an, am, e),  [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("kc" => ["c1"])]])
+		am.mask.mask .= true
+		am.mask.mask .= [true, false, true]
+		am.child[:key].mask.mask .=[false, true, true]
+		@test matcharrays(yarason(an, am, e),  [[Dict(missing => ["a1", "a2", "a3"])], [Dict("kc" => ["c1"])]])
+	end 
+	
 	
 end
