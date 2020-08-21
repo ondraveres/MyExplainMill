@@ -165,8 +165,8 @@ end
 		
 		am.mask.mask .= true
 		am.child.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) , [[missing, missing], [missing], [missing, missing]])
-		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing, missing], [missing, missing]])
+		@test matcharrays(yarason(an, am, e) , [[missing], [missing], [missing]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing], [missing]])
 
 		an = BagNode(ArrayNode(zeros(2,0)), fill(0:-1, 3))
 		am = Mask(an, d -> rand(d))

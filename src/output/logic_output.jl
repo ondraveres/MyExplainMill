@@ -4,7 +4,9 @@ emptyexportobs() = Vector{Missing}()
 
 using FillArrays
 function OR(xs)
-	xs = unique(filter(!ismissing, xs))
+	xs = unique(xs)
+	# xs = filter(!ismissing, xs)
+	# xs = filter(!isempty, xs)
 	isempty(xs) && return(missing)
 	length(xs) > 1 ? LogicalOR(xs) : only(xs)
 end

@@ -26,6 +26,12 @@ end
 removemissing(::Missing) = missing
 removemissing(x::String) = x
 
+function removemissing(x::LogicalOR)
+	xs = map(!ismissing, x.x)
+	xs = map(!isempty, x.x)
+	LogicalOR(xs)
+end
+
 function removemissing(d::Dict)
 	x = map(k -> k => removemissing(d[k]), collect(keys(d)))
 	x = filter(a -> !ismissing(a.second), x)
