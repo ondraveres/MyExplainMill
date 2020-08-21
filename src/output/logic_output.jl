@@ -4,7 +4,7 @@ emptyexportobs() = Vector{Missing}()
 
 using FillArrays
 function OR(xs)
-	xs = filter(!ismissing, xs)
+	xs = unique(filter(!ismissing, xs))
 	isempty(xs) && return(missing)
 	length(xs) > 1 ? LogicalOR(xs) : only(xs)
 end
@@ -17,6 +17,18 @@ Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.x
 
 # OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
 
+function dictofindexes(targets)
+	d = Dict{Int,Vector{Int}}()
+	for (i, v) in enumerate(targets)
+		if haskey(d, v)
+			push!(d[v], i)
+		else 
+			d[v] = [i]
+		end
+	end
+	return(d)
+end
+
 """
 	addor(m::Mask, x)
 
@@ -27,13 +39,21 @@ Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.x
 	`x` is the output of the explanation of bottom layers
 """
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
-	xi = m.cluster_membership[active]
-	# @show x
-	# @show xi
+	xi = view(m.cluster_membership, active)
+	d = dictofindexes(xi)
+	groups = Dict(map(k -> k => OR(x[d[k]]), collect(keys(d))))
 	map(1:length(x)) do i
-		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
+		ismissing(x[i]) ? missing : groups[xi[i]]
 	end
 end
+
+# function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
+# 	xi = m.cluster_membership[active]
+# 	map(1:length(x)) do i
+# 		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
+# 	end
+# end
+
 
 addor(m::Mask{I, D}, x::Missing, active)  where {I<: Vector{Int}, D}= missing
 addor(m::Mask{I, D}, x, active) where {I<: Nothing, D} = x
