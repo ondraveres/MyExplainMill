@@ -202,4 +202,50 @@ end
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
 	end
 	
+	@testset "logicaland" begin
+		@test logicaland(1, missing) == 1
+		@test logicaland(missing, 1) == 1
+		@test ismissing(logicaland(missing, missing))
+		@test logicaland([1,2], [1]) == [1]
+		@test logicaland([1], [1,2]) == [1]
+		@test logicaland(1, OR([1,2])) == 1
+		@test logicaland(OR([1,3]), OR([1,2])) == 1
+		@test logicaland(OR([1,2]), OR([1,2])) == OR([1,2])
+		@test logicaland("__UNKNOWN__","a") == "a"
+		@test logicaland("a", "__UNKNOWN__") == "a"
+		@test logicaland("__UNKNOWN__", "__UNKNOWN__") == "__UNKNOWN__"
+	end
+
+	@testset "MultipleRepresentation" begin
+		e = MultipleRepresentation(
+			(ExtractCategorical(["a", "b","c","d"]),
+			JsonGrinder.ExtractString(String))
+			)
+
+		s = ["a", "b", "c", "d", "e"]
+		an = reduce(catobs,e.(s))
+		am = Mask(an, d -> rand(d))
+
+		# expected = [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")]
+		@test matcharrays(yarason(an, am, e) , expected)
+		@test matcharrays(yarason(an, EmptyMask(), e) , expected)
+		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  expected[[1,3]])
+		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  expected[[1,3]])
+
+		am[:a].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
+		am[:b].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
+		am[:a].mask.mask .= true
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
+
+		am[:a].mask.mask .= true
+		am[:b].mask.mask .= true
+		am[:a].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) ,[Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sd")])
+		am[:b].mask.mask[[2,4]] .= false
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
+		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
+	end
+	
 end

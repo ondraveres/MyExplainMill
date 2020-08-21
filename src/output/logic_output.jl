@@ -171,6 +171,31 @@ function arrayofdicts(d::Dict, l)
 	end
 end
 
+function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs = fill(true, nobs(ds)))
+	nobs(ds) == 0 && return(zeroobs())
+	!any(exportobs) && emptyexportobs()
+	s = map(sort(collect(keys(ds.data)))) do k
+        yarason(ds[k], m[k], e.extractors[k], exportobs)
+    end
+    reduce(mergeexplanations, s)
+end
+
+mergeexplanations(a,b) = map(x -> logicaland(x...), zip(a,b))
+logicaland(a::Vector, b::Vector) = intersect(a,b)
+logicaland(::Missing, a) = a
+logicaland(a, ::Missing) = a
+logicaland(a, b) = a
+logicaland(::Missing, ::Missing) = missing
+logicaland(a::T, ::LogicalOR) where {T<:Union{String, Number, Vector}} = a
+logicaland(a::LogicalOR, ::T) where {T<:Union{String, Number, Vector}} = a
+logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.x, b.x))
+function logicaland(a::String, b::String)
+	a == "__UNKNOWN__" && return(b)
+	a 
+end
+
+
+
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(zeroobs())
 	(Dict(
