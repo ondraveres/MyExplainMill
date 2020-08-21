@@ -139,7 +139,7 @@ function yarason(ds::BagNode, m, e::ExtractArray, exportobs = fill(true, nobs(ds
 	x = yarason(ds.data, m.child, e.item, present_childs)
 	x = addor(m, x, present_childs)
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
-	map(b -> x[b], bags)
+	map(b -> unique(x[b]), bags)
 end
 
 # function yarason(ds::BagNode, m, e::JsonGrinder.ExtractKeyAsField)
