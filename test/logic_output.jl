@@ -200,6 +200,24 @@ end
 		am[:b].mask.mask[[2,4]] .= false
 		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
+
+		# Let's test the usecase, when we join scalar values and matrix to one big matrix
+		e = ExtractDict(
+			Dict(:n1 => JsonGrinder.ExtractScalar(Float32, 0, 1), 
+				:n2 => JsonGrinder.ExtractScalar(Float32, 2, 1), 
+				:n3 => JsonGrinder.ExtractScalar(Float32, 0//1, 1//3), 
+				)
+			, Dict(:a => ExtractCategorical(["a","b"]), )
+			)
+
+		s = [Dict(:n1 => "1",:n2 => 2,:n3 => 3,:a => "a"),
+		 	 Dict(:n1 => "-1",:n2 => -2,:n3 => -3,:a => "b")]
+
+		an = reduce(catobs,e.(s))
+		am = Mask(an, d -> rand(d))
+		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => 3.0f0,:n1 => 1.0f0,:n2 => 2.0f0), Dict(:a => "b",:n3 => -3.0f0,:n1 => -1.0f0,:n2 => -2.0f0)])
+		am[:scalars].mask.mask .= [false,true,false]
+		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => missing,:n1 => 1.0f0,:n2 => missing), Dict(:a => "b",:n3 => missing,:n1 => -1.0f0,:n2 => missing)])
 	end
 	
 	@testset "logicaland" begin

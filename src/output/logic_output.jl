@@ -87,6 +87,7 @@ end
 """
 unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
 unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
+unscale(x::Missing, e::ExtractScalar) = missing
 unscale(x, e) = x
 
 """
@@ -149,20 +150,40 @@ _echild(e::JsonGrinder.ExtractKeyAsField) = e
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(zeroobs())
 	!any(exportobs) && emptyexportobs()
-	s = map(sort(collect(keys(ds.data)))) do k
-		# @show (k, e[k])
-        k => yarason(ds[k], m[k], e[k], exportobs)
+
+	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
+        k => yarason(ds[k], m[k], e.other[k], exportobs)
     end
-    arrayofdicts(Dict(s), sum(exportobs))
+    o = _arrayofdicts(Dict(s), sum(exportobs))
+
+	if :scalars ∈ setdiff(keys(ds), keys(e.other))
+		o = map(d -> merge(d...), zip(o,_exportmatrix(ds[:scalars], m[:scalars], e.vec)))
+	end
+	o
 end
 
-function arrayofdicts(d::Dict, l)
+function _arrayofdicts(d::Dict, l)
 	isempty(d) && return(fill(d, l))
 	ks = collect(keys(d))
 	map(1:l) do i
 		Dict(map(k -> k => ismissing(d[k]) ? missing : d[k][i], ks))
 	end
 end
+
+function _exportmatrix(ds::ArrayNode,  m::ExplainMill.MatrixMask, e::Dict, exportobs = fill(true, nobs(ds)))
+	x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
+	map(x -> _parcel(x,e), x)
+end
+
+function _parcel(x::Vector{T}, e) where {T}
+	d = Dict{Symbol,T}()
+	for (offset, (k,f)) in enumerate(e)
+		d[k] = unscale(x[offset], f)
+	end
+	d
+end
+
+# x = vcat([f(get(v,String(k),nothing)) for (k,f) in s.vec]...)
 
 function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs = fill(true, nobs(ds)))
 	nobs(ds) == 0 && return(zeroobs())
