@@ -49,7 +49,7 @@ end
 		@test addor(m, xs[c], c) == xs[participate(m) .& prunemask(m)]
 	end
 
-	@testset "Matrix" begin
+	@testset "Matrix - Rules" begin
 		e = ExtractScalar(Float32, 0, 1)
 		an = ArrayNode([1 0 3 0 5; 1 2 0 4 0])
 		am = Mask(an, d -> rand(d))
@@ -73,14 +73,35 @@ end
 
 	@testset "NGramMatrix" begin
 		e = ExtractString(String)
-		an = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
+		s = ["a","b","c","d","e"]
+		ss = ["z","b","c","d","e"]
+		an = reduce(catobs, e.(s))
+		az = reduce(catobs, e.(ss))
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, e), ["a","b","c","d","e"])
-		@test matcharrays(yarason(an, EmptyMask(), e), ["a","b","c","d","e"])
-		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]), ["a","c"])
+
+		y = yarason(an, am, e)
+		@test matcharrays(y, ["a","b","c","d","e"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(az, y, e)	
+
+		y = yarason(an, EmptyMask(), e)
+		@test matcharrays(y, ["a","b","c","d","e"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(az, y, e)	
+
+		y = yarason(an, EmptyMask(), e, [true, false, true,false,false])
+		@test matcharrays(y, ["a","c"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(az, y, e)	
+
 		am.mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e), ["a", missing, "c", missing, "e"])
-		@test matcharrays(yarason(an, am, e, [true,false,true,false,true]), ["a","c","e"])
+		y = yarason(an, am, e)
+		@test matcharrays(y, ["a", missing, "c", missing, "e"])
+		@test Base.match(an, y, e)
+		y = yarason(an, am, e, [true,false,true,false,true])
+		@test matcharrays(y, ["a","c","e"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(az, y, e)	
 
 		am.mask.mask .= false
 		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
