@@ -15,24 +15,26 @@ function Base.match(d::Dict, e, v; path = (), verbose = false)
 	match_product(d, e, v; path = path, verbose = verbose)
 end
 
-# This is just a convenience to iterate over samples ds
-function Base.match(ds::Vector, expression::Dict, extractor::ExtractDict ; path = (), verbose = false)
-	all(map(x -> match(x, expression, extractor, path = path, verbose = verbose), ds))
-end
+# # This is just a convenience to iterate over samples ds
+# function Base.match(ds::Vector, expression::Dict, extractor::ExtractDict ; path = (), verbose = false)
+# 	all(map(x -> match(x, expression, extractor, path = path, verbose = verbose), ds))
+# end
 
-# This matches product / dictionary / product
-function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict; path = (), verbose = false)
-	ks = intersect(keys(ds), keys(expression))
-	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(ks)))
-end
-
-function Base.match(ds::AbstractNode, expression::Vector, extractor; path = (), verbose = false)
-	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
-end
+# function Base.match(ds::AbstractNode, expression::Vector, extractor; path = (), verbose = false)
+# 	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
+# end
 
 # missing is always matching
 function Base.match(ds::ArrayNode, ::Missing, extractor; path = (), verbose = false)
 	printontrue(true, verbose, path," ", "Missing")
+end
+
+
+####
+#				Dictionary
+####
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
+	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
 end
 
 ####

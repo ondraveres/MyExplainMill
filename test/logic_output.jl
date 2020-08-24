@@ -231,7 +231,12 @@ end
 		am = Mask(an, d -> rand(d))
 
 		expected = [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")]
-		@test matcharrays(yarason(an, am, e) , expected)
+		y = yarason(an, am, e)
+		@test matcharrays(y, expected)
+		@test Base.match(an, y[1], e)	
+		@test !Base.match(an[2], y[1], e)	
+		@test !Base.match(an[1], y[2], e)
+
 		@test matcharrays(yarason(an, EmptyMask(), e) , expected)
 		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  expected[[1,3]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  expected[[1,3]])
