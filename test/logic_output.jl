@@ -235,7 +235,9 @@ end
 		@test matcharrays(y, expected)
 		@test Base.match(an, y[1], e)	
 		@test !Base.match(an[2], y[1], e)	
-		@test !Base.match(an[1], y[2], e)
+		@test Base.match(an[1], Dict(:a => "ca"), e)
+		@test !Base.match(an[2], Dict(:a => "ca"), e)
+		@test_throws Base.match(an[1], Dict(:c => "ca"), e)
 
 		@test matcharrays(yarason(an, EmptyMask(), e) , expected)
 		@test matcharrays(yarason(an, am, e, [true, false, true,false,false]),  expected[[1,3]])

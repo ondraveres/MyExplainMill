@@ -34,6 +34,7 @@ end
 #				Dictionary
 ####
 function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
+	!isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
 	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
 end
 
