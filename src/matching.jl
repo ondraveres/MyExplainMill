@@ -1,5 +1,6 @@
 import Base.match
 
+const StringOrNum = Union{Number, AbstractString}
 # The idea is to extend the Base.match, such that we can check, if 
 # explanations (input to YaraGens) are correct
 
@@ -25,38 +26,51 @@ function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict; p
 	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(ks)))
 end
 
-# here, we need to evaluate that every item in the expression is in the bag
+function Base.match(ds::AbstractNode, expression::Vector, extractor; path = (), verbose = false)
+	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
+end
+
+# missing is always matching
+function Base.match(ds::ArrayNode, ::Missing, extractor; path = (), verbose = false)
+	printontrue(true, verbose, path," ", "Missing")
+end
+
+####
+#				Matching of Bags
+####
 function Base.match(ds::BagNode, expression::Vector, extractor::ExtractArray ; path = (), verbose = false)
+	all(matchbag(ds, e, extractor;path, verbose) for e in expression)
+end
+
+function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), verbose = false)
 	o = map(expression) do ei 
-		any(match(data[j], ei, extractor.item; path, verbose) for j in 1:nobs(ds.data))
+		any(match(ds[j].data, ei, extractor.item; path, verbose) for j in 1:nobs(ds))
 	end
 	all(o)
 end
 
-function Base.match(ds::ArrayNode, expression::Vector, extractor; path = (), verbose = false)
-	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
-end
-
-function Base.match(ds::ArrayNode{T,M}, expression::S, extractor::ExtractString; path = (), verbose = false) where {T<: NGramMatrix, M, S<:String}
-	printontrue(expression ∈ ds.data.s, verbose, path," ", expression)
-end
-
-function Base.match(ds::ArrayNode, expression::Missing, extractor; path = (), verbose = false)
-	printontrue(true, verbose, path," ", "Missing")
+####
+#				Matching of Strings
+####
+function Base.match(ds::ArrayNode{T,M}, token::AbstractString, extractor::ExtractString; path = (), verbose = false) where {T<: NGramMatrix, M}
+	printontrue(token ∈ ds.data.s, verbose, path," ", token)
 end
 
 
-function Base.match(s::Vector, e, v::ArrayNode{T,N}; path = (), verbose = false) where {T<: NGramMatrix, N}
-	all(x -> printontrue(x ∈ v.data.s, verbose, path," ", x), s)
+####
+#				Matching of Categorical
+####
+function Base.match(ds::ArrayNode{T,M}, token::StringOrNum, extractor::ExtractCategorical; path = (), verbose = false) where {T<: Flux.OneHotMatrix, M}
+	idxs = map(i -> i.ix, unique(ds.data.data))
+	i = get(extractor.keyvalemap, token, ds.data.height)
+	printontrue(i ∈ idxs, verbose, path," ", token)
 end
 
-function Base.match(s::String, e::ExtractCategorical, v::ArrayNode{T,M}; path = (), verbose = false) where {T<:Flux.OneHotMatrix, M}
-	idxs = map(i -> i.ix, v.data.data)
-	printontrue(e.keyvalemap[s] ∈ idxs, verbose, path," ", s)
-end
-
-function Base.match(s::Vector, e::ExtractCategorical, v::ArrayNode{T,N}; path = (), verbose = false) where {T<:Flux.OneHotMatrix, N}
-	all(map(x -> match(x, e, v, path = path, verbose = verbose), s))
+####
+#				Matching of Lazy
+####
+function Base.match(ds::LazyNode{T,M}, token::StringOrNum, extractor; path = (), verbose = false) where {T, M}
+	printontrue(token ∈ ds.data, verbose, path," ", token)
 end
 
 match_or(ds::Vector, e, v; path = (), verbose = false) = any(match(d, e, v; path = path, verbose = verbose) for d in  ds)

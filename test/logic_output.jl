@@ -122,12 +122,23 @@ end
 		e = ExtractCategorical(["a","b","c","d"])
 		an = e(["a","b","c","d","e"])
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, e) , ["a","b","c","d","__UNKNOWN__"])
+
+		y = yarason(an, am, e)
+		@test matcharrays(y , ["a","b","c","d","__UNKNOWN__"])
+		@test Base.match(an, y, e)	
 		@test matcharrays(yarason(an, EmptyMask(), e), ["a","b","c","d","__UNKNOWN__"])
-		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]), ["a","c"])
+
+		y = yarason(an, EmptyMask(), e, [true, false, true,false,false])
+		@test matcharrays(y, ["a","c"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[2:end], y, e)	
 
 		am.mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , ["a",missing, "c", missing, "__UNKNOWN__"])
+		y = yarason(an, am, e)
+		@test matcharrays(y , ["a",missing, "c", missing, "__UNKNOWN__"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[2:end], y, e)	
+		@test !Base.match(an[1:end-1], y, e)	
 		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", missing])
 
 		am.mask.mask .= false
@@ -149,7 +160,13 @@ end
 		an = LazyNode(:Test,["a","b","c","d","e"])
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e) , ["a","b","c","d","e"])
+		y = yarason(an, am, e)
+		@test matcharrays(y , ["a","b","c","d","e"])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[2:end], y, e)	
+		@test Base.match(an[2:end], y[2:end], e)	
+		@test Base.match(an[2:end], [], e)	
+
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) , ["a","c"])
 		@test matcharrays(yarason(an, am, e, [false, false, false, false, false]) , [])
 	end
@@ -160,9 +177,16 @@ end
 		an = reduce(catobs, e.([["a","b"],["c"],["d","e"]]))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
+		@test Base.match(an, y, e)	
+		@test Base.match(an, y[1:2], e)
+		@test !Base.match(an[1:2], y, e)
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
-		@test matcharrays(yarason(an, am, e, [false, true, false]) , [["c"]])
+		y = yarason(an, am, e, [false, true, false]) 
+		@test matcharrays(y , [["c"]])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[1], y, e)
 
 		@test matcharrays(yarason(an, EmptyMask(), e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
@@ -178,7 +202,12 @@ end
 
 		am.mask.mask .= true
 		am.child.mask.mask .= [true,false,true,false,true]
-		@test matcharrays(yarason(an, am, e) , [["a", missing], ["c"], [missing, "__UNKNOWN__"]])
+		y = yarason(an, am, e)
+		@test matcharrays(y , [["a", missing], ["c"], [missing, "__UNKNOWN__"]])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[1], y, e)
+		@test !Base.match(an[[1,3]], y, e)
+
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", missing], [missing, "__UNKNOWN__"]])
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
