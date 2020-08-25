@@ -1,3 +1,6 @@
+####
+# Unit test for extraction of logical formulas and their matching
+####
 using ExplainMill, Mill, JsonGrinder
 using ExplainMill: Mask, yarason, participate, prunemask, addor, OR, EmptyMask, logicaland
 using Setfield
@@ -109,7 +112,13 @@ end
 
 		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 		am.mask.mask[2] = false
-		@test matcharrays(yarason(an, am, e), [OR(["a", "e"]), missing, "c", missing, OR(["a", "e"])])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [OR(["a", "e"]), missing, "c", missing, OR(["a", "e"])])
+		@test !match(e("a"), y, e)
+		@test match(e("a"), y[1], e)
+		@test match(e("a"), y[1:2], e)
+		@test !match(e("a"), y[1:3], e)
+
 		@test matcharrays(yarason(an, am, e, [true, true, true,false,false]), ["a", missing, "c"])
 		@test matcharrays(yarason(an, am, e, [false, false, false,false,false]), [])
 
@@ -147,7 +156,15 @@ end
 
 		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 		am.mask.mask[2] = false
-		@test matcharrays(yarason(an, am, e) , [OR(["a","__UNKNOWN__"]), missing, "c", missing, OR(["a","__UNKNOWN__"])])
+		y = yarason(an, am, e)
+		@test matcharrays(y , [OR(["a","__UNKNOWN__"]), missing, "c", missing, OR(["a","__UNKNOWN__"])])
+		@test !match(e("a"), y, e)
+		@test match(e("a"), y[1], e)
+		@test match(e("a"), y[1:2], e)
+		@test !match(e("a"), y[1:3], e)
+		@test !match(e("c"), y[1:3], e)
+		@test match(e("f"), y[1], e)
+
 		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", missing])
 		@test matcharrays(yarason(an, am, e, [false, false, false, false, false]) , [])
 
@@ -188,10 +205,20 @@ end
 		@test Base.match(an, y, e)	
 		@test !Base.match(an[1], y, e)
 
+		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
+		y = yarason(an, am, e)
+		@test matcharrays(y, [[OR(["a", "__UNKNOWN__"]), OR(["b", "d"])], ["c"], [OR(["b", "d"]), OR(["a", "__UNKNOWN__"])]])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[1], y, e)	
+		@test Base.match(an[1], y[[1]], e)	
+		@test !Base.match(an[2], y[[1]], e)	
+
+
 		@test matcharrays(yarason(an, EmptyMask(), e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [false, true, false]) , [["c"]])
 
+		am = Mask(an, d -> rand(d))
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
@@ -249,6 +276,11 @@ end
 		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:a].mask.mask .= true
 		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
+
+		y = yarason(an, am, e)
+		y = OR(y[1:2])
+		@test !match(an[3:end], y, e)
+		@test match(an[1:2], y, e)
 
 		am[:a].mask.mask .= true
 		am[:b].mask.mask .= true

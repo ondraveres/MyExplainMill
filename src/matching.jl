@@ -29,6 +29,11 @@ function Base.match(ds::ArrayNode, ::Missing, extractor; path = (), verbose = fa
 	printontrue(true, verbose, path," ", "Missing")
 end
 
+# matching logical or 
+function Base.match(ds, expression::LogicalOR, extractor; path = (), verbose = false) where {T, M}
+	any(match(ds, token, extractor;path, verbose) for token in  expression.x)
+end
+
 
 ####
 #				Dictionary
@@ -52,6 +57,10 @@ function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), v
 	all(o)
 end
 
+
+function Base.match(ds::ArrayNode, expression::Vector, extractor ; path = (), verbose = false)
+	all(match(ds, token, extractor;path, verbose) for token in expression)
+end
 ####
 #				Matching of Strings
 ####
@@ -72,8 +81,13 @@ end
 ####
 #				Matching of Lazy
 ####
+function Base.match(ds::LazyNode, expression::Vector, extractor ; path = (), verbose = false)
+	all(match(ds, token, extractor;path, verbose) for token in expression)
+end
+
 function Base.match(ds::LazyNode{T,M}, token::StringOrNum, extractor; path = (), verbose = false) where {T, M}
 	printontrue(token ∈ ds.data, verbose, path," ", token)
 end
+
 
 match_or(ds::Vector, e, v; path = (), verbose = false) = any(match(d, e, v; path = path, verbose = verbose) for d in  ds)
