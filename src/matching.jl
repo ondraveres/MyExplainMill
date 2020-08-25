@@ -49,16 +49,43 @@ function Base.match(ds::ProductNode, expression, extractor::MultipleRepresentati
 	all(match(ds[k], expression, e[k]) for k in ks)
 end
 
+####
+#				Dictionary with fused Scalar values
+####
 
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,D}; path = (), verbose = false) where {V,D}
+	!matcharray(ds[:scalars], expression, extractor.vec) && return(false)
+	ks = collect(setdiff(keys(expression), keys(extractor.vec)))
+	all(match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose) for k in ks)
+end
+
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,Nothing}; path = (), verbose = false) where {V}
+	match(ds[:scalars], expression, extractor.vec)
+end
+
+function matcharray(ds::ArrayNode, vals::Dict, extractors::Dict)
+	v = [_getvalue(get(vals, k, missing), f) for (k,f) in extractors]
+	active = .!ismissing.(v)
+	v = v[active]
+	x = ds.data 
+	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
+end
+
+_getvalue(x::Missing, e) = missing
+_getvalue(x, e) = e(x).data[1]
+
+####
+#				Scalar
+####
 function Base.match(ds::ArrayNode, expression::Vector{Vector{T}}, extractor::ExtractScalar; path=(), verbose=false) where {T}
 	all(matcharray(ds, v, extractor) for v in expression)
 end
 
-function matcharray(ds::ArrayNode, v, e::ExtractScalar)
+function matcharray(ds::ArrayNode, v::Vector, e::ExtractScalar)
 	active = .!ismissing.(v)
-	ve = map(x -> e(x).data[1], v)[active]
+	v = map(x -> e(x).data[1], v)[active]
 	x = ds.data 
-	any(view(x,active,i) ≈ ve for i in 1:nobs(ds))
+	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
 end
 
 ####

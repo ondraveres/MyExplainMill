@@ -314,9 +314,20 @@ end
 
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => 3.0f0,:n1 => 1.0f0,:n2 => 2.0f0), Dict(:a => "b",:n3 => -3.0f0,:n1 => -1.0f0,:n2 => -2.0f0)])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [Dict(:a => "a",:n3 => 3.0f0,:n1 => 1.0f0,:n2 => 2.0f0), Dict(:a => "b",:n3 => -3.0f0,:n1 => -1.0f0,:n2 => -2.0f0)])
+		@test Base.match(an, y[1], e)	
+		@test Base.match(an, y[2], e)	
+		@test !Base.match(an[1], y[2], e)	
+		@test !Base.match(an[2], y[1], e)	
 		am[:scalars].mask.mask .= [false,true,false]
-		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => missing,:n1 => 1.0f0,:n2 => missing), Dict(:a => "b",:n3 => missing,:n1 => -1.0f0,:n2 => missing)])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [Dict(:a => "a",:n3 => missing,:n1 => 1.0f0,:n2 => missing), Dict(:a => "b",:n3 => missing,:n1 => -1.0f0,:n2 => missing)])
+		@test Base.match(an, y[1], e)	
+		@test Base.match(an, y[2], e)	
+		@test !Base.match(an[1], y[2], e)	
+		@test !Base.match(an[2], y[1], e)	
+
 	end
 	
 	@testset "logicaland" begin
