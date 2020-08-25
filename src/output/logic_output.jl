@@ -11,10 +11,10 @@ function OR(xs)
 end
 OR(xs::Missing) = missing
 struct LogicalOR{T}
-	x::T
+	or::T
 end
-Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.x == e2.x
-Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.x)
+Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.or == e2.or
+Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.or)
 
 # OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
 
@@ -202,7 +202,7 @@ logicaland(a, b) = a
 logicaland(::Missing, ::Missing) = missing
 logicaland(a::T, ::LogicalOR) where {T<:Union{String, Number, Vector}} = a
 logicaland(a::LogicalOR, ::T) where {T<:Union{String, Number, Vector}} = a
-logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.x, b.x))
+logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.or, b.or))
 function logicaland(a::String, b::String)
 	a == "__UNKNOWN__" && return(b)
 	a 
@@ -214,16 +214,11 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, expo
 	map(x -> Dict(x[1] => x[2]), zip(k, d))
 end
 
-# function e2boolean(pruning_mask, dss, extractor)
-# 	d = map(1:nobs(dss)) do i 
-# 		mapmask(pruning_mask) do m 
-# 			participate(m) .= true
-# 		end
-# 		invalidate!(pruning_mask,setdiff(1:nobs(dss), i))
-# 		repr(MIME("text/json"),pruning_mask, dss, extractor);
-# 	end
-# 	d = filter(!isempty, d)
-# 	isempty(d) && return([Dict{Symbol,Any}()])
-# 	d = unique(d)
-# 	d = length(d) > 1 ? ExplainMill.repr_boolean(:or, d) : d
-# end
+function e2boolean(pruning_mask, dss::AbstractNode, extractor)
+	@info "deprecated syntax (pruning_mask, dss, extractor)"
+	removemissing(yarason(dss, pruning_mask, extractor))
+end
+
+function e2boolean(dss::AbstractNode, pruning_mask, extractor)
+	removemissing(yarason(dss, pruning_mask, extractor))
+end

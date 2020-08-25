@@ -8,6 +8,7 @@ using Test
 using SparseArrays
 
 const SN = Union{String,T} where T<:Number
+
 matcharrays(a::Missing, b::Missing) = true
 matcharrays(a::Missing, b::SN) = false
 matcharrays(a, b) = a == b
@@ -57,7 +58,16 @@ end
 		an = ArrayNode([1 0 3 0 5; 1 2 0 4 0])
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		y = yarason(an, am, e)
+		@test matcharrays(y,  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		@test Base.match(an, [[1, 1], [0, 2]], e)
+		@test !Base.match(an[1], [[1, 1], [0, 2]], e)
+		@test Base.match(an, [[1, 1]], e)
+		@test Base.match(an, [[missing, 1]], e)
+		@test Base.match(an, [[missing, missing]], e)
+		@test Base.match(an, missing, e)
+		@test Base.match(an, [missing], e)
+
 		@test matcharrays(yarason(an, EmptyMask(), e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
 		am.mask.mask[1] = false
 		@test matcharrays(yarason(an, am, e),   [[missing, 1], [missing, 2], [missing, 0], [missing, 4], [missing, 0]])
@@ -333,7 +343,11 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e) , s)
+		y = yarason(an, am, e)
+		@test matcharrays(y , s)
+		@test match(an, y, e)
+		@test match(an, y[1:1], e)
+		@test !match(an[1], y, e)
 	end
 
 	@testset "ExtractKeyAsField" begin
@@ -353,7 +367,9 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e), [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		# match(an, y[1], e)
 		@test matcharrays(yarason(an, am, e, [true, false]) , [[Dict("ka" => ["a1", "a2", "a3"])]])
 		am.mask.mask .= [false, true, true]
 		@test matcharrays(yarason(an, am, e), [[], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])

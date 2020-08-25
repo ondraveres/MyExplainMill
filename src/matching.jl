@@ -1,6 +1,6 @@
 import Base.match
-
 const StringOrNum = Union{Number, AbstractString}
+
 # The idea is to extend the Base.match, such that we can check, if 
 # explanations (input to YaraGens) are correct
 
@@ -31,7 +31,7 @@ end
 
 # matching logical or 
 function Base.match(ds, expression::LogicalOR, extractor; path = (), verbose = false) where {T, M}
-	any(match(ds, token, extractor;path, verbose) for token in  expression.x)
+	any(match(ds, token, extractor;path, verbose) for token in  expression.or)
 end
 
 
@@ -41,6 +41,24 @@ end
 function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
 	!isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
 	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
+end
+
+function Base.match(ds::ProductNode, expression, extractor::MultipleRepresentation)
+	e = extractor.extractors
+	ks = collect(keys(e))
+	all(match(ds[k], expression, e[k]) for k in ks)
+end
+
+
+function Base.match(ds::ArrayNode, expression::Vector{Vector{T}}, extractor::ExtractScalar; path=(), verbose=false) where {T}
+	all(matcharray(ds, v, extractor) for v in expression)
+end
+
+function matcharray(ds::ArrayNode, v, e::ExtractScalar)
+	active = .!ismissing.(v)
+	ve = map(x -> e(x).data[1], v)[active]
+	x = ds.data 
+	any(view(x,active,i) ≈ ve for i in 1:nobs(ds))
 end
 
 ####
@@ -56,6 +74,17 @@ function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), v
 	end
 	all(o)
 end
+
+# function Base.match(ds::BagNode, expression::Vector{Vector{T}}, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false) where {T}
+# 	o = map(expression) do ei 
+# 		any(match(ds[j].data, ei, extractor.item; path, verbose) for j in 1:nobs(ds))
+# 	end
+# 	all(o)
+# end
+
+# function matchkeyasfield(ds::BagNode, expression, extractor)
+# 	any(match(ds[i] for i in 1:nobs(ds)))
+# end
 
 
 function Base.match(ds::ArrayNode, expression::Vector, extractor ; path = (), verbose = false)
@@ -89,5 +118,8 @@ function Base.match(ds::LazyNode{T,M}, token::StringOrNum, extractor; path = (),
 	printontrue(token ∈ ds.data, verbose, path," ", token)
 end
 
+####
+#	Matching of 
+####
 
 match_or(ds::Vector, e, v; path = (), verbose = false) = any(match(d, e, v; path = path, verbose = verbose) for d in  ds)
