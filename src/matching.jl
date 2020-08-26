@@ -102,12 +102,28 @@ function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), v
 	all(o)
 end
 
-# function Base.match(ds::BagNode, expression::Vector{Vector{T}}, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false) where {T}
-# 	o = map(expression) do ei 
-# 		any(match(ds[j].data, ei, extractor.item; path, verbose) for j in 1:nobs(ds))
-# 	end
-# 	all(o)
-# end
+function matchbag(ds::BagNode, expression::Absent, extractor::ExtractArray; path = (), verbose = false)
+	true
+end
+
+
+const KeyAsField = BagNode{D,B,M} where {D<:ProductNode{T,MM},B,M} where {T<: NamedTuple{(:key, :item),TT},MM} where {TT}
+# matching key as value is complicated, as we first need to find all keys that matches 
+# and then check that we can match items within the key
+function Base.match(ds::KeyAsField, expression::Dict, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false)
+	for k in keys(expression)
+		#find the correct 
+		ii = filter(i -> match(ds.data[:key][i], k, extractor.key), 1:nobs(ds.data))
+		v = expression[k]
+		isabsent(v) && return(true)
+		any(match(ds.data[:item][i], [v], extractor.item) for i in ii) && return(true)
+	end
+	return(false)
+end
+
+function Base.match(ds::KeyAsField, expression::Vector, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false)
+	all(match(ds, e, extractor) for e in expression)
+end
 
 # function matchkeyasfield(ds::BagNode, expression, extractor)
 # 	any(match(ds[i] for i in 1:nobs(ds)))

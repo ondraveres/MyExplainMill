@@ -261,9 +261,11 @@ function removeabsent(x::LogicalOR)
 	LogicalOR(removeabsent(x))
 end
 
+# we need to keep absents, because if there will be key as value and it will depend on key, it will 
+# be pruned out
 function removeabsent(d::Dict)
 	x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
-	x = filter(a -> !isabsent(a.second), x)
+	x = filter(a -> !isabsent(a.second), x) 
 	x = filter(a -> !isempty(a.second), x)
 	isempty(x) ? absent : Dict(x)
 end

@@ -380,7 +380,13 @@ end
 
 		y = yarason(an, am, e)
 		@test matcharrays(y, [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
-		# match(an, y[1], e)
+		@test match(an, y[1], e)
+		@test !match(an[1], y[2], e)
+		@test !match(an[2], y[1], e)
+		@test !match(an, Dict("kc" => ["a1", "a2", "a3"]), e)
+		@test match(an, Dict(absent => ["a1", "a2", "a3"]), e)
+		@test match(an, Dict("kc" => absent), e)
+
 		@test matcharrays(yarason(an, am, e, [true, false]) , [[Dict("ka" => ["a1", "a2", "a3"])]])
 		am.mask.mask .= [false, true, true]
 		@test matcharrays(yarason(an, am, e), [[], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
@@ -390,8 +396,10 @@ end
 		am.mask.mask .= [true, false, true]
 		am.child[:key].mask.mask .=[false, true, true]
 		@test matcharrays(yarason(an, am, e),  [[Dict(absent => ["a1", "a2", "a3"])], [Dict("kc" => ["c1"])]])
+
+		#we need to ensure that we can match absets!!!!
+
 	end 
-	
 
 	@testset "removing absent" begin
 		@test removeabsent([1,2,3,absent]) == [1,2,3]
