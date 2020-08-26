@@ -22,27 +22,3 @@ function removemissing(ds::Mill.ProductNode)
 end
 
 @deprecate prunemissing removemissing
-
-removemissing(::Missing) = missing
-removemissing(x::String) = x
-
-function removemissing(x::LogicalOR)
-	xs = map(!ismissing, x.x)
-	xs = map(!isempty, x.x)
-	LogicalOR(xs)
-end
-
-function removemissing(d::Dict)
-	x = map(k -> k => removemissing(d[k]), collect(keys(d)))
-	x = filter(a -> !ismissing(a.second), x)
-	x = filter(a -> !isempty(a.second), x)
-	isempty(x) ? missing : Dict(x)
-end
-
-function removemissing(x::Vector)
-	x = map(removemissing, x);
-	x = filter(!ismissing, x);
-	isempty(x) ? missing : x
-end
-
-

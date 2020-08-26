@@ -1,22 +1,42 @@
-zeroobs() = missing 
-emptyexportobs() = Vector{Missing}()
+
+"""
+    Absent
+	represent a part of an explanation which is not important 
+"""
+struct Absent end
+
+"""
+    absent
+	The singleton instance of type [`Absent`](@ref) representing an absent part of explanation
+"""
+const absent = Absent()
+
+"""
+    isabsent(x)
+Indicate whether `x` is [`absent`](@ref).
+"""
+isabsent(::Any) = false
+isabsent(::Absent) = true
+
+
+zeroobs() = absent 
+emptyexportobs() = Vector{Absent}()
 
 using FillArrays
 function OR(xs)
+	# xs = removeabsent(unique(xs))
 	xs = unique(xs)
-	# xs = filter(!ismissing, xs)
-	# xs = filter(!isempty, xs)
-	isempty(xs) && return(missing)
+	isempty(xs) && return(absent)
 	length(xs) > 1 ? LogicalOR(xs) : only(xs)
 end
-OR(xs::Missing) = missing
+OR(xs::Absent) = absent
 struct LogicalOR{T}
 	or::T
 end
 Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.or == e2.or
 Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.or)
 
-# OR(xs) = length(xs) > 1 ? OR(filter(!ismissing, xs)) : only(xs)
+# OR(xs) = length(xs) > 1 ? OR(filter(!isabsent, xs)) : only(xs)
 
 function dictofindexes(targets)
 	d = Dict{Int,Vector{Int}}()
@@ -44,21 +64,21 @@ function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 	d = dictofindexes(xi)
 	groups = Dict(map(k -> k => OR(x[d[k]]), collect(keys(d))))
 	map(1:length(x)) do i
-		ismissing(x[i]) ? missing : groups[xi[i]]
+		isabsent(x[i]) ? absent : groups[xi[i]]
 	end
 end
 
 # function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
 # 	xi = m.cluster_membership[active]
 # 	map(1:length(x)) do i
-# 		ismissing(x[i]) ? missing : OR(x[xi .== xi[i]])
+# 		isabsent(x[i]) ? absent : OR(x[xi .== xi[i]])
 # 	end
 # end
 
 
-addor(m::Mask{I, D}, x::Missing, active)  where {I<: Vector{Int}, D}= missing
+addor(m::Mask{I, D}, x::Absent, active)  where {I<: Vector{Int}, D}= absent
 addor(m::Mask{I, D}, x, active) where {I<: Nothing, D} = x
-addor(m::Mask{I, D}, x::Missing, active) where {I<: Nothing, D}  = missing
+addor(m::Mask{I, D}, x::Absent, active) where {I<: Nothing, D}  = absent
 addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
 addor(m::EmptyMask, x, active) = x
 
@@ -74,9 +94,9 @@ contributing(m::EmptyMask, l) = Fill(true, l)
 function yarason(ds::ArrayNode{T}, m::AbstractExplainMask, e::ExtractCategorical, exportobs = fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix}
 	c = contributing(m, nobs(ds))
 	items = map(i -> i.ix, ds.data.data)
-	!any(c) && return(fill(missing, sum(exportobs)))
+	!any(c) && return(fill(absent, sum(exportobs)))
 	d = reversedict(e.keyvalemap);
-	idxs = map(i -> c[i] ? get(d, items[i], "__UNKNOWN__") : missing, findall(exportobs))
+	idxs = map(i -> c[i] ? get(d, items[i], "__UNKNOWN__") : absent, findall(exportobs))
 	addor(m, idxs, exportobs)
 end
 
@@ -87,14 +107,14 @@ end
 """
 unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
 unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
-unscale(x::Missing, e::ExtractScalar) = missing
+unscale(x::Absent, e::ExtractScalar) = absent
 unscale(x, e) = x
 
 """
 	yarason(ds, m, e, exportobs::Vector{Bool})
 
 	Values for items in `ds` corresponding to `true` in `prunemask(m)` 
-	and `participating(m)`, or `missing` otherwise. Values are exported 
+	and `participating(m)`, or `absent` otherwise. Values are exported 
 	only for those indicated in binary mask `exportobs`. The export 
 	also takes into the account "clusters", which are exported using the 
 	`OR` as `OR
@@ -102,20 +122,20 @@ unscale(x, e) = x
 function yarason(ds::ArrayNode{T}, m,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
 	items = contributing(m, size(ds.data,1))
 	x = map(findall(exportobs)) do j 
-		[items[i] ? ds.data[i,j] : missing for i in 1:length(items)]
+		[items[i] ? ds.data[i,j] : absent for i in 1:length(items)]
 	end
 	unscale(x, e)
 end
 
 function yarason(ds::ArrayNode{T}, m, e::ExtractString, exportobs = fill(true, nobs(ds))) where {T<:Mill.NGramMatrix}
 	c =  contributing(m, nobs(ds))
-	x = map(i -> c[i] ? ds.data.s[i] : missing, findall(exportobs))
+	x = map(i -> c[i] ? ds.data.s[i] : absent, findall(exportobs))
 	addor(m, x, exportobs)
 end
 
 function yarason(ds::LazyNode, m, e, exportobs = fill(true, nobs(ds)))
 	c =  contributing(m, nobs(ds))
-	x = map(i -> c[i] ? ds.data[i] : missing, findall(exportobs))
+	x = map(i -> c[i] ? ds.data[i] : absent, findall(exportobs))
 	addor(m, x, exportobs)
 end
 
@@ -128,8 +148,8 @@ end
 
 function yarason(ds::BagNode, m, e::T, exportobs = fill(true, nobs(ds))) where {T<:Union{JsonGrinder.ExtractKeyAsField, JsonGrinder.ExtractArray}}
     nobs(ds) == 0 && return(zeroobs())
-    ismissing(ds.data) && return(fill(missing, sum(exportobs)))
-    nobs(ds.data) == 0 && return(fill(missing, sum(exportobs)))
+    isabsent(ds.data) && return(fill(absent, sum(exportobs)))
+    nobs(ds.data) == 0 && return(fill(absent, sum(exportobs)))
     !any(exportobs) && emptyexportobs()
 
     #get indexes of c clusters
@@ -166,7 +186,7 @@ function _arrayofdicts(d::Dict, l)
 	isempty(d) && return(fill(d, l))
 	ks = collect(keys(d))
 	map(1:l) do i
-		Dict(map(k -> k => ismissing(d[k]) ? missing : d[k][i], ks))
+		Dict(map(k -> k => isabsent(d[k]) ? absent : d[k][i], ks))
 	end
 end
 
@@ -196,10 +216,10 @@ end
 
 mergeexplanations(a,b) = map(x -> logicaland(x...), zip(a,b))
 logicaland(a::Vector, b::Vector) = intersect(a,b)
-logicaland(::Missing, a) = a
-logicaland(a, ::Missing) = a
+logicaland(::Absent, a) = a
+logicaland(a, ::Absent) = a
 logicaland(a, b) = a
-logicaland(::Missing, ::Missing) = missing
+logicaland(::Absent, ::Absent) = absent
 logicaland(a::T, ::LogicalOR) where {T<:Union{String, Number, Vector}} = a
 logicaland(a::LogicalOR, ::T) where {T<:Union{String, Number, Vector}} = a
 logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.or, b.or))
@@ -214,11 +234,46 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, expo
 	map(x -> Dict(x[1] => x[2]), zip(k, d))
 end
 
+
+
+removeabsent(::Absent) = absent
+removeabsent(x::String) = x
+removeabsent(x::Number) = x
+
+function removeabsent(x::Vector)
+	x = map(removeabsent, x);
+	x = filter(!isabsent, x);
+	isempty(x) && return(absent)
+	T = mapreduce(typeof, promote_type, x)
+	x = Vector{T}(x)
+	x
+end
+
+function removeabsent(x::Vector{T}) where {T<:Absent}
+	absent
+end
+
+function removeabsent(x::Vector{T}) where {T}
+	x
+end
+
+function removeabsent(x::LogicalOR)
+	LogicalOR(removeabsent(x))
+end
+
+function removeabsent(d::Dict)
+	x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
+	x = filter(a -> !isabsent(a.second), x)
+	x = filter(a -> !isempty(a.second), x)
+	isempty(x) ? absent : Dict(x)
+end
+
+
 function e2boolean(pruning_mask, dss::AbstractNode, extractor)
 	@info "deprecated syntax (pruning_mask, dss, extractor)"
-	removemissing(yarason(dss, pruning_mask, extractor))
+	removeabsent(yarason(dss, pruning_mask, extractor))
 end
 
 function e2boolean(dss::AbstractNode, pruning_mask, extractor)
-	removemissing(yarason(dss, pruning_mask, extractor))
+	removeabsent(yarason(dss, pruning_mask, extractor))
 end

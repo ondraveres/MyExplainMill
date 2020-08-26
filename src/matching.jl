@@ -24,9 +24,9 @@ end
 # 	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
 # end
 
-# missing is always matching
-function Base.match(ds::ArrayNode, ::Missing, extractor; path = (), verbose = false)
-	printontrue(true, verbose, path," ", "Missing")
+# absent is always matching
+function Base.match(ds::ArrayNode, ::Absent, extractor; path = (), verbose = false)
+	printontrue(true, verbose, path," ", "Absent")
 end
 
 # matching logical or 
@@ -64,14 +64,14 @@ function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,
 end
 
 function matcharray(ds::ArrayNode, vals::Dict, extractors::Dict)
-	v = [_getvalue(get(vals, k, missing), f) for (k,f) in extractors]
-	active = .!ismissing.(v)
+	v = [_getvalue(get(vals, k, absent), f) for (k,f) in extractors]
+	active = .!isabsent.(v)
 	v = v[active]
 	x = ds.data 
 	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
 end
 
-_getvalue(x::Missing, e) = missing
+_getvalue(x::Absent, e) = absent
 _getvalue(x, e) = e(x).data[1]
 
 ####
@@ -82,7 +82,7 @@ function Base.match(ds::ArrayNode, expression::Vector{Vector{T}}, extractor::Ext
 end
 
 function matcharray(ds::ArrayNode, v::Vector, e::ExtractScalar)
-	active = .!ismissing.(v)
+	active = .!isabsent.(v)
 	v = map(x -> e(x).data[1], v)[active]
 	x = ds.data 
 	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
