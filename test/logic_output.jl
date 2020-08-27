@@ -1,12 +1,17 @@
+####
+# Unit test for extraction of logical formulas and their matching
+####
 using ExplainMill, Mill, JsonGrinder
 using ExplainMill: Mask, yarason, participate, prunemask, addor, OR, EmptyMask, logicaland
+using ExplainMill: Absent, absent, isabsent
 using Setfield
 using Test
 using SparseArrays
 
 const SN = Union{String,T} where T<:Number
-matcharrays(a::Missing, b::Missing) = true
-matcharrays(a::Missing, b::SN) = false
+
+matcharrays(a::Absent, b::Absent) = true
+matcharrays(a::Absent, b::SN) = false
 matcharrays(a, b) = a == b
 function matcharrays(a::Vector, b::Vector)
 	(length(a) != length(b)) && return(false)
@@ -54,21 +59,30 @@ end
 		an = ArrayNode([1 0 3 0 5; 1 2 0 4 0])
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		y = yarason(an, am, e)
+		@test matcharrays(y,  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
+		@test Base.match(an, [[1, 1], [0, 2]], e)
+		@test !Base.match(an[1], [[1, 1], [0, 2]], e)
+		@test Base.match(an, [[1, 1]], e)
+		@test Base.match(an, [[absent, 1]], e)
+		@test Base.match(an, [[absent, absent]], e)
+		@test Base.match(an, absent, e)
+		@test Base.match(an, [absent], e)
+
 		@test matcharrays(yarason(an, EmptyMask(), e),  [[1, 1], [0, 2], [3, 0], [0, 4], [5, 0]])
 		am.mask.mask[1] = false
-		@test matcharrays(yarason(an, am, e),   [[missing, 1], [missing, 2], [missing, 0], [missing, 4], [missing, 0]])
-		@test matcharrays(yarason(an, am, e, [true, false, true, false, true]),   [[missing,1], [missing, 0], [missing, 0]])
+		@test matcharrays(yarason(an, am, e),   [[absent, 1], [absent, 2], [absent, 0], [absent, 4], [absent, 0]])
+		@test matcharrays(yarason(an, am, e, [true, false, true, false, true]),   [[absent,1], [absent, 0], [absent, 0]])
 		@test matcharrays(yarason(an, EmptyMask(), nothing, [true, false, true, false, true]),   [[1, 1], [3, 0],  [5, 0]])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, e),   fill([missing, missing], 5))
+		@test matcharrays(yarason(an, am, e),   fill([absent, absent], 5))
 
 		e = ExtractScalar(Float32, 1, 2)
 		am.mask.mask .= true
 		@test matcharrays(yarason(an, am, e),   [[1.5, 1.5], [1.0, 2.0], [2.5, 1.0], [1.0, 3.0], [3.5, 1.0]])
 		am.mask.mask[1] = false
-		@test matcharrays(yarason(an, am, e),   [[missing, 1.5], [missing, 2.0], [missing, 1.0], [missing, 3.0], [missing, 1.0]])
+		@test matcharrays(yarason(an, am, e),   [[absent, 1.5], [absent, 2.0], [absent, 1.0], [absent, 3.0], [absent, 1.0]])
 	end
 
 	@testset "NGramMatrix" begin
@@ -96,7 +110,7 @@ end
 
 		am.mask.mask[[2,4]] .= false
 		y = yarason(an, am, e)
-		@test matcharrays(y, ["a", missing, "c", missing, "e"])
+		@test matcharrays(y, ["a", absent, "c", absent, "e"])
 		@test Base.match(an, y, e)
 		y = yarason(an, am, e, [true,false,true,false,true])
 		@test matcharrays(y, ["a","c","e"])
@@ -104,18 +118,24 @@ end
 		@test !Base.match(az, y, e)	
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
-		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [missing, missing])
+		@test matcharrays(yarason(an, am, e) ,  [absent, absent, absent, absent, absent])
+		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [absent, absent])
 
 		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 		am.mask.mask[2] = false
-		@test matcharrays(yarason(an, am, e), [OR(["a", "e"]), missing, "c", missing, OR(["a", "e"])])
-		@test matcharrays(yarason(an, am, e, [true, true, true,false,false]), ["a", missing, "c"])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [OR(["a", "e"]), absent, "c", absent, OR(["a", "e"])])
+		@test !match(e("a"), y, e)
+		@test match(e("a"), y[1], e)
+		@test match(e("a"), y[1:2], e)
+		@test !match(e("a"), y[1:3], e)
+
+		@test matcharrays(yarason(an, am, e, [true, true, true,false,false]), ["a", absent, "c"])
 		@test matcharrays(yarason(an, am, e, [false, false, false,false,false]), [])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
-		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [missing, missing])
+		@test matcharrays(yarason(an, am, e) ,  [absent, absent, absent, absent, absent])
+		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [absent, absent])
 	end
 
 	@testset "Categorical" begin
@@ -135,24 +155,32 @@ end
 
 		am.mask.mask[[2,4]] .= false
 		y = yarason(an, am, e)
-		@test matcharrays(y , ["a",missing, "c", missing, "__UNKNOWN__"])
+		@test matcharrays(y , ["a",absent, "c", absent, "__UNKNOWN__"])
 		@test Base.match(an, y, e)	
 		@test !Base.match(an[2:end], y, e)	
 		@test !Base.match(an[1:end-1], y, e)	
-		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", missing])
+		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", absent])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
-		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [missing, missing])
+		@test matcharrays(yarason(an, am, e) ,  [absent, absent, absent, absent, absent])
+		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , [absent, absent])
 
 		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
 		am.mask.mask[2] = false
-		@test matcharrays(yarason(an, am, e) , [OR(["a","__UNKNOWN__"]), missing, "c", missing, OR(["a","__UNKNOWN__"])])
-		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", missing])
+		y = yarason(an, am, e)
+		@test matcharrays(y , [OR(["a","__UNKNOWN__"]), absent, "c", absent, OR(["a","__UNKNOWN__"])])
+		@test !match(e("a"), y, e)
+		@test match(e("a"), y[1], e)
+		@test match(e("a"), y[1:2], e)
+		@test !match(e("a"), y[1:3], e)
+		@test !match(e("c"), y[1:3], e)
+		@test match(e("f"), y[1], e)
+
+		@test matcharrays(yarason(an, am, e, [true, true, false, false, false]) , ["a", absent])
 		@test matcharrays(yarason(an, am, e, [false, false, false, false, false]) , [])
 
 		am.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) ,  [missing, missing, missing, missing, missing])
+		@test matcharrays(yarason(an, am, e) ,  [absent, absent, absent, absent, absent])
 	end
 
 	@testset "Lazy" begin
@@ -188,10 +216,20 @@ end
 		@test Base.match(an, y, e)	
 		@test !Base.match(an[1], y, e)
 
+		am = @set am.mask = ExplainMill.Mask([1,2,3,2,1], d -> zeros(d))
+		y = yarason(an, am, e)
+		@test matcharrays(y, [[OR(["a", "__UNKNOWN__"]), OR(["b", "d"])], ["c"], [OR(["b", "d"]), OR(["a", "__UNKNOWN__"])]])
+		@test Base.match(an, y, e)	
+		@test !Base.match(an[1], y, e)	
+		@test Base.match(an[1], y[[1]], e)	
+		@test !Base.match(an[2], y[[1]], e)	
+
+
 		@test matcharrays(yarason(an, EmptyMask(), e), [["a", "b"], ["c"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true]) , [["a", "b"], ["d", "__UNKNOWN__"]])
 		@test matcharrays(yarason(an, EmptyMask(), e, [false, true, false]) , [["c"]])
 
+		am = Mask(an, d -> rand(d))
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
@@ -203,24 +241,24 @@ end
 		am.mask.mask .= true
 		am.child.mask.mask .= [true,false,true,false,true]
 		y = yarason(an, am, e)
-		@test matcharrays(y , [["a", missing], ["c"], [missing, "__UNKNOWN__"]])
+		@test matcharrays(y , [["a", absent], ["c"], [absent, "__UNKNOWN__"]])
 		@test Base.match(an, y, e)	
 		@test !Base.match(an[1], y, e)
 		@test !Base.match(an[[1,3]], y, e)
 
-		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", missing], [missing, "__UNKNOWN__"]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a", absent], [absent, "__UNKNOWN__"]])
 		am.mask.mask .= [true,false,true,false,true]
 		@test matcharrays(yarason(an, am, e) , [["a"], ["c"], ["__UNKNOWN__"]])
 		@test matcharrays(yarason(an, am, e, [true, false, true]) , [["a"], ["__UNKNOWN__"]])
 		
 		am.mask.mask .= true
 		am.child.mask.mask .= false
-		@test matcharrays(yarason(an, am, e) , [[missing], [missing], [missing]])
-		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[missing], [missing]])
+		@test matcharrays(yarason(an, am, e) , [[absent], [absent], [absent]])
+		@test matcharrays(yarason(an, am, e, [true, false, true]) , [[absent], [absent]])
 
 		an = BagNode(ArrayNode(zeros(2,0)), fill(0:-1, 3))
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, e), fill(missing, 3))
+		@test matcharrays(yarason(an, am, e), fill(absent, 3))
 	end
 
 	@testset "Product" begin
@@ -244,18 +282,23 @@ end
 		@test matcharrays(yarason(an, EmptyMask(), e, [true, false, true,false,false]),  expected[[1,3]])
 
 		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => absent,:b => "sb"), Dict(:a => "cc",:b => "sc"), Dict(:a => absent,:b => "sd"), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => missing,:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => absent,:b => absent), Dict(:a => "cc",:b => "sc"), Dict(:a => absent,:b => absent), Dict(:a => "__UNKNOWN__",:b => "se")])
 		am[:a].mask.mask .= true
-		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => missing), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => missing), Dict(:a => "__UNKNOWN__",:b => "se")])
+		@test matcharrays(yarason(an, am, e) , [Dict(:a => "ca",:b => "sa"), Dict(:a => "cb",:b => absent), Dict(:a => "cc",:b => "sc"), Dict(:a => "cd",:b => absent), Dict(:a => "__UNKNOWN__",:b => "se")])
+
+		y = yarason(an, am, e)
+		y = OR(y[1:2])
+		@test !match(an[3:end], y, e)
+		@test match(an[1:2], y, e)
 
 		am[:a].mask.mask .= true
 		am[:b].mask.mask .= true
 		am[:a].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) ,[Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => "sd")])
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) ,[Dict(:a => "ca",:b => "sa"), Dict(:a => absent,:b => "sd")])
 		am[:b].mask.mask[[2,4]] .= false
-		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => missing,:b => missing)])
+		@test matcharrays(yarason(an, am, e, [true, false, false, true, false]) , [Dict(:a => "ca",:b => "sa"), Dict(:a => absent,:b => absent)])
 		@test matcharrays(yarason(an, am, e, [true, false, true, false, false]) ,  [Dict(:a => "ca",:b => "sa"), Dict(:a => "cc",:b => "sc")])
 
 		# Let's test the usecase, when we join scalar values and matrix to one big matrix
@@ -272,15 +315,25 @@ end
 
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
-		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => 3.0f0,:n1 => 1.0f0,:n2 => 2.0f0), Dict(:a => "b",:n3 => -3.0f0,:n1 => -1.0f0,:n2 => -2.0f0)])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [Dict(:a => "a",:n3 => 3.0f0,:n1 => 1.0f0,:n2 => 2.0f0), Dict(:a => "b",:n3 => -3.0f0,:n1 => -1.0f0,:n2 => -2.0f0)])
+		@test Base.match(an, y[1], e)	
+		@test Base.match(an, y[2], e)	
+		@test !Base.match(an[1], y[2], e)	
+		@test !Base.match(an[2], y[1], e)	
 		am[:scalars].mask.mask .= [false,true,false]
-		@test matcharrays(yarason(an, am, e), [Dict(:a => "a",:n3 => missing,:n1 => 1.0f0,:n2 => missing), Dict(:a => "b",:n3 => missing,:n1 => -1.0f0,:n2 => missing)])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [Dict(:a => "a",:n3 => absent,:n1 => 1.0f0,:n2 => absent), Dict(:a => "b",:n3 => absent,:n1 => -1.0f0,:n2 => absent)])
+		@test Base.match(an, y[1], e)	
+		@test Base.match(an, y[2], e)	
+		@test !Base.match(an[1], y[2], e)	
+		@test !Base.match(an[2], y[1], e)	
 	end
 	
 	@testset "logicaland" begin
-		@test logicaland(1, missing) == 1
-		@test logicaland(missing, 1) == 1
-		@test ismissing(logicaland(missing, missing))
+		@test logicaland(1, absent) == 1
+		@test logicaland(absent, 1) == 1
+		@test isabsent(logicaland(absent, absent))
 		@test logicaland([1,2], [1]) == [1]
 		@test logicaland([1], [1,2]) == [1]
 		@test logicaland(1, OR([1,2])) == 1
@@ -301,7 +354,11 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e) , s)
+		y = yarason(an, am, e)
+		@test matcharrays(y , s)
+		@test match(an, y, e)
+		@test match(an, y[1:1], e)
+		@test !match(an[1], y, e)
 	end
 
 	@testset "ExtractKeyAsField" begin
@@ -321,7 +378,15 @@ end
 		an = reduce(catobs,e.(s))
 		am = Mask(an, d -> rand(d))
 
-		@test matcharrays(yarason(an, am, e), [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		y = yarason(an, am, e)
+		@test matcharrays(y, [[Dict("ka" => ["a1", "a2", "a3"])], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
+		@test match(an, y[1], e)
+		@test !match(an[1], y[2], e)
+		@test !match(an[2], y[1], e)
+		@test !match(an, Dict("kc" => ["a1", "a2", "a3"]), e)
+		@test match(an, Dict(absent => ["a1", "a2", "a3"]), e)
+		@test match(an, Dict("kc" => absent), e)
+
 		@test matcharrays(yarason(an, am, e, [true, false]) , [[Dict("ka" => ["a1", "a2", "a3"])]])
 		am.mask.mask .= [false, true, true]
 		@test matcharrays(yarason(an, am, e), [[], [Dict("ka" => ["a1", "a2"]), Dict("kc" => ["c1"])]])
@@ -330,8 +395,17 @@ end
 		am.mask.mask .= true
 		am.mask.mask .= [true, false, true]
 		am.child[:key].mask.mask .=[false, true, true]
-		@test matcharrays(yarason(an, am, e),  [[Dict(missing => ["a1", "a2", "a3"])], [Dict("kc" => ["c1"])]])
+		@test matcharrays(yarason(an, am, e),  [[Dict(absent => ["a1", "a2", "a3"])], [Dict("kc" => ["c1"])]])
+
+		#we need to ensure that we can match absets!!!!
+
 	end 
-	
-	
+
+	@testset "removing absent" begin
+		@test removeabsent([1,2,3,absent]) == [1,2,3]
+		@test removeabsent([[1],[2],[3],absent]) == [[1],[2],[3]]
+		@test removeabsent([[1],[2],[absent],absent]) == [[1],[2]]
+		@test removeabsent([[1],"a",[absent],absent]) == [[1],"a"]
+		@test matcharrays(removeabsent(Dict(:a => [[1],"a",[absent],absent], :b => absent, :c => [absent])), Dict((:a => [[1], "a"])))
+	end
 end

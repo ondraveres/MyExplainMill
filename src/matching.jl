@@ -1,6 +1,6 @@
 import Base.match
-
 const StringOrNum = Union{Number, AbstractString}
+
 # The idea is to extend the Base.match, such that we can check, if 
 # explanations (input to YaraGens) are correct
 
@@ -24,9 +24,14 @@ end
 # 	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
 # end
 
-# missing is always matching
-function Base.match(ds::ArrayNode, ::Missing, extractor; path = (), verbose = false)
-	printontrue(true, verbose, path," ", "Missing")
+# absent is always matching
+function Base.match(ds::ArrayNode, ::Absent, extractor; path = (), verbose = false)
+	printontrue(true, verbose, path," ", "Absent")
+end
+
+# matching logical or 
+function Base.match(ds, expression::LogicalOR, extractor; path = (), verbose = false) where {T, M}
+	any(match(ds, token, extractor;path, verbose) for token in  expression.or)
 end
 
 
@@ -36,6 +41,51 @@ end
 function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
 	!isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
 	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
+end
+
+function Base.match(ds::ProductNode, expression, extractor::MultipleRepresentation)
+	e = extractor.extractors
+	ks = collect(keys(e))
+	all(match(ds[k], expression, e[k]) for k in ks)
+end
+
+####
+#				Dictionary with fused Scalar values
+####
+
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,D}; path = (), verbose = false) where {V,D}
+	!matcharray(ds[:scalars], expression, extractor.vec) && return(false)
+	ks = collect(setdiff(keys(expression), keys(extractor.vec)))
+	all(match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose) for k in ks)
+end
+
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,Nothing}; path = (), verbose = false) where {V}
+	match(ds[:scalars], expression, extractor.vec)
+end
+
+function matcharray(ds::ArrayNode, vals::Dict, extractors::Dict)
+	v = [_getvalue(get(vals, k, absent), f) for (k,f) in extractors]
+	active = .!isabsent.(v)
+	v = v[active]
+	x = ds.data 
+	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
+end
+
+_getvalue(x::Absent, e) = absent
+_getvalue(x, e) = e(x).data[1]
+
+####
+#				Scalar
+####
+function Base.match(ds::ArrayNode, expression::Vector{Vector{T}}, extractor::ExtractScalar; path=(), verbose=false) where {T}
+	all(matcharray(ds, v, extractor) for v in expression)
+end
+
+function matcharray(ds::ArrayNode, v::Vector, e::ExtractScalar)
+	active = .!isabsent.(v)
+	v = map(x -> e(x).data[1], v)[active]
+	x = ds.data 
+	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
 end
 
 ####
@@ -52,6 +102,37 @@ function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), v
 	all(o)
 end
 
+function matchbag(ds::BagNode, expression::Absent, extractor::ExtractArray; path = (), verbose = false)
+	true
+end
+
+
+const KeyAsField = BagNode{D,B,M} where {D<:ProductNode{T,MM},B,M} where {T<: NamedTuple{(:key, :item),TT},MM} where {TT}
+# matching key as value is complicated, as we first need to find all keys that matches 
+# and then check that we can match items within the key
+function Base.match(ds::KeyAsField, expression::Dict, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false)
+	for k in keys(expression)
+		#find the correct 
+		ii = filter(i -> match(ds.data[:key][i], k, extractor.key), 1:nobs(ds.data))
+		v = expression[k]
+		isabsent(v) && return(true)
+		any(match(ds.data[:item][i], [v], extractor.item) for i in ii) && return(true)
+	end
+	return(false)
+end
+
+function Base.match(ds::KeyAsField, expression::Vector, extractor::JsonGrinder.ExtractKeyAsField; path = (), verbose = false)
+	all(match(ds, e, extractor) for e in expression)
+end
+
+# function matchkeyasfield(ds::BagNode, expression, extractor)
+# 	any(match(ds[i] for i in 1:nobs(ds)))
+# end
+
+
+function Base.match(ds::ArrayNode, expression::Vector, extractor ; path = (), verbose = false)
+	all(match(ds, token, extractor;path, verbose) for token in expression)
+end
 ####
 #				Matching of Strings
 ####
@@ -72,8 +153,16 @@ end
 ####
 #				Matching of Lazy
 ####
+function Base.match(ds::LazyNode, expression::Vector, extractor ; path = (), verbose = false)
+	all(match(ds, token, extractor;path, verbose) for token in expression)
+end
+
 function Base.match(ds::LazyNode{T,M}, token::StringOrNum, extractor; path = (), verbose = false) where {T, M}
 	printontrue(token ∈ ds.data, verbose, path," ", token)
 end
+
+####
+#	Matching of 
+####
 
 match_or(ds::Vector, e, v; path = (), verbose = false) = any(match(d, e, v; path = path, verbose = verbose) for d in  ds)
