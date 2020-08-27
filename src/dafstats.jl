@@ -10,7 +10,7 @@ end
 DafExplainer(n::Int) = DafExplainer(n, true, false)
 DafExplainer() = DafExplainer(200)
 BanzExplainer(n::Int) = DafExplainer(n, true, true)
-BanzExplainer() = DafExplainer(200)
+BanzExplainer() = BanzExplainer(200)
 
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = 0.1)
 	soft_model = (ds...) -> softmax(model(ds...));
@@ -39,7 +39,7 @@ function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f)
 end
 
 function Duff.update!(e::DafExplainer, dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
-	for d in dafs 
+	for d in dafs
 		Duff.update!(e, d, v)
 	end
 end
@@ -70,12 +70,12 @@ end
 	which is important for minibatch processing
 """
 function updatesamplemembership!(pruning_mask, n)
-	for i in 1:n 
-		mapmask(pruning_mask) do m 
+	for i in 1:n
+		mapmask(pruning_mask) do m
 			participate(m) .= true
 		end
 		invalidate!(pruning_mask,setdiff(1:n, i))
-		mapmask(pruning_mask) do m 
+		mapmask(pruning_mask) do m
 			m.outputid[participate(m)] .= i
 		end
 	end
