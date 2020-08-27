@@ -6,7 +6,6 @@ removable(s::Matrix{T}) where {T<:Number} = false
 removable(x::NGramMatrix{String}) = all(isempty.(x.s))
 removable(x::Flux.OneHotMatrix{Array{Flux.OneHotVector,1}}) = all(j.ix == x.height for j in x.data)
 
-
 removemissing(ds::Mill.AbstractNode) = removable(ds.data) ? missing : ds
 
 function removemissing(ds::Mill.BagNode) 

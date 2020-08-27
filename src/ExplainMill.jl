@@ -59,5 +59,5 @@ Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtil
 Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
-
+export removeabsent, removemissing
 end # module
