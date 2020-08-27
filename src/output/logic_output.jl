@@ -253,10 +253,6 @@ function removeabsent(x::Vector{T}) where {T<:Absent}
 	absent
 end
 
-function removeabsent(x::Vector{T}) where {T}
-	x
-end
-
 function removeabsent(x::LogicalOR)
 	LogicalOR(removeabsent(x))
 end

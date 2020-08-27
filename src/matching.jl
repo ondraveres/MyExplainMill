@@ -40,6 +40,7 @@ end
 ####
 function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
 	!isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
+	# all(map(k -> (@show k;match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose)), collect(keys(expression))))
 	all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
 end
 
@@ -96,10 +97,7 @@ function Base.match(ds::BagNode, expression::Vector, extractor::ExtractArray ; p
 end
 
 function matchbag(ds::BagNode, expression, extractor::ExtractArray; path = (), verbose = false)
-	o = map(expression) do ei 
-		any(match(ds[j].data, ei, extractor.item; path, verbose) for j in 1:nobs(ds))
-	end
-	all(o)
+	any(match(ds[j].data, expression, extractor.item; path, verbose) for j in 1:nobs(ds))
 end
 
 function matchbag(ds::BagNode, expression::Absent, extractor::ExtractArray; path = (), verbose = false)
