@@ -5,10 +5,15 @@ reversedict(d) = Dict([v => k for (k,v) in d]...)
 # copied from Mill.jl, which now does not have it
 const COLORS = [:blue, :red, :green, :yellow, :cyan, :magenta]
 
-function infer_extr_name(e::E, name::S) where {E<:ExtractDict, S<:Symbol}
-	name != :scalars && return name 	# original behavior
-	length(e.vec) > 1 && @error "Print not implemented for multiple vectorized keys"
-	first(keys(e.vec))
+function infer_sample_child(e::E, n::AbstractProductNode, name::S) where {E<:ExtractDict, S<:Symbol}
+	e_vec_keys = keys(e.vec)
+	if name ∈ e_vec_keys
+		scalars_idx = findfirst(isequal(ks[i]), e_vec_keys |> collect)
+		# I'm throwing off metadata, but that's because I think they are not used at this point
+		return ArrayNode(n[:scalars].data[scalars_idx:scalars_idx, :])
+	else
+		return n[name]
+	end
 end
 
 function paddedprint(io, s...; color=:default, pad=[])
@@ -62,16 +67,57 @@ function extract_scalar_inv(e::E, vals::T) where {E<:ExtractScalar, T<:Vector}
 end
 
 # shortcuit for skipping child in case of single child of dict
-function ExplainMill.print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
+function print_explained(io, ds::BagNode, e::ExtractDict{S,V}; pad = []) where {S<:Nothing,V<:Dict}
 	nchildren(e) > 1 && error("This really should not be happening")
 	print_explained(io, ds, e.other |> values |> first, pad = pad)
+end
+
+function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pad=[]) where {S<:Dict,V<:Union{Dict,Nothing}}
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io, "ProductNode", color=c)
+    ks = sort(collect(keys(n.data)))
+	# must do the hack, there's no other way
+	scalar_names = keys(e.vec)
+	if :scalars ∈ ks
+		ks = [filter(k->k!=:scalars, ks)..., scalar_names...]
+	end
+	m = length(ks)
+    for i in 1:(m-1)
+        println(io)
+		s_child = infer_sample_child(e, n, ks[i])
+        paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
+        print_explained(io, s_child, e[ks[i]], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
+    end
+
+    println(io)
+	s_child = infer_sample_child(e, n, ks[end])
+    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    print_explained(io, s_child, e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
+end
+
+# when S<:Nothing we don't have to care about :scalars
+function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pad=[]) where {S<:Nothing,V<:Dict}
+    c = COLORS[(length(pad)%length(COLORS))+1]
+    paddedprint(io, "ProductNode", color=c)
+	m = length(n.data)
+    ks = sort(collect(keys(n.data)))
+    for i in 1:(m-1)
+        println(io)
+        paddedprint(io, "  ├── $(ks[i]): ", color=c, pad=pad)
+        print_explained(io, n[ks[i]], e[ks[i]], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
+    end
+
+    println(io)
+    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    print_explained(io, n[ks[end]], e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
 function print_explained(io, ds::ArrayNode{T}, e::E; pad = []) where {T<:Matrix, E<:ExtractScalar}
 	c = COLORS[(length(pad)%length(COLORS))+1]
 	x = ds.data
 	idxs = map(argmax, x)
-	if isempty(idxs)
+	# based on https://avast-software.slack.com/archives/C016UGWTP6K/p1597408538013500 I'm doing a nasty quickfix here
+	if isempty(idxs) || all(x .== 0)
 		s = "∅"
 		paddedprint(io, s, color = c)
 	else
@@ -117,24 +163,6 @@ function print_explained(io, ds::BagNode, e; pad = [])
 	end
 end
 
-function print_explained(io::IO, n::AbstractProductNode, e::E; pad=[]) where {E<:ExtractDict}
-    c = COLORS[(length(pad)%length(COLORS))+1]
-    paddedprint(io, "ProductNode", color=c)
-    m = length(n.data)
-    ks = sort(collect(keys(n.data)))
-    for i in 1:(m-1)
-        println(io)
-		e_name = infer_extr_name(e, ks[i])
-        paddedprint(io, "  ├── $(e_name): ", color=c, pad=pad)
-        print_explained(io, n[ks[i]], e[infer_extr_name(e, ks[i])], pad=[pad; (c, "  │" * repeat(" ", max(3, 2+length(String(ks[i])))))])
-    end
-    println(io)
-	e_name = infer_extr_name(e, ks[end])
-    paddedprint(io, "  └── $(e_name): ", color=c, pad=pad)
-    print_explained(io, n[ks[end]], e[e_name], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
-end
-
-
 function print_explained(io::IO, ds::T, e; pad = []) where {T<:Mill.LazyNode}
     c = COLORS[(length(pad)%length(COLORS))+1]
     if ismissing(ds.data) || isnothing(ds.data) || isempty(ds.data)
@@ -144,7 +172,6 @@ function print_explained(io::IO, ds::T, e; pad = []) where {T<:Mill.LazyNode}
 	    paddedprint(io, countmap(ds.data), color = c, pad = pad)
 	end
 end
-
 
 print_explained(ds::AbstractNode, e) = print_explained(stdout, ds, e)
 print_explained(ds::Missing, e) = print_explained(stdout, ds, e)
