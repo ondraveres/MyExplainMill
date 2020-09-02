@@ -36,6 +36,7 @@ end
 Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.or == e2.or
 Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.or)
 
+Base.isempty(x::LogicalOR) = isempty(x.or)
 # OR(xs) = length(xs) > 1 ? OR(filter(!isabsent, xs)) : only(xs)
 
 function dictofindexes(targets)
@@ -254,7 +255,7 @@ function removeabsent(x::Vector{T}) where {T<:Absent}
 end
 
 function removeabsent(x::LogicalOR)
-	LogicalOR(removeabsent(x))
+	LogicalOR(removeabsent(x.or))
 end
 
 # we need to keep absents, because if there will be key as value and it will depend on key, it will 
