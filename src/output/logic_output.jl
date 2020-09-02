@@ -1,7 +1,7 @@
 
 """
     Absent
-	represent a part of an explanation which is not important 
+	represent a part of an explanation which is not important
 """
 struct Absent end
 
@@ -19,7 +19,7 @@ isabsent(::Any) = false
 isabsent(::Absent) = true
 
 
-zeroobs() = absent 
+zeroobs() = absent
 emptyexportobs() = Vector{Absent}()
 
 using FillArrays
@@ -37,6 +37,10 @@ Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.or == e2.or
 Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.or)
 
 Base.isempty(x::LogicalOR) = isempty(x.or)
+# few features to print Absent and serialize it to json
+Base.show(io::IO, ::ExplainMill.Absent) = print(io, "absent")
+JSON.lower(::Absent) = nothing
+
 # OR(xs) = length(xs) > 1 ? OR(filter(!isabsent, xs)) : only(xs)
 
 function dictofindexes(targets)
@@ -44,7 +48,7 @@ function dictofindexes(targets)
 	for (i, v) in enumerate(targets)
 		if haskey(d, v)
 			push!(d[v], i)
-		else 
+		else
 			d[v] = [i]
 		end
 	end
@@ -54,10 +58,10 @@ end
 """
 	addor(m::Mask, x)
 
-	returns "or" relationships if they are needed in the explanation, by 
+	returns "or" relationships if they are needed in the explanation, by
 	substituing each item with an "or" of items in clusters
 
-	`m` is the mask and 
+	`m` is the mask and
 	`x` is the output of the explanation of bottom layers
 """
 function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
@@ -86,7 +90,7 @@ addor(m::EmptyMask, x, active) = x
 
 """
 	contributing(m)
-	
+
 	returns a mask of items contributing to the explanation
 """
 contributing(m::AbstractExplainMask, l) = participate(m) .& prunemask(m)
@@ -114,15 +118,15 @@ unscale(x, e) = x
 """
 	yarason(ds, m, e, exportobs::Vector{Bool})
 
-	Values for items in `ds` corresponding to `true` in `prunemask(m)` 
-	and `participating(m)`, or `absent` otherwise. Values are exported 
-	only for those indicated in binary mask `exportobs`. The export 
-	also takes into the account "clusters", which are exported using the 
+	Values for items in `ds` corresponding to `true` in `prunemask(m)`
+	and `participating(m)`, or `absent` otherwise. Values are exported
+	only for those indicated in binary mask `exportobs`. The export
+	also takes into the account "clusters", which are exported using the
 	`OR` as `OR
 """
 function yarason(ds::ArrayNode{T}, m,  e, exportobs = fill(true, nobs(ds))) where {T<:Matrix}
 	items = contributing(m, size(ds.data,1))
-	x = map(findall(exportobs)) do j 
+	x = map(findall(exportobs)) do j
 		[items[i] ? ds.data[i,j] : absent for i in 1:length(items)]
 	end
 	unscale(x, e)
@@ -226,7 +230,7 @@ logicaland(a::LogicalOR, ::T) where {T<:Union{String, Number, Vector}} = a
 logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.or, b.or))
 function logicaland(a::String, b::String)
 	a == "__UNKNOWN__" && return(b)
-	a 
+	a
 end
 
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
@@ -258,11 +262,11 @@ function removeabsent(x::LogicalOR)
 	LogicalOR(removeabsent(x.or))
 end
 
-# we need to keep absents, because if there will be key as value and it will depend on key, it will 
+# we need to keep absents, because if there will be key as value and it will depend on key, it will
 # be pruned out
 function removeabsent(d::Dict)
 	x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
-	x = filter(a -> !isabsent(a.second), x) 
+	x = filter(a -> !isabsent(a.second), x)
 	x = filter(a -> !isempty(a.second), x)
 	isempty(x) ? absent : Dict(x)
 end
