@@ -1,7 +1,7 @@
 module ExplainMill
 using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote
 using HierarchicalUtils
-using JsonGrinder, Setfield
+using JSON, JsonGrinder, Setfield
 
 using TimerOutputs
 
