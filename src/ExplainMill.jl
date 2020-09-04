@@ -1,5 +1,5 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote
+using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote, JSON
 using HierarchicalUtils
 using JsonGrinder, Setfield
 
@@ -10,12 +10,6 @@ const to = TimerOutput();
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
 NNlib.softmax(ds::ArrayNode) = ArrayNode(softmax(ds.data))
-
-function dbscan_cosine(x, ϵ)
-	nobs(x) == 1 && return([1])
-	d = pairwise(CosineDist(), x, dims = 2)
-	dbscan(d, ϵ, 1).assignments
-end
 
 function idmap(ids::Vector{T}) where{T}
 	d = Dict{T,Vector{Int}}()
@@ -52,6 +46,7 @@ include("utils/setops.jl")
 include("utils/partialeval.jl")
 include("explain.jl")
 include("distances/fisher.jl")
+include("distances/clusterings.jl")
 
 include("hierarchical_utils.jl")
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))

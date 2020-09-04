@@ -69,7 +69,8 @@ function matcharray(ds::ArrayNode, vals::Dict, extractors::Dict)
 	active = .!isabsent.(v)
 	v = v[active]
 	x = ds.data 
-	any(view(x,active,i) ≈ v for i in 1:nobs(ds))
+	!any(active) && return(true)
+	any(view(x, active, i) ≈ v for i in 1:nobs(ds))
 end
 
 _getvalue(x::Absent, e) = absent
