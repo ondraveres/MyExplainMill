@@ -13,6 +13,11 @@ function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::
 	#get rid of masks, which does not have any explainable item
 	masks = filter(x -> !isa(x, AbstractNoMask), masks)
 
+	if isempty(masks) 
+		@info "Cannot explain empty samples"
+		return()
+	end
+
 	dp = map(masks) do x
 		length(allparents(masks, parents, idofnode(x, parents)))
 	end
