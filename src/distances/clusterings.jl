@@ -15,7 +15,7 @@ function uniquecolumns(x; ϵ = 0)
 	i, ii
 end
 
-function dbscan_fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0, δ = 0.05, symmetric = true)
+function hclust_fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0, δ = 0.05, symmetric = true)
 	nobs(subds) == 1 && return([1])
 	@show findin(ds, subds)
 	d = fdist(subm, subds, m, ds, dt, ois; stochastic = stochastic, ϵ = ϵ)
