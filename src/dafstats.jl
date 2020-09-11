@@ -21,7 +21,7 @@ end
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, clustering = ExplainMill._nocluster; threshold = 0.1)
 	ms = ExplainMill.Mask(ds, model, Duff.Daf, clustering)
 	updatesamplemembership!(ms, nobs(ds))
-	@timeit to "dafstats" dafstats(e, ms, () -> f(ds, ms))
+	dafstats(e, ms, () -> f(ds, ms))
 end
 
 function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f)
@@ -30,10 +30,10 @@ function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f)
 		m != nothing && push!(dafs, m)
 	end
 	for _j in 1:e.n
-		@timeit to "sample!" sample!(pruning_mask)
+		sample!(pruning_mask)
 		updateparticipation!(pruning_mask)
-		o = @timeit to "evaluate" f()
-		@timeit to "update!" Duff.update!(e, dafs, o, pruning_mask)
+		o = f()
+		Duff.update!(e, dafs, o, pruning_mask)
 	end
 	return(pruning_mask)
 end

@@ -3,9 +3,6 @@ using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote, 
 using HierarchicalUtils
 using JSON, JsonGrinder, Setfield
 
-using TimerOutputs
-
-const to = TimerOutput();
 
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
