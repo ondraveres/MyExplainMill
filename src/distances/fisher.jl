@@ -59,12 +59,12 @@ function _fishergrad!(o, z, mm, ois, subm, dt::Mill.AbstractNode, subdt, stochas
 	f, pds = Mill.partialeval(mm, dd, zz)
 
 	for i in 1:size(z,2)
-		zz.data[:,1] .= z[:,i]
+		zz.data .= z[:,i]
 		y, back = Zygote.pullback(() -> f(pds).data, Flux.params([zz.data]))
 		sen = deepcopy(y) .= 0
 		for oi in ois
 			sen[oi] = 1
-			f∇z = back(sen)[zz.data][:,1]
+			f∇z = mean(back(sen)[zz.data], dims = 2)
 			o[:,:,i] .+= f∇z * f∇z'
 			sen[oi] = 0 
 		end
