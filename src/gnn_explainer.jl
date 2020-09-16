@@ -19,7 +19,7 @@ function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluste
 	opt = ADAM(0.01, (0.5, 0.999))
 	loss() = Flux.logitcrossentropy(model(ds, mask).data, y)
 	println("logitcrossentropy sample: ", Flux.logitcrossentropy(model(ds).data, y))
-	@timeit to "optimizing mask" for step in 1:e.n
+	for step in 1:e.n
 		gs = gradient(loss, ps)
 		for p in ps
 			gs[p] .+= gradient(x -> regularization(x, e.α, e.β), p)[1]
