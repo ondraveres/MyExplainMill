@@ -14,7 +14,8 @@ BanzExplainer() = BanzExplainer(200)
 
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = 0.1)
 	soft_model = (ds...) -> softmax(model(ds...));
-	f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
+	# f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
+    f = (ds, ms) -> ExplainMill.confidencegap(soft_model, ds[ms], i)
 	stats(e, ds, model, f, clustering)
 end
 
