@@ -17,9 +17,15 @@ end
 
 function hclust_fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0, δ = 0.05, symmetric = true)
 	nobs(subds) == 1 && return([1])
-	@show findin(ds, subds)
 	d = fdist(subm, subds, m, ds, dt, ois; stochastic = stochastic, ϵ = ϵ)
 	d = symmetric ? max.(d,d') : d
+	cutree(hclust(d, linkage = :ward), h = δ)
+end
+
+function hclust_fastfisherdist(subm, subds, m, ds, dt, ois; δ = 0.05)
+	nobs(subds) == 1 && return([1])
+	d = fastfisherdist(subm, subds, m, ds, dt, ois)
+	d = max.(d, d')
 	cutree(hclust(d, linkage = :ward), h = δ)
 end
 
