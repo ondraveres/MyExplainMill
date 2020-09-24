@@ -61,30 +61,15 @@ function _fishergrad!(o, z, mm, ois, subm, dt::Mill.AbstractNode, subdt, stochas
 	for i in 1:size(z,2)
 		zz.data .= z[:,i]
 		y, back = Zygote.pullback(() -> f(pds).data, Flux.params([zz.data]))
-		sen = deepcopy(y) .= 0
 		for oi in ois
-			sen[oi] = 1
+			sen = Flux.onehotbatch(fill(oi, size(y,2)), 1:size(y,1))
 			f∇z = mean(back(sen)[zz.data], dims = 2)
 			o[:,:,i] .+= f∇z * f∇z'
-			sen[oi] = 0 
 		end
 	end
 end
 
-function fdist(x::AbstractMatrix, ∇x::AbstractArray{T,3}) where {T}
-	d = similar(x, size(x, 2), size(x, 2))
-	for i in 1:size(x,2)
-		d[i,i] = 0
-		for j in 1:size(x,2)
-			δ = view(x, :, i) - view(x, :, j)
-			d[i,j] = δ' * view(∇x, :, :, i) * δ
-		end
-	end
-	d
-end
-
-
-function fdist(x::AbstractMatrix, ∇x::AbstractArray{T,3}, y::AbstractMatrix) where {T}
+function fdist(x, ∇x, y)
 	d = similar(x, size(x, 2), size(y, 2))
 	for i in 1:size(x,2)
 		d[i,i] = 0
@@ -95,6 +80,7 @@ function fdist(x::AbstractMatrix, ∇x::AbstractArray{T,3}, y::AbstractMatrix) w
 	end
 	d
 end
+fdist(x, ∇x) = fdist(x, ∇x, x)
 
 function fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0)
 	lens = Mill.findin(ds, subds)
@@ -117,5 +103,74 @@ function fdist(submodel, model, subds, lens::Setfield.ComposedLens, dt, ois; sto
 	fdist(z, ∇z)
 end
 
+function fastfisherdist(subm, subds, m, ds, dt, ois; max_thicket_size = 100)
+	lens = Mill.findin(ds, subds)
+	fastfisherdist(subm, m, subds, lens, dt, ois)
+end
+
+function fastfisherdist(submodel, model, subds, lens::Setfield.ComposedLens, dt, ois; max_thicket_size = 100)
+	∇z, z = fastfishergrad(model, submodel, subds, lens, dt, ois)
+	fdist(z, ∇z)
+end
+
+function fastfishergrad(model, subm, subds, lens::Setfield.ComposedLens, dt, ois; max_thicket_size = 100)
+	z = subm(subds).data;
+	u, ii = uniquecolumns(z)
+	@info "$(lens): $(length(u)) unique samples of $(length(ii))"
+	o = fastfishergrad(model, subm, z[:,u], lens, dt, ois)
+	o[:,:,ii], z
+end
+
+function fastfishergrad(model, subm, z::AbstractMatrix, lens::Setfield.ComposedLens, dt, ois; max_thicket_size = 100)
+	dt, subdt, baglengths = prunethicket(dt, lens)
+
+	#a little magic to speed things up
+	model = replacein(model, subm, IdentityModel())
+	zz = subm(subdt);
+	dd = replacein(dt, subdt, zz);
+	f, pds = Mill.partialeval(model, dd, zz)
+
+	o = similar(z, size(z, 1), size(z)...) .= 0
+	Threads.@threads for i in 1:size(z,2)
+		zz.data .= z[:,i]
+		y, back = Zygote.pullback(() -> f(pds).data, Flux.params([zz.data]))
+		for oi in ois
+			sen = Flux.onehotbatch(fill(oi, size(y,2)), 1:size(y,1))
+			f∇z = meanofmean(back(sen)[zz.data], baglengths)
+			o[:,:,i] .+= f∇z * f∇z'
+		end
+	end
+	o
+end
 
 
+"""
+	meanofmean(z, baglengths)
+
+	mean of `[z[:,b] for b in baglengths]` where `b` is some bag of lengths in `baglengths`
+
+"""
+function meanofmean(z, baglengths)
+	s = mapreduce(b -> mean(view(z, :, b), dims = 2), + , Mill.length2bags(baglengths))
+	s ./ length(baglengths)
+end
+
+"""
+	(dt, subdt, n) = prunethicket(dt::Vector, lens::Setfield.ComposedLens; max_thicket_size = 100)
+
+	subset of `dt` of at most size `max_thicket_size` with elements with non-empty `dt[lens]`.
+	`n` is sizes of individual parts of `dt[lens]`
+"""
+function prunethicket(dt, lens::Setfield.ComposedLens; max_thicket_size = 100)
+	subdt = map(_dt -> get(_dt, lens), dt)
+	ii = findall(map(d -> nobs(d) != 0, subdt))
+	isempty(ii) && return(missing)
+
+	ii = length(ii) > max_thicket_size ? sample(ii, max_thicket_size, replace = false) : ii
+	dt, subdt = dt[ii], subdt[ii]
+
+	baglengths = map(nobs, subdt)
+	dt = reduce(catobs, dt)
+	subdt = get(dt, lens)
+	(dt, subdt, baglengths)
+end
