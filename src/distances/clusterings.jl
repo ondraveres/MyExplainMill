@@ -24,13 +24,18 @@ function hclust_fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0, δ
 end
 
 function getmetric(name)
-	if name == "cosine"
-		return((m, ds) -> pairwise(CosineDist(), m(ds).data, dims = 2))
-	elseif name == "l2"
-		return((m, ds) -> pairwise(Distances.SqEuclidean(), m(ds).data, dims = 2))
-	else
-		error("unknown metric $(name)")
-	end
+    if name == "cosine"
+        return((m, ds) -> begin
+                   d = pairwise(CosineDist(), m(ds).data, dims = 2)
+                   # for zero vectors, we set maximal possible distance
+                   d[isnan.(d)] .= 1
+                   d
+               end)
+    elseif name == "l2"
+        return((m, ds) -> pairwise(Distances.SqEuclidean(), m(ds).data, dims = 2))
+    else
+        error("unknown metric $(name)")
+    end
 end
 
 function getclustering(name, δ)
@@ -53,7 +58,7 @@ function getclustering(clustering, metric, δ)
 		i, ii = uniquecolumns(model(ds).data)
 		length(unique(ii)) == 1 && return(fill(1, nobs(ds)))
 		d = dfun(model, ds[i])
-		d = 0.5 .* (d .+ d')
+		# d = 1/2 .* (d .+ d')
 		cfun(d)[ii]
 	end
 end
