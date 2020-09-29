@@ -22,37 +22,41 @@ function jsondiff(a, b)
 	error("bug in handling")
 end
 
-function jsondiff(x, d2::Dict)
-	isempty(d2) && return(x)
-	length(d2) != 1 && error("handle new special case")
-	k = only(keys(d2))
-	v = d2[k]
-	if k == :or
-		x ∈ v && return(nothing)
-		return(x)
-	elseif k == :and
-		x ∈ v && return(nothing)
-		return(x)
-	else
-		error("handle new special case with key $(k)")
-	end
+function jsondiff(a::LogicalOR, b::LogicalOR)
+	LogicalOR(jsondiff(a.or, b.or))
 end
 
-function jsondiff(d2::Dict, x)
-	isempty(d2) && return(d2)
-	length(d2) != 1 && error("handle new special case")
-	k = only(keys(d2))
-	v = d2[k]
-	if k == :or
-		x ∈ v && return(nothing)
-		return(d2)
-	elseif k == :and
-		x ∈ v && return(Dict(:and => setdiff(v, x)))
-		return(d2)
-	else
-		error("handle new special case with key $(k)")
-	end
-end
+# function jsondiff(x, d2::Dict)
+# 	isempty(d2) && return(x)
+# 	length(d2) != 1 && error("handle new special case")
+# 	k = only(keys(d2))
+# 	v = d2[k]
+# 	if k == :or
+# 		x ∈ v && return(absent)
+# 		return(x)
+# 	elseif k == :and
+# 		x ∈ v && return(absent)
+# 		return(x)
+# 	else
+# 		error("handle new special case with key $(k)")
+# 	end
+# end
+
+# function jsondiff(d2::Dict, x)
+# 	isempty(d2) && return(d2)
+# 	length(d2) != 1 && error("handle new special case")
+# 	k = only(keys(d2))
+# 	v = d2[k]
+# 	if k == :or
+# 		x ∈ v && return(absent)
+# 		return(d2)
+# 	elseif k == :and
+# 		x ∈ v && return(Dict(:and => setdiff(v, x)))
+# 		return(d2)
+# 	else
+# 		error("handle new special case with key $(k)")
+# 	end
+# end
 
 function jsondiff(d1::Dict, d2::Dict)
 	d1, d2 = promote_keys(d1, d2)
@@ -60,17 +64,17 @@ function jsondiff(d1::Dict, d2::Dict)
 		!haskey(d2, k) && return(k => d1[k])
 		k => jsondiff(d1[k], d2[k])
 	end
-	ps = filter(p -> !isnothing(p.second), ps)
+	ps = filter(p -> !isabsent(p.second), ps)
 	ps = filter(p -> !isempty(p.second), ps)
 	Dict(ps...)
 end
 
 function jsondiff(d1::AbstractString, d2::AbstractString)
-	d1 == d2 ? nothing : d1
+	d1 == d2 ? absent : d1
 end
 
 function jsondiff(d1::Number, d2::Number)
-	d1 == d2 ? nothing : d1
+	d1 == d2 ? absent : d1
 end
 
 
@@ -91,18 +95,18 @@ function jsondiff(d1::Array, d2::Array)
 		return(os)
 	end
 	o = jsondiff(only(d1), only(d2))
-	isnothing(o) && return(nothing)
-	isempty(o) && return(nothing)
+	isabsent(o) && return(absent)
+	isempty(o) && return(absent)
 	o
 end
 
-isjsonsubtree(d1, d2) = d1 == d2
-isjsonsubtree(d1::AbstractArray, d2::AbstractArray) = all(i1 -> any(i2 -> isjsonsubtree(i1,i2),d2), d1)
-function isjsonsubtree(d1::Dict, d2::Dict) 
-	d1, d2 = promote_keys(d1, d2)
-	keys(d1) != keys(d2) && return(false)
-	all(k -> isjsonsubtree(d1[k],d2[k]), keys(d1))
-end
+# isjsonsubtree(d1, d2) = d1 == d2
+# isjsonsubtree(d1::AbstractArray, d2::AbstractArray) = all(i1 -> any(i2 -> isjsonsubtree(i1,i2),d2), d1)
+# function isjsonsubtree(d1::Dict, d2::Dict) 
+# 	d1, d2 = promote_keys(d1, d2)
+# 	keys(d1) != keys(d2) && return(false)
+# 	all(k -> isjsonsubtree(d1[k],d2[k]), keys(d1))
+# end
 
 jsonmerge(d1, d2) = d2
 jsonmerge(d1::AbstractArray, d2::AbstractArray) = vcat(d1,d2)
