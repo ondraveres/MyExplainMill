@@ -1,4 +1,5 @@
 import JSON: lower
+import Base: ==, hash
 
 """
     Absent
@@ -34,7 +35,8 @@ OR(xs::Absent) = absent
 struct LogicalOR{T}
 	or::T
 end
-Base.:(==)(e1::LogicalOR, e2::LogicalOR) = e1.or == e2.or
+e1::LogicalOR == e2::LogicalOR = e1.or == e2.or
+hash(e::LogicalOR, h::UInt) = hash(e.or, h)
 Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ",a.or)
 
 Base.isempty(x::LogicalOR) = isempty(x.or)
