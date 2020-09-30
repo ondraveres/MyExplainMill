@@ -19,6 +19,7 @@ Indicate whether `x` is [`absent`](@ref).
 """
 isabsent(::Any) = false
 isabsent(::Absent) = true
+Base.isempty(::Absent) = true
 
 
 zeroobs() = absent

@@ -131,7 +131,7 @@ function fastfishergrad(model, subm, z::AbstractMatrix, lens::Setfield.ComposedL
 	f, pds = Mill.partialeval(model, dd, zz)
 
 	o = similar(z, size(z, 1), size(z)...) .= 0
-	Threads.@threads for i in 1:size(z,2)
+	for i in 1:size(z,2)
 		zz.data .= z[:,i]
 		y, back = Zygote.pullback(() -> f(pds).data, Flux.params([zz.data]))
 		for oi in ois
