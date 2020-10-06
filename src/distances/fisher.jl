@@ -80,6 +80,20 @@ function fdist(x, ∇x, y)
 	end
 	d
 end
+
+function fdist(x, ∇x::Matrix, y)
+	d = similar(x, size(x, 2), size(y, 2))
+	for i in 1:size(x,2)
+		d[i,i] = 0
+		for j in 1:size(y,2)
+			δ = view(x, :, i) - view(y, :, j)
+			d[i,j] = δ' * ∇x * δ
+		end
+	end
+	d
+end
+
+
 fdist(x, ∇x) = fdist(x, ∇x, x)
 
 function fdist(subm, subds, m, ds, dt, ois; stochastic = true, ϵ = 0)
@@ -102,6 +116,7 @@ function fdist(submodel, model, subds, lens::Setfield.ComposedLens, dt, ois; sto
 	z = submodel(subds).data
 	fdist(z, ∇z)
 end
+
 
 function fastfisherdist(subm, subds, m, ds, dt, ois; max_thicket_size = 100)
 	lens = Mill.findin(ds, subds)
@@ -133,6 +148,7 @@ function fastfishergrad(model, subm, z::AbstractMatrix, lens::Setfield.ComposedL
 	o = similar(z, size(z, 1), size(z)...) .= 0
 	for i in 1:size(z,2)
 		zz.data .= z[:,i]
+		# y, back = Zygote.pullback(() -> Flux.softmax(f(pds).data), Flux.params([zz.data]))
 		y, back = Zygote.pullback(() -> f(pds).data, Flux.params([zz.data]))
 		for oi in ois
 			sen = Flux.onehotbatch(fill(oi, size(y,2)), 1:size(y,1))
@@ -142,6 +158,20 @@ function fastfishergrad(model, subm, z::AbstractMatrix, lens::Setfield.ComposedL
 	end
 	o
 end
+
+
+function meanfisherdist(subm, subds, m, ds, dt, ois; max_thicket_size = 100)
+	lens = Mill.findin(ds, subds)
+	meanfisherdist(subm, m, subds, lens, dt, ois)
+end
+
+function meanfisherdist(submodel, model, subds, lens::Setfield.ComposedLens, dt, ois; max_thicket_size = 100)
+	∇z, z = fastfishergrad(model, submodel, subds, lens, dt, ois)
+	∇z = mean(∇z, dims = 3)
+	∇z = (∇z .+ ∇z') .// 2
+	fdist(z, ∇z)
+end
+
 
 
 """
