@@ -21,9 +21,9 @@ end
 
 
 function evaluatesubstitution(test_ds, dst_x::NGramMatrix, src_x::NGramMatrix, model, oids)
-  mapreduce(vcat, unique(dst_x.s)) do dst_s
+  mapreduce(vcat, setdiff(unique(dst_x.s),"")) do dst_s
     ii = dst_x.s .== dst_s
-    os = map(unique(sort(src_x.s))) do s
+    os = map(setdiff(unique(sort(src_x.s)),"")) do s
       dst_x.s[ii] .= s
       (original = dst_s, replacement = s, f = sum(model(test_ds).data[oids,:]))
     end 
