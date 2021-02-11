@@ -57,7 +57,8 @@ include("flatmasks.jl")
 """
 prunemask(m::AbstractExplainMask) = prunemask(m.mask)
 prunemask(m::Mask{Nothing,M}) where {M} = reshape(m.mask,:)
-prunemask(m::Mask{Array{Int64,1},M}) where {M} = m.mask[m.cluster_membership,:][:]
+# prunemask(m::Mask{Array{Int64,1},M}) where {M} = m.mask[m.cluster_membership,:][:]
+prunemask(m::Mask{Array{Int64,1},M}) where {M} = view(m.mask, m.cluster_membership)
 
 """
 	prunemask(m)
