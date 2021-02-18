@@ -176,19 +176,38 @@ end
 _echild(e::JsonGrinder.ExtractArray) = e.item
 _echild(e::JsonGrinder.ExtractKeyAsField) = e
 
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,<:Dict}, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
 	nobs(ds) == 0 && return(zeroobs())
-	!any(exportobs) && emptyexportobs()
+	!any(exportobs) && return(emptyexportobs())
 
-	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
-        k => yarason(ds[k], m[k], e.other[k], exportobs)
-    end
-    o = _arrayofdicts(Dict(s), sum(exportobs))
+    o = _exportother(ds, m, e, exportobs)
 
 	if :scalars ∈ setdiff(keys(ds), keys(e.other))
 		o = map(d -> merge(d...), zip(o,_exportmatrix(ds[:scalars], m[:scalars], e.vec)))
 	end
 	o
+end
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Nothing,<:Dict}, exportobs = fill(true, nobs(ds))) where {T<:NamedTuple, M}
+	nobs(ds) == 0 && return(zeroobs())
+	!any(exportobs) && return(emptyexportobs())
+
+	_exportother(ds, m, e, exportobs)
+end
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,Nothing}, exportobs = fill(true, nobs(ds))) where {S<: Dict, T<:NamedTuple, M}
+	nobs(ds) == 0 && return(zeroobs())
+	!any(exportobs) && return(emptyexportobs())
+
+	_exportmatrix(ds[:scalars], m[:scalars], e.vec)
+end
+
+
+function _exportother(ds::ProductNode, m, e::JsonGrinder.ExtractDict, exportobs)
+	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
+        k => yarason(ds[k], m[k], e.other[k], exportobs)
+    end
+    _arrayofdicts(Dict(s), sum(exportobs))
 end
 
 function _arrayofdicts(d::Dict, l)
