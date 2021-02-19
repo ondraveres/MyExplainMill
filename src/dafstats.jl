@@ -63,7 +63,6 @@ function StatsBase.sample!(pruning_mask::AbstractExplainMask)
 	mapmask(sample!, pruning_mask)
 end
 
-
 """
 	updatesamplemembership!(pruning_mask, n)
 
