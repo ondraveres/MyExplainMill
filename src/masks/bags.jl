@@ -6,11 +6,11 @@ end
 
 Flux.@functor(BagMask)
 
-function Mask(ds::BagNode, m::BagModel, initstats, cluster; verbose::Bool = false)
+function Mask(ds::BagNode, model::BagModel, initstats, cluster; verbose::Bool = false)
 	isnothing(ds.data) && return(EmptyMask())
 	nobs(ds.data) == 0 && return(EmptyMask())
-	child_mask = Mask(ds.data, m.im, initstats, cluster)
-	cluster_assignments = cluster(m.im, ds.data)
+	child_mask = Mask(ds.data, model.im, initstats, cluster)
+	cluster_assignments = cluster(model.im, ds.data)
 	if verbose
 		n, m = nobs(ds.data), length(unique(cluster_assignments))
 		println("number of instances: ", n, " ratio: ", round(m/n, digits = 3))
