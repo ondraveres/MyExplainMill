@@ -1,7 +1,7 @@
 name = "ExplainMill"
 uuid = "a2c437b0-bf6b-41a1-8a62-162a814afa99"
 authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
-version = "0.6.3"
+version = "0.7"
 
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
@@ -32,7 +32,7 @@ FillArrays = "0.6, 0.7, 0.8, 0.9"
 Flux = "^0.11"
 HierarchicalUtils = "~1"
 JSON = "0.18, 0.19, 0.20, 0.21"
-JsonGrinder = "^1.7.2"
+JsonGrinder = "^1.7.4"
 LearnBase = "0.2, 0.3, 0.4"
 Mill = "1.6"
 Setfield = "~0.6, ~0.7"
