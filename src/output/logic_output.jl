@@ -144,6 +144,10 @@ function yarason(ds::ArrayNode{<:Matrix, M}, m, e::ExtractScalar, exportobs=fill
     M === Nothing ? unscale(x, e) : x
 end
 
+function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M <: AbstractVector
+    @error "yarason for ArrayNodes carrying FeatureVectors (fixed size vectors) not supported yet."
+end
+
 function yarason(ds::ArrayNode{<:NGramMatrix}, m, e::ExtractString, exportobs = fill(true, nobs(ds)))
     c = contributing(m, nobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
