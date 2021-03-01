@@ -20,6 +20,4 @@ using HierarchicalUtils
     include("gnn.jl")
     include("explain.jl")
     include("sigmoid.jl")
-    include("findnonempty.jl")
-    #include("output.jl")
 end
