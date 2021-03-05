@@ -20,11 +20,11 @@ end
 
 function matcharrays(a::Dict, b::Dict)
 	ks = union(keys(a), keys(b))
-	!isempty(setdiff(ks,keys(a))) && (@info "different keys";return(false))
-	!isempty(setdiff(ks,keys(b))) && (@info "different keys";return(false))
+	!isempty(setdiff(ks,keys(a))) && (@debug "different keys";return(false))
+	!isempty(setdiff(ks,keys(b))) && (@debug "different keys";return(false))
 	for i in ks
 		if !matcharrays(a[i],b[i])
-			@info "different in key $i"
+			@debug "different in key $i"
 			return(false)
 		end
 	end

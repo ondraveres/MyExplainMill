@@ -18,7 +18,7 @@ fishergrad(m, subm, subds::AbstractNode, dt, subdt::Vector, i::Int; ϵ = 0, stoc
 function fishergrad(m, subm, subds::AbstractNode, dt::AbstractNode, subdt, ois; ϵ = 0, stochastic = true)
 	z = subm(subds).data;
 	u, ii = uniquecolumns(z, ϵ = ϵ)
-	@info "number of unique samples $(length(u)) from $(length(ii))"
+	@debug "number of unique samples $(length(u)) from $(length(ii))"
 	o = fishergrad(m, subm, z[:,u], dt, subdt, ois, stochastic = stochastic)
 	o[:,:,ii]
 end
@@ -27,11 +27,11 @@ function fishergrad(m, subm, subds::AbstractNode, dt::Vector, subdt, ois; ϵ = 0
 	dt, subdt = removeempty(dt, subdt)
 	z = subm(subds).data;
 	if isempty(dt) || isempty(subdt)
-		@info "thicket is empty, cannot estimate fisher information matrix"
+		@warn "thicket is empty, cannot estimate fisher information matrix"
 		return(zero(z))
 	end
 	u, ii = uniquecolumns(z, ϵ = ϵ)
-	@info "number of unique samples $(length(u)) from $(length(ii))"
+	@debug "number of unique samples $(length(u)) from $(length(ii))"
 	os = tmap(i -> fishergrad(m, subm, z[:,u], dt[i], subdt[i], ois, stochastic = stochastic), 1:length(dt))
 	o = reduce(+, os) ./ length(dt)
 	o[:,:,ii]
@@ -111,7 +111,7 @@ function fdist(submodel, model, subds, lens::Setfield.ComposedLens, dt, ois; sto
 		ii = ii[1:100]
 		dt, subdt = dt[ii], subdt[ii]
 	end
-	@info "length of thicket $(length(dt))"
+	@debug "length of thicket $(length(dt))"
 	∇z = fishergrad(model, submodel, subds, dt, subdt, ois, stochastic = true)
 	z = submodel(subds).data
 	fdist(z, ∇z)
@@ -131,7 +131,7 @@ end
 function fastfishergrad(model, subm, subds, lens::Setfield.ComposedLens, dt, ois; max_thicket_size = 100)
 	z = subm(subds).data;
 	u, ii = uniquecolumns(z)
-	@info "$(lens): $(length(u)) unique samples of $(length(ii))"
+	@debug "$(lens): $(length(u)) unique samples of $(length(ii))"
 	o = fastfishergrad(model, subm, z[:,u], lens, dt, ois)
 	o[:,:,ii], z
 end

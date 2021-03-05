@@ -101,11 +101,11 @@ function explainy(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, ex
 		fps = filter(ds -> match(yara, extractor, ds), negative_ds)
 		isempty(fps) && break
 		allfps = union(fps, allfps)
-		@info "number of false positives  $(length(fps))"
+		@debug "number of false positives  $(length(fps))"
 		n += 1
 
 		if optfun(fps) < 0
-			@info "Failed to find a feasible explanation"
+			@warn "Failed to find a feasible explanation"
 			return(nothing)
 		end
 	end

@@ -295,7 +295,7 @@ end
 
 
 function e2boolean(pruning_mask, dss::AbstractNode, extractor)
-	@info "deprecated syntax (pruning_mask, dss, extractor)"
+	@warn "deprecated syntax (pruning_mask, dss, extractor)"
 	removeabsent(yarason(dss, pruning_mask, extractor))
 end
 
