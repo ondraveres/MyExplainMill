@@ -50,7 +50,7 @@ include("distances/manual.jl")
 
 include("hierarchical_utils.jl")
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
-Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false, trunc=3)
+Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
