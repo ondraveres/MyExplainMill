@@ -91,7 +91,7 @@ function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pa
 
     println(io)
 	s_child = infer_sample_child(e, n, ks[end])
-    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    paddedprint(io, "  └── $(ks[end]): ", color=c, pad=pad)
     print_explained(io, s_child, e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
@@ -108,7 +108,7 @@ function print_explained(io::IO, n::AbstractProductNode, e::ExtractDict{S,V}; pa
     end
 
     println(io)
-    paddedprint(io, "  └── $(ks[i]): ", color=c, pad=pad)
+    paddedprint(io, "  └── $(ks[end]): ", color=c, pad=pad)
     print_explained(io, n[ks[end]], e[ks[end]], pad=[pad; (c, repeat(" ", 3+max(3, 2+length(String(ks[end])))))])
 end
 
