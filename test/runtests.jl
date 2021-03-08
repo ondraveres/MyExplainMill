@@ -14,9 +14,10 @@ using Duff
 using SparseArrays
 using HierarchicalUtils
 
-include("maskstructure.jl")
-include("flatmasks.jl")
-include("gnn.jl")
-include("explain.jl")
-include("sigmoid.jl")
-#include("output.jl")
+@testset "ExplainMill.jl" begin
+    include("maskstructure.jl")
+    include("flatmasks.jl")
+    include("gnn.jl")
+    include("explain.jl")
+    include("sigmoid.jl")
+end

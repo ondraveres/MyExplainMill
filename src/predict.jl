@@ -13,16 +13,15 @@ function confidence(model, ds)
     nobs(ds) == 1 ? o[1] : o
 end
 
-function confidencegap(model, ds, correct_class::Int)
-	i = correct_class
-	o = model(ds).data
-	mx = mapslices(model(ds).data, dims = 1) do x 
-		ii = sortperm(x, rev = true)
-		ii[1] == i ? x[ii[2]] : x[ii[1]]
-	end
-	o = o[i:i,:] .- mx
-    o
+function confidencegap(o, correct_class::Int)
+    i = correct_class
+    mx = mapslices(o, dims = 1) do x 
+        ii = sortperm(x, rev = true)
+        ii[1] == i ? x[ii[2]] : x[ii[1]]
+    end
+    o[i:i,:] .- mx
 end
+confidencegap(model, ds, correct_class::Int) = confidencegap(model(ds).data, correct_class)
 
 function confidencegap1(model, ds, correct_class::Int)
 	@assert nobs(ds) == 1 

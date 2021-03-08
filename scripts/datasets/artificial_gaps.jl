@@ -72,7 +72,7 @@ if !isfile(resultsdir("model.jls"))
 		soft_model = @set model.m.m = Chain(model.m.m...,  softmax);
 		cg = minimum(map(c -> ExplainMill.confidencegap(soft_model, extractor(c), 2), concepts))
 		eg = ExplainMill.confidencegap(soft_model, extractor(JSON.parse("{}")), 1)
-		@info "minimum gap on concepts = $(cg) on empty sample = $(eg)"
+		@debug "minimum gap on concepts = $(cg) on empty sample = $(eg)"
 		if cg > 0 && eg > 0
 			if cg > concept_gap
 				good_model, concept_gap = model, cg 
@@ -123,7 +123,7 @@ concept_gap = minimum(map(c -> ExplainMill.confidencegap(soft_model, extractor(c
 sample_gap = minimum(map(c -> ExplainMill.confidencegap(soft_model, extractor(c), i), samples[labels .== 2]))
 threshold_gap = floor(0.9*concept_gap, digits = 2) 
 ds = onlycorrect(ds, strain, threshold_gap)
-@info "minimum gap on concepts = $(concept_gap) on samples = $(sample_gap)"
+@debug "minimum gap on concepts = $(concept_gap) on samples = $(sample_gap)"
 
 exdf = isfile(resultsdir("stats.bson")) ? BSON.load(resultsdir("stats.bson"))[:exdf] : DataFrame()
 

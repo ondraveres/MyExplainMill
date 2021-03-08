@@ -1,5 +1,33 @@
 [![Build Status](https://teamcity.int.avast.com/app/rest/builds/buildType:VirusLab_AiResearch_Skunk_ExplainMill_Test/statusIcon)](https://teamcity.int.avast.com/viewType.html?buildTypeId=VirusLab_AiResearch_Skunk_ExplainMill_Test)
 
+# Breaking change
+As discussed below, I have removed the "feature" that dict with single child is ignored. 
+
+Below snippet fix cuckoo model and data trained on schema created by  JsonGrinder version 1.6.1 and reasonably below.
+
+```
+function fixmodel(model)
+	mm = @set model.ms.behavior.ms.enhanced.im = ProductModel((data = model[:behavior][:enhanced].im,), identity)
+	mm = @set mm.ms.clipboard_changes.im = ProductModel((to = mm[:clipboard_changes].im,), identity)
+	mm = @set mm.ms.signatures.im = ProductModel((name = mm[:signatures].im,), identity)
+	mm = @set mm.ms.network.ms.domains.im = ProductModel((domain = mm[:network][:domains].im,), identity)
+end
+
+function fixdata(ds)
+	dd = @set ds.data.behavior.data.enhanced.data = ProductNode((data = ds[:behavior][:enhanced].data,))
+	dd = @set dd.data.clipboard_changes.data = ProductNode((to = dd[:clipboard_changes].data,))
+	dd = @set dd.data.signatures.data = ProductNode((name = dd[:signatures].data,))
+	dd = @set dd.data.network.data.domains.data = ProductNode((domain = dd[:network][:domains].data,))
+end
+```
+
+# Discussion
+
+* Should we explicitly model missing in categorical variable as an n + 2 item?
+* Remove skipping of Dictionary in JsonGrinder and replace it with the IdentityModel()
+* Should we remove automatic joining of scalars and leave it up to mill to "handle" scalars as IdentityModel?
+* ArrayModel in Mill should have a default for missing values and potentially ProductModel
+
 # ExplainMill.jl
 
 This library provides an explanation of hierarchical multi-instance learning
@@ -87,6 +115,12 @@ Adding a support for new type of nodes (lists) is currently involved and it
 might undergo further changes. At the moment, it is simple to take it out of
 the explanation. For example if we want to remove PathNode from explanation,
 define constructor as `Duff.Daf(::PathNode) = ExplainMill.SkipDaf()`
+
+##Design thoughts on logic output
+
+* We need to carry observations that will be exported downward, otherwise skipped explanation and export of arrays would not work properly. This can get into interesting situations, where 
+- something can be present because of the upper mask but missing because of the lower mask. In this case, I will emit missing
+
 
 ---
 

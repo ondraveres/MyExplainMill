@@ -174,7 +174,7 @@ function finetune!(f, flatmask, max_n = typemax(Int))
 		end
 	end
 	settobest!(flatmask, visited_states)
-	@info "finetune: output = $(f()) keeping $(length(useditems(flatmask))) features"
+	@debug "finetune: output = $(f()) keeping $(length(useditems(flatmask))) features"
 end
 
 function finetuneadd!(f, flatmask, n::Int)
