@@ -5,11 +5,11 @@ function flatsearch!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true,
 	fill!(fv, false)
 	addminimumbi!(f, fv, significance, ii)
 	used = useditems(fv)
-	@info "flatsearch: output = $(f()) added $(length(used)) features"
+	@debug "flatsearch: output = $(f()) added $(length(used)) features"
 	@assert all(fv[used])
 	random_removal && randomremoval!(f, fv)
 	used = useditems(fv)
-	@info "flatsearch: output = $(f()) keeping $(length(used)) features"
+	@debug "flatsearch: output = $(f()) keeping $(length(used)) features"
 	fine_tuning && finetune!(f, fv, max_n)
 end
 
@@ -31,14 +31,14 @@ function flatsfs!(f, ms::AbstractExplainMask; participateonly::Bool = false, fin
 end
 
 function flatsfs!(f, fv::FlatView; fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
-	@info "sfs: length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
+	@debug "sfs: length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
 	sfs!(f, fv)
 	used = useditems(fv)
-	@info "flatsearch: output = $(f()) added $(length(used)) features"
+	@debug "flatsearch: output = $(f()) added $(length(used)) features"
 	@assert all(fv[used])
 	random_removal && randomremoval!(f, fv)
 	used = useditems(fv)
-	@info "flatsearch: output = $(f()) keeping $(length(used)) features"
+	@debug "flatsearch: output = $(f()) keeping $(length(used)) features"
 	fine_tuning && finetune!(f, fv, max_n)
 end
 

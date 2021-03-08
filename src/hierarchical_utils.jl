@@ -7,6 +7,8 @@ NodeType(::Type{T}) where T <: EmptyMask = LeafNode()
 NodeType(::Type{T}) where T <: BagMask = InnerNode()
 NodeType(::Type{T}) where T <: ProductMask = InnerNode()
 
+NodeType(::Type{T}) where T <: Absent = LeafNode()
+
 noderepr(n::T) where {T <: AbstractExplainMask} = "$(T.name)"
 noderepr(n::EmptyMask) = "skipped"
 noderepr(::Mask{Nothing, D}) where {D} = "Simple Mask";

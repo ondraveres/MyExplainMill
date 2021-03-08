@@ -21,6 +21,11 @@ function ∇data(m, ds, subm, subds, i)
 	gs[xx.data]
 end
 
+function ∇data(m, ds, subm, xx::Matrix, i)
+	gs = gradient(() -> sum(m(ds).data[i,:]), Params([xx]))
+	gs[xx]
+end
+
 function GradMask(m, ds, subm::BagModel, subds::BagNode, i)
 	isnothing(subds.data) && return(EmptyMask())
 	nobs(subds.data) == 0 && return(EmptyMask())
@@ -40,6 +45,12 @@ function GradMask(m, ds, subm::ArrayModel, subds::ArrayNode{T,M}, i) where {T<:M
 	nobs(subds.data) == 0 && return(EmptyMask())
 	∇x = ∇data(m, ds, subm, subds, i)
 	NGramMatrixMask(Mask(size(∇x, 2), d -> sum(abs.(∇x), dims = 1)[:]))
+end
+
+function GradMask(m, ds, subm::ArrayModel, subds::ArrayNode{T,M}, i) where {T<:Matrix, M}
+	nobs(subds.data) == 0 && return(EmptyMask())
+	∇x = ∇data(m, ds, subm, subds.data, i)
+	Mask(subds, d -> sum(abs.(∇x), dims = 2)[:])
 end
 
 function GradMask(m, ds, subm::ProductModel, subds::ProductNode, i)

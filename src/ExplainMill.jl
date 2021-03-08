@@ -1,21 +1,13 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, CatViews, Distances, Clustering, Flux, Zygote
+using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote, JSON
 using HierarchicalUtils
-using JsonGrinder, Setfield
+using DataFrames
+using JSON, JsonGrinder, Setfield
 
-using TimerOutputs
-
-const to = TimerOutput();
 
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
 NNlib.softmax(ds::ArrayNode) = ArrayNode(softmax(ds.data))
-
-function dbscan_cosine(x, ϵ)
-	nobs(x) == 1 && return([1])
-	d = pairwise(CosineDist(), x, dims = 2)
-	dbscan(d, ϵ, 1).assignments
-end
 
 function idmap(ids::Vector{T}) where{T}
 	d = Dict{T,Vector{Int}}()
@@ -50,14 +42,17 @@ include("pruning/pruning.jl")
 include("utils/entropy.jl")
 include("utils/setops.jl")
 include("utils/partialeval.jl")
+include("utils/lensutils.jl")
 include("explain.jl")
 include("distances/fisher.jl")
+include("distances/clusterings.jl")
+include("distances/manual.jl")
 
 include("hierarchical_utils.jl")
 Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
-Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false, trunc=3)
+Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
 export explain, print_explained, e2boolean, predict, confidence, prunemissing, prune, e2boolean
-
+export removeabsent, removemissing
 end # module

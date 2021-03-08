@@ -1,211 +1,304 @@
-import Base.repr
-child_mask(m::BagMask) = m.child
-function child_mask(m::BagMask{C,B}) where {C<:EmptyMask, B}
-	m.mask
+import JSON: lower
+import Base: ==, hash
+
+"""
+    Absent
+	represent a part of an explanation which is not important
+"""
+struct Absent end
+
+"""
+    absent
+	The singleton instance of type [`Absent`](@ref) representing an absent part of explanation
+"""
+const absent = Absent()
+
+"""
+    isabsent(x)
+Indicate whether `x` is [`absent`](@ref).
+"""
+isabsent(::Any) = false
+isabsent(::Absent) = true
+Base.isempty(::Absent) = true
+
+
+zeroobs() = absent
+emptyexportobs() = Vector{Absent}()
+
+using FillArrays
+function OR(xs)
+	# xs = removeabsent(unique(xs))
+	xs = unique(xs)
+	isempty(xs) && return(absent)
+	length(xs) > 1 ? LogicalOR(xs) : only(xs)
+end
+OR(xs::Absent) = absent
+struct LogicalOR{T}
+	or::T
+end
+e1::LogicalOR == e2::LogicalOR = e1.or == e2.or
+hash(e::LogicalOR, h::UInt) = hash(e.or, h)
+Base.show(io::IO, mime::MIME"text/plain", a::LogicalOR) = println(io, "OR: ", a.or)
+
+Base.isempty(x::LogicalOR) = isempty(x.or)
+# few features to print Absent and serialize it to json
+Base.show(io::IO, ::ExplainMill.Absent) = print(io, "absent")
+JSON.lower(::Absent) = nothing
+
+# OR(xs) = length(xs) > 1 ? OR(filter(!isabsent, xs)) : only(xs)
+
+function dictofindexes(targets)
+    d = Dict{Int,Vector{Int}}()
+    for (i, v) in enumerate(targets)
+        if haskey(d, v)
+            push!(d[v], i)
+        else
+            d[v] = [i]
+        end
+    end
+    return(d)
 end
 
-function child_mask(m::EmptyMask)
-	@info "How did I get to here"
-	EmptyMask()
+"""
+    addor(m::Mask, x)
+
+returns "or" relationships if they are needed in the explanation, by
+substituing each item with an "or" of items in clusters
+
+`m` is the mask and
+`x` is the output of the explanation of bottom layers
+"""
+function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
+    xi = view(m.cluster_membership, active)
+    d = dictofindexes(xi)
+    groups = Dict(map(k -> k => OR(x[d[k]]), collect(keys(d))))
+    map(1:length(x)) do i
+        isabsent(x[i]) ? absent : groups[xi[i]]
+    end
 end
 
-function islogical(s::Dict{Symbol,T}) where {T}
-	collect(keys(s)) == [:and] && return(true)
-	collect(keys(s)) == [:or] && return(true)
-	return(false)
-end
-
-islogical(s::Vector) = s
-
-sortunique(s::Vector{T}) where {T<:AbstractString} = sort(unique(s))
-sortunique(s::Vector{T}) where {T<:Number} = sort(unique(s))
-sortunique(s::Vector{T}) where {T<:Dict} = unique(s)
-sortunique(s) = s
-# function sortunique(s::Vector)
-# 	if mapreduce(typeof, promote_type, s) <:AbstractString
-# 		return(sortunique(String.(s)))
-# 	else 
-# 		return(unique(s))
+# function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
+# 	xi = m.cluster_membership[active]
+# 	map(1:length(x)) do i
+# 		isabsent(x[i]) ? absent : OR(x[xi .== xi[i]])
 # 	end
 # end
 
-function repr_boolean(op::Symbol, s::Vector{T}; thin::Bool = true) where {T}
-	s = filter(!isempty, s)
-	s = sortunique(unique(s))
-	if isempty(s) 
-		return(Dict{Symbol,T}())
-	elseif length(s) == 1
-		if thin 
-			return(only(s))
-		else 
-			return(Dict(op => s))
-		end
-	else
-		return(Dict(op => s))
-	end
-end
 
-function repr_boolean(op::Symbol, s::Dict{Symbol,String}; thin::Bool = true) 
-	if thin || isempty(s)
-		return(s)
-	elseif islogical(s)
-		return(s)
-	else 
-		return(Dict(op => s))
-	end
-end
+addor(m::Mask{<:Vector{Int}}, x::Absent, active) = absent
+addor(m::Mask{<:Nothing}, x, active) = x
+addor(m::Mask{<:Nothing}, x::Absent, active) = absent
+addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
+addor(m::EmptyMask, x, active) = x
 
-isarray(s::String) = false
-isarray(s::Vector) = true
-function isarray(d::Dict)
-	ks = keys(d)
-	if length(ks) == 1
-		k = only(ks)
-		k == :or && return(false)
-		k == :and && return(isarray(d[k]))
-	end
-	return(false)
-end
+_retrieve_obs(::LazyNode, i) = @error "LazyNode in Mill.jl does not support metadata (yet)."
 
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e::E) where {T<:Flux.OneHotMatrix, E<:ExtractDict}
-	length(e.other) > 1 &&  @error "This should not happen"
-	k = collect(keys(e.other))[1]
-	repr(mim, m, ds, e.other[k])
-end
+_retrieve_obs(ds::ArrayNode{<:NGramMatrix, Nothing}, i) = ds.data.s[i]
+_retrieve_obs(ds::ArrayNode{<:Flux.OneHotMatrix, Nothing}, i) = ds.data.data[i].ix
+_retrieve_obs(ds::ArrayNode{<:Matrix, Nothing}, i, j) = ds.data[i, j]
+_retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractMatrix}, i, j) = ds.metadata[i, j]
+_retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractVector}, j) = ds.metadata[j]
 
-function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Flux.OneHotMatrix}
-	contributing = participate(m) .& prunemask(m)
-	items = map(i -> i.ix, ds.data.data)
-	items = items[contributing]
-	isempty(items) && return(Dict{Symbol, String}())
+"""
+	contributing(m)
 
-	idxs = unique(items);
-	d = reversedict(e.keyvalemap);
-	idxs = filter(i -> haskey(d, i), idxs)
-	isempty(idxs) && Dict{Symbol, String}()
-	s = map(i -> d[i], idxs)
-	repr_boolean(:and, s)
-end
+	returns a mask of items contributing to the explanation
+"""
+contributing(m::AbstractExplainMask, l) = participate(m) .& prunemask(m)
+contributing(m::EmptyMask, l) = Fill(true, l)
 
-function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Matrix}
-	items = participate(m) .& prunemask(m)
-	items = findall(items)
-	items = filter(i -> any(ds.data[i,:] .!= 0), items)
-	isempty(items) && return(Dict{Symbol, String}())
-	repr_boolean(:and, Dict([Symbol(i) => "["*join(ds.data[i,:],",")*"]" for i in items]))
-end
-
-function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Matrix}
-	return(Dict{Symbol,String}())
-end
-
-# function repr(::MIME"text/json":SparseArrayMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-function repr(::MIME"text/json", m::AbstractExplainMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-	repr_boolean(:and, ds.data.s[participate(m) .& prunemask(m)])
-end
-
-function repr(::MIME"text/json", m::EmptyMask, ds::ArrayNode{T}, e) where {T<:Mill.NGramMatrix}
-	repr_boolean(:and, unique(ds.data.s))
-end
-
-function repr(::MIME"text/json", m::Mask, ds::ArrayNode, e::ExtractDict)
-	ks = keys(e.vec)
-	s = join(map(i -> "$(i[1]) = $(i[2])" , zip(ks, ds.data[:])))
-	repr_boolean(:and, unique(s))
-end
-
-
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e)
-    ismissing(ds.data) && return(Dict{Symbol, String}())
-
-    #get indexes of contributing clusters
-	contributing_indexes = participate(m) .& prunemask(m)
-	all(.!contributing_indexes) && return(Dict{Symbol, String}())
-	if isnothing(m.mask.cluster_membership)
-		ss = repr(mim, child_mask(m), ds.data, e.item)
-		s = isarray(ss) ? ss : [ss]
-		return(s)
-	else
-		cluster_membership = m.mask.cluster_membership
-		contributing_clusters = unique(cluster_membership[contributing_indexes])
-		cluster2instance = idmap(cluster_membership)
-
-		#now we need to express the OR relationship within clusters 
-		#and AND relationship across clusters
-		ss = map(contributing_clusters) do k
-			ss = map(cluster2instance[k]) do i
-				mm = deepcopy(child_mask(m))
-				invalidate!(mm,setdiff(1:nobs(ds.data), i))
-				repr(mim, mm, ds.data, e.item)
-			end
-			repr_boolean(:or, ss)
-		end
-		ss = repr_boolean(:and, ss)
-		ss = isarray(ss) ? ss : [ss]
-		return(ss)
-	end
-end
-
-
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::BagNode, e::JsonGrinder.ExtractKeyAsField)
-    ismissing(ds.data) && return(Dict{Symbol, String}())
-
-    #get indexes of contributing clusters
-	contributing_indexes = participate(m) .& prunemask(m)
-	all(.!contributing_indexes) && return(Dict{Symbol, String}())
-	if isnothing(m.mask.cluster_membership)
-		ss = repr(mim, child_mask(m), ds.data, e)
-		s = isarray(ss) ? ss : [ss]
-		return(s)
-	else
-		error("this is not implemented")
-		return(ss)
-	end
-end
-
-repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e::JsonGrinder.ExtractKeyAsField) = Dict{Symbol,String}()
-
-function repr(mim::MIME"text/json", m::EmptyMask, ds::BagNode, e)
-    ismissing(ds.data) && return(Dict{Symbol,String}())
-    nobs(ds.data) == 0 && return(Dict{Symbol,String}())
-    ss = repr(mim, m, ds.data, e.item);
-    repr_boolean(:and, ss, thin = false)
-end
-
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e) where {T<:NamedTuple, M}
-	nobs(ds) == 0 && return(Dict{Symbol,String}())
-	s = map(sort(collect(keys(ds.data)))) do k
-        subs = repr(mim, m[k], ds[k], e[k])
-        isempty(subs) ? nothing : k => subs
+function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractExplainMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
+    c = contributing(m, nobs(ds))
+    x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
+    if M === Nothing
+        d = reversedict(e.keyvalemap)
+        x = map(i -> isabsent(i) ? i : get(d, i, "__UNKNOWN__"), x)
     end
-    Dict(filter(!isnothing, s))
-end
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e::JsonGrinder.ExtractKeyAsField) where {T<:NamedTuple, M}
-	nobs(ds) == 0 && return(Dict{Symbol,String}())
-	(Dict(
-		Symbol(repr(mim, m[:key], ds[:key], e.key)) => repr(mim, m[:item], ds[:item], e.item),
-	))
+    addor(m, x, exportobs)
 end
 
-function repr(mim::MIME"text/json", m::AbstractExplainMask, ds::ProductNode{T,M}, e::MultipleRepresentation) where {T<:Tuple, M}
-	nobs(ds) == 0 && return(Dict{Symbol,String}())
-	s = map(sort(collect(keys(ds.data)))) do k
-        subs = repr(mim, m.childs[k], ds.data[k], e.extractors[k])
-        isempty(subs) ? nothing : k => subs
+"""
+	unscale(x,e)
+
+	original values of `x` before the extraction by `e` in json
+"""
+unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
+unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
+unscale(x::Absent, e::ExtractScalar) = absent
+unscale(x, e) = x
+
+"""
+    yarason(ds, m, e, exportobs::Vector{Bool})
+
+    Values for items in `ds` corresponding to `true` in `prunemask(m)`
+    and `participating(m)`, or `absent` otherwise. Values are exported
+    only for those indicated in binary mask `exportobs`. The export
+    also takes into the account "clusters", which are exported using the
+    `OR` as `OR
+"""
+function yarason(ds::ArrayNode{<:Matrix, M}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M
+    c = contributing(m, size(ds.data,1))
+    x = map(findall(exportobs)) do j
+        [c[i] ? _retrieve_obs(ds, i, j) : absent for i in 1:length(c)]
     end
-    Dict(filter(!isnothing, s))
+    M === Nothing ? unscale(x, e) : x
 end
 
-function e2boolean(pruning_mask, dss, extractor)
-	d = map(1:nobs(dss)) do i 
-		mapmask(pruning_mask) do m 
-			participate(m) .= true
-		end
-		invalidate!(pruning_mask,setdiff(1:nobs(dss), i))
-		repr(MIME("text/json"),pruning_mask, dss, extractor);
+function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M <: AbstractVector
+    @error "yarason for ArrayNodes carrying FeatureVectors (fixed size vectors) not supported yet."
+end
+
+function yarason(ds::ArrayNode{<:NGramMatrix}, m, e::ExtractString, exportobs = fill(true, nobs(ds)))
+    c = contributing(m, nobs(ds))
+    x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
+    addor(m, x, exportobs)
+end
+
+function yarason(ds::LazyNode, m, e, exportobs=fill(true, nobs(ds)))
+    c = contributing(m, nobs(ds))
+    x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
+    addor(m, x, exportobs)
+end
+
+function yarason(ds::BagNode, m, e::T, exportobs=fill(true, nobs(ds))) where T <: Union{JsonGrinder.ExtractKeyAsField, JsonGrinder.ExtractArray}
+    nobs(ds) == 0 && return(zeroobs())
+    isabsent(ds.data) && return(fill(absent, sum(exportobs)))
+    nobs(ds.data) == 0 && return(fill(absent, sum(exportobs)))
+    !any(exportobs) && emptyexportobs()
+
+    #get indexes of c clusters
+	present_childs = Vector(contributing(m, nobs(ds.data)))
+	for b in ds.bags[.!exportobs]
+	    present_childs[b] .= false
 	end
-	d = filter(!isempty, d)
-	isempty(d) && return([Dict{Symbol,Any}()])
-	d = unique(d)
-	d = length(d) > 1 ? ExplainMill.repr_boolean(:or, d) : d
+
+	x = yarason(ds.data, m.child, _echild(e), present_childs)
+	x = addor(m, x, present_childs)
+	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
+	map(b -> unique(x[b]), bags)
+end
+
+_echild(e::JsonGrinder.ExtractArray) = e.item
+_echild(e::JsonGrinder.ExtractKeyAsField) = e
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,<:Dict}, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+    nobs(ds) == 0 && return(zeroobs())
+    !any(exportobs) && return(emptyexportobs())
+
+
+    o = _exportother(ds, m, e, exportobs)
+
+    if :scalars ∈ setdiff(keys(ds), keys(e.other))
+        o = map(d -> merge(d...), zip(o, _exportmatrix(ds[:scalars], m[:scalars], e.vec)))
+    end
+    o
+end
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{Nothing,<:Dict}, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+    nobs(ds) == 0 && return(zeroobs())
+    !any(exportobs) && return(emptyexportobs())
+    _exportother(ds, m, e, exportobs)
+end
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,Nothing}, exportobs=fill(true, nobs(ds))) where {S<: Dict, T<:NamedTuple, M}
+    nobs(ds) == 0 && return(zeroobs())
+    !any(exportobs) && return(emptyexportobs())
+    _exportmatrix(ds[:scalars], m[:scalars], e.vec)
+end
+
+function _exportother(ds::ProductNode, m, e::JsonGrinder.ExtractDict, exportobs)
+	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
+        k => yarason(ds[k], m[k], e.other[k], exportobs)
+    end
+    _arrayofdicts(Dict(s), sum(exportobs))
+end
+
+function _arrayofdicts(d::Dict, l)
+    isempty(d) && return(fill(d, l))
+    ks = collect(keys(d))
+    map(1:l) do i
+        Dict(map(k -> k => isabsent(d[k]) ? absent : d[k][i], ks))
+    end
+end
+
+function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.MatrixMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
+    x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
+    map(x -> _parcel(x, e), x)
+end
+
+function _parcel(x::Vector{T}, e) where {T}
+    d = Dict{Symbol,T}()
+    for (offset, (k,f)) in enumerate(e)
+        d[k] = unscale(x[offset], f)
+    end
+    d
+end
+
+# x = vcat([f(get(v,String(k),nothing)) for (k,f) in s.vec]...)
+
+function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs=fill(true, nobs(ds)))
+	nobs(ds) == 0 && return(zeroobs())
+	!any(exportobs) && emptyexportobs()
+	s = map(sort(collect(keys(ds.data)))) do k
+        yarason(ds[k], m[k], e.extractors[k], exportobs)
+    end
+    reduce(mergeexplanations, s)
+end
+
+mergeexplanations(a,b) = map(x -> logicaland(x...), zip(a,b))
+logicaland(a::Vector, b::Vector) = intersect(a,b)
+logicaland(::Absent, a) = a
+logicaland(a, ::Absent) = a
+logicaland(a, b) = a
+logicaland(::Absent, ::Absent) = absent
+logicaland(a::T, ::LogicalOR) where {T<:Union{String, Number, Vector}} = a
+logicaland(a::LogicalOR, ::T) where {T<:Union{String, Number, Vector}} = a
+logicaland(a::LogicalOR, b::LogicalOR) = OR(intersect(a.or, b.or))
+function logicaland(a::String, b::String)
+	a == "__UNKNOWN__" && return(b)
+	a
+end
+
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+	k = yarason(ds[:key], m[:key],  e.key, exportobs)
+	d = yarason(ds[:item], m[:item],  e.item, exportobs)
+	map(x -> Dict(x[1] => x[2]), zip(k, d))
+end
+
+
+
+removeabsent(::Absent) = absent
+removeabsent(x::String) = x
+removeabsent(x::Number) = x
+removeabsent(x::Nothing) = "__MISSING__"
+
+function removeabsent(x::Vector)
+    x = map(removeabsent, x);
+    x = filter(!isabsent, x);
+    isempty(x) && return(absent)
+    T = mapreduce(typeof, promote_type, x)
+    x = Vector{T}(x)
+    x
+end
+
+removeabsent(x::Vector{<:Absent}) = absent
+removeabsent(x::LogicalOR) = LogicalOR(removeabsent(x.or))
+
+# we need to keep absents, because if there will be key as value and it will depend on key, it will
+# be pruned out
+function removeabsent(d::Dict)
+    x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
+    x = filter(a -> !isabsent(a.second), x)
+    x = filter(a -> !isempty(a.second), x)
+    isempty(x) ? absent : Dict(x)
+end
+
+
+function e2boolean(pruning_mask, dss::AbstractNode, extractor)
+	@warn "deprecated syntax (pruning_mask, dss, extractor)"
+	removeabsent(yarason(dss, pruning_mask, extractor))
+end
+
+function e2boolean(dss::AbstractNode, pruning_mask, extractor)
+	removeabsent(yarason(dss, pruning_mask, extractor))
 end

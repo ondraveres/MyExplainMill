@@ -56,4 +56,4 @@ end
 
 index_in_parent(m::MatrixMask, i) = CartesianIndices((m.rows, m.cols))[i][2]
 
-_nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 1)
+_nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 2)

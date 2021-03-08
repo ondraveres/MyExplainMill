@@ -47,15 +47,20 @@ function prune!(f, ms, scorefun, method)
 	end
 end
 
-function prune!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, gap, threshold, method)
+function adjustthreshold(threshold::Nothing, gap, model, ds, i)
+	m = x -> softmax(model(x))
+	nobs(ds) == 1 && return(gap*ExplainMill.confidencegap1(m, ds, i))
+	return(gap*ExplainMill.confidencegap(m, ds, i))
+end
+adjustthreshold(threshold, gap, model, ds, i) = threshold
+
+function prune!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, threshold, method)
 	soft_model(x) = softmax(model(x))
 	if nobs(ds) == 1
-		threshold = (threshold == nothing) ? gap*ExplainMill.confidencegap1(soft_model, ds, i) : threshold
 		f = () -> ExplainMill.confidencegap1(soft_model, ds[ms], i) - threshold
 		return(prune!(f, ms, scorefun, method))
 	end
 
-	threshold = (threshold == nothing) ? gap*ExplainMill.confidencegap(soft_model, ds, i) : threshold
 	if method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
 		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- threshold, 0))	
 		return(prune!(f, ms, scorefun, method))
