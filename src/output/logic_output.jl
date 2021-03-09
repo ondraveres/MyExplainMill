@@ -202,7 +202,7 @@ end
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,Nothing}, exportobs=fill(true, nobs(ds))) where {S<: Dict, T<:NamedTuple, M}
     nobs(ds) == 0 && return(zeroobs())
     !any(exportobs) && return(emptyexportobs())
-    _exportmatrix(ds[:scalars], m[:scalars], e.vec)
+    _exportmatrix(ds[:scalars], m[:scalars], e.vec, exportobs)
 end
 
 function _exportother(ds::ProductNode, m, e::JsonGrinder.ExtractDict, exportobs)
