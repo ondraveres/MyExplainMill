@@ -185,11 +185,10 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,<:Di
     nobs(ds) == 0 && return(zeroobs())
     !any(exportobs) && return(emptyexportobs())
 
-
     o = _exportother(ds, m, e, exportobs)
 
     if :scalars ∈ setdiff(keys(ds), keys(e.other))
-        o = map(d -> merge(d...), zip(o, _exportmatrix(ds[:scalars], m[:scalars], e.vec)))
+        o = map(d -> merge(d...), zip(o, _exportmatrix(ds[:scalars], m[:scalars], e.vec, exportobs)))
     end
     o
 end

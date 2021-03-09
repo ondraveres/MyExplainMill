@@ -14,6 +14,9 @@ using Duff
 using SparseArrays
 using HierarchicalUtils
 
+# TODO integration tests of the whole pipeline
+# TODO test that explanations are indeed subsets of the original json
+
 @testset "ExplainMill.jl" begin
     include("maskstructure.jl")
     include("flatmasks.jl")
