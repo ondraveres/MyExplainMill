@@ -1,4 +1,4 @@
-[![Build Status](https://teamcity.int.avast.com/app/rest/builds/buildType:VirusLab_AiResearch_Skunk_ExplainMill_Test/statusIcon)](https://teamcity.int.avast.com/viewType.html?buildTypeId=VirusLab_AiResearch_Skunk_ExplainMill_Test)
+[![Build Status](https://teamcity.ida.avast.com/app/rest/builds/buildType:Research_Skunk_ExplainMill_jl_Test/statusIcon)](https://teamcity.ida.avast.com/buildConfiguration/Research_Skunk_ExplainMill_jl_Test)
 
 # Breaking change
 As discussed below, I have removed the "feature" that dict with single child is ignored. 
