@@ -48,9 +48,28 @@ function FlatView(masks::Vector)
 	FlatView(tuple(masks...), itemmap,starts)
 end
 
-function Base.setindex!(m::FlatView, v, i) 
+function Base.setindex!(m::FlatView, v, i::Int) 
 	j = m.itemmap[i]
 	m.masks[j.maskid].first.mask[j.innerid] = v
+end
+
+
+"""
+	settrue!(fv::FlatView, bitmask::Vector{Bool})
+
+	sets masks in `fv` to bitmask ignoring all dependencies
+"""
+function settrue!(fv::FlatView, bitmask::Vector{Bool})
+	for i in 1:length(fv.masks)
+		m = ExplainMill.prunemask(fv.masks[i].first)
+		rg = fv.starts[i]+1:fv.starts[i]+length(m)
+		m .= bitmask[rg]
+	end
+end
+
+# this is a syntactic sugar such that I can write fv .= x
+function Base.materialize!(fv::FlatView, a::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Nothing,typeof(identity),Tuple{Array{Bool,1}}} )
+	settrue!(fv, a.args[1])
 end
 
 function Base.getindex(m::FlatView, i::Int) 
@@ -76,5 +95,6 @@ function Base.map(f, m::FlatView)
 	vcat(map(x -> f(x.first), m.masks)...)
 end
 
-useditems(m::FlatView) = findall(map(i -> m[i], 1:length(m)))
+useditems(m::FlatView) = findall(usedmask(m))
+usedmask(m::FlatView) = map(i -> m[i], 1:length(m))
 participate(m::FlatView) = reduce(vcat, map(i -> participate_item(i.first.mask), m.masks))
