@@ -1,4 +1,4 @@
-function removeexcess!(f, flatmask, ii)
+function removeexcess!(f, flatmask::FlatView, x::Vector{Int})
 	previous =  f()
 	previous < 0 && return(false)
 	changed = false

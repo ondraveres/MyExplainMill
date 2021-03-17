@@ -1,13 +1,12 @@
 function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000, max_time = 600)
     valid_indexes = findall(participate(fv))
     println("Branch and bound in a solution vector of length ", length(fv))
-    best_fval, best_x = initbyharr(f, fv, significance)
-    println("harr solution: objective = ", best_fval, " length = ", sum(best_x))
+    # best_fval, best_x = initbyharr(f, fv, significance)
+    best_fval, best_x = initempty(f, fv, significance)
+    println("initial solution: objective = ", best_fval, " length = ", sum(best_x))
     x = fill(false, length(fv))
     fv .= x
     funevals = 0
-    # best_fval = f()
-    # best_x = x
     queue = PriorityQueue{typeof(x), typeof(best_fval)}(Base.Order.Reverse)
     enqueue!(queue, deepcopy(x), best_fval)
     evaluated = Dict{typeof(x), typeof(best_fval)}()
@@ -34,13 +33,16 @@ function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000
 
         # update the best solution found so far
         best_fval, best_x = better_solution(best_fval, best_x, fval, x)
-        if best_fval == fval
-            @show (funevals, sum(x), fval, findall(x))
+        if best_x == x
+            println("evaluations = ",funevals, " items = ", sum(best_x), " objective = ",best_fval)
+            # If the solution is above threshold, we can try to prune it (which is cheap) to find better
+            if best_fval > 0 
+                best_fval, best_x = removeexcess!(f, fv, x)
+            end
         end
 
         !promissing(best_fval, best_x, fval, x) && continue
         
-        # @show childrens(x, valid_indexes)
         #enque all childrens
         for x in childrens(x, valid_indexes, fval, significance)
             haskey(queue, x[1]) && continue
@@ -52,6 +54,39 @@ function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000
     println("returned solution: objective = ", f(), " length = ", sum(best_x))
     evaluated
 end
+
+"""
+    function removeexcess!(f, fv::FlatView, x::Vector{Bool})
+
+    tries to remove superfluous items from `x` but while keeping
+    f(x) above zero
+"""
+function removeexcess!(f, fv::FlatView, x₀::Vector{Bool})
+    fv .= x₀
+    f₀ =  f()
+    x = deepcopy(x₀)
+    f₀ < 0 && return(false)
+    n = sum(x)
+    while true 
+        for i in findall(x)
+            x[i] = false 
+            fv .= x 
+            fval = f()
+            if fval < 0
+                x[i] = true
+            end
+        end
+        n == sum(n) && break
+        n = sum(n)
+    end
+    fv .= x
+    fval = f()
+    if sum(x) < sum(x₀)
+        println("pruned to items = ", sum(x), " objective = ",fval)
+    end
+    better_solution(fval, x, f₀, x₀)
+end
+
 
 """
     function initbyharr(f, fv, significance)
@@ -69,6 +104,7 @@ end
 
 function initempty(f, fv, significance)
     x = fill(false, length(fv))
+    fv .= x
     f(), x
 end
 
@@ -142,6 +178,30 @@ function childrens(x::Vector{Bool}, valid_indexes, fval, significance)
     end
 end
 
+"""
+    function isuseless(useless::Dict{Vector{Int}, <:Number}, x)
+
+    if the function `f` is monotone, which means that adding a term increases 
+    and objective value, then we know that if `[a,b,c]` is not a solution 
+    (the objective is below zero), then noen of its subsets, 
+    i.e. [a], [b], [c], [a,b],[a,c], [b,c]` is not a solution either. 
+    This filter implements the check, where dict `useless` keeps all useless
+    solutions
+"""
+function isuseless(useless::Dict{Vector{Int}, <:Number}, x)
+    xi = findall(x)
+    ks = filter(k -> xi ⊆ k, keys(useless))
+    if !isempty(ks)
+        # ks = collect(ks)
+        # fv .= x 
+        # fval = f()
+        # if fval > useless[ks[1]]
+        #     println(xi," with ",fval," is subset of ",ks[1], " with f = ", useless[ks[1]])
+        #     evaluated[x] = typemin(eltype(x))
+        # end
+        # continue
+    end
+end
 
 # # EMULATE INPUT SET OF SHAPLEY VALUES AND PARENT-CHILD DEPENDENCY OF FEATURES
 # # constraints of feature tree structure represented by lists of ascendants
