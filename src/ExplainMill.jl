@@ -1,8 +1,19 @@
 module ExplainMill
-using Mill, Duff, SparseArrays, StatsBase, Distances, Clustering, Flux, Zygote, JSON
+using Mill
+using Duff
+using SparseArrays
+using StatsBase
+using Distances
+using Clustering
+using Flux
+using Zygote
+using JSON
 using HierarchicalUtils
 using DataFrames
-using JSON, JsonGrinder, Setfield
+using JSON
+using JsonGrinder
+using Setfield
+using DataStructures
 
 
 output(ds::ArrayNode) = ds.data

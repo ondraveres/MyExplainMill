@@ -105,6 +105,29 @@ end
 	@test_broken (fv.masks[2]).first.mask.mask== Bool[1, 1, 0, 0, 1, 0, 0, 1, 1, 0]
 end
 
+@testset "Participation in FlatView" begin
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5]))
+	m = Mask(ds, initstats);
+	fv = FlatView(m);
+
+	m.mask.mask .= [1,0,1,0,1]
+	ExplainMill.updateparticipation!(m)
+	@test m.child[:c].mask.participate == [1,0,1,0,1]
+	@test m.child[:a].mask.participate == [1,1]
+
+	parents = ExplainMill.parent_structure(m)
+	cfv = FlatView(ExplainMill.firstparents([m.child[:a], m.child[:c]],
+		parents))
+	@test ExplainMill.participate(cfv) == [1,1,1,0,1,0,1]
+
+	m.mask.mask .= [0,0,0,0,0]
+	ExplainMill.updateparticipation!(m)
+	@test m.child[:c].mask.participate == [0,0,0,0,0]
+	@test m.child[:a].mask.participate == [1,1]
+end
+
 @testset "settrue! in FlatView" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))

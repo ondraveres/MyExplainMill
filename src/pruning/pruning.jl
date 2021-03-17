@@ -1,6 +1,8 @@
 include("utils.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
+include("branchandbound.jl")
+include("hackedsearch.jl")
 
 
 # :sfsrr => "LbyL-GArr",

@@ -4,12 +4,12 @@
 
 function Mill.partialeval(model::M, ds::ArrayNode, ms, masks) where {M<:Union{IdentityModel, ArrayModel}}
 	ms ∈ masks && return(model, ds, ms, true)
-	return(IdentityModel(), model(ds), EmptyMask(), false)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::LazyModel{N}, ds::LazyNode{N}, ms, masks) where {N}
 	ms ∈ masks && return(model, ds, ms, true)
-	return(IdentityModel(), model(ds), EmptyMask(), false)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::BagModel, ds::BagNode, ms::BagMask, masks)
@@ -17,11 +17,11 @@ function Mill.partialeval(model::BagModel, ds::BagNode, ms::BagMask, masks)
 	if (ms ∈ masks) | keep
 		return(BagModel(im, model.a,  model.bm), BagNode(ids, ds.bags, ds.metadata), BagMask(childms, ms.bags, ms.mask), true)
 	end
-	return(IdentityModel(), model.bm(model.a(ids, ds.bags)), EmptyMask(), false)
+	return(ArrayModel(identity), model.bm(model.a(ids, ds.bags)), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::BagModel, ds::BagNode, ms::EmptyMask, masks)
-	return(IdentityModel(), model(ds), EmptyMask(), false)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
 end
 
 # function Mill.partialeval(m::BagModel, ds::WeightedBagNode, skipnode)
@@ -30,7 +30,7 @@ end
 # 	if keep
 # 		return(BagModel(im, m.a,  m.bm), WeightedBagNode(ids, ds.bags, ds.weights, ds.metadata),  true)
 # 	end
-# 	return(IdentityModel(), m.bm(m.a(ids, ds.bags, ds.weights)), false)
+# 	return(ArrayModel(identity), m.bm(m.a(ids, ds.bags, ds.weights)), false)
 # end
 
 function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, ms::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
@@ -44,7 +44,7 @@ function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, ms::P
 	if any(f[4] for f in mods)
 		return(ProductModel((;zip(ks, childmodels)...), model.m), ProductNode((;zip(ks, childds)...), ds.metadata), ProductMask((;zip(ks, childms)...)), true)
 	end
-	return(IdentityModel(), model.m(vcat(childds...)), EmptyMask(), false)
+	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
 
 end
 
@@ -58,10 +58,10 @@ function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, ms::P
 	if any(f[4] for f in mods)
 		return(ProductModel(tuple(childmodels...), model.m), ProductNode(tuple(childds...), ds.metadata), ProductMask(tuple(childms...)), true)
 	end
-	return(IdentityModel(), model.m(vcat(childds...)), EmptyMask(), false)
+	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
 
 end
 
 function Mill.partialeval(model::ProductModel, ds::ProductNode, ms::EmptyMask, masks)
-	return(IdentityModel(), model.m(vcat(childds...)), EmptyMask(), false)
+	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
 end
