@@ -28,12 +28,6 @@ function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:Ma
 	MatrixMask(Mask(size(ds.data, 1), initstats), size(ds.data)...)
 end
 
-function prune(ds::ArrayNode{T,M}, m::MatrixMask) where {T<:Matrix, M}
-	x = deepcopy(ds.data)
-	x[.!prunemask(m), :] .= 0
-	ArrayNode(x, ds.metadata)
-end
-
 function Base.getindex(ds::ArrayNode{T,M}, m::MatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
 	x = ds.data[:,presentobs]
 	x[.!prunemask(m), :] .= 0

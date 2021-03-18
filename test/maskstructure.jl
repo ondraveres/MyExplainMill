@@ -157,7 +157,6 @@ end
 	@test dss.data.data.data.a.data ≈ [1 5 9; 0 0 0 ]
 	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([1,3,4], 1:4)
-	@test ds[m] == prune(ds, m)
 
 	m = BagMask(
 		BagMask(
@@ -176,7 +175,6 @@ end
 	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
-	@test ds[m] == prune(ds, m)
 
 	m = BagMask(
 		BagMask(
@@ -196,7 +194,6 @@ end
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
-	@test ds[m] == prune(ds, m)
 
 
 	@test ds[ExplainMill.EmptyMask()] == ds

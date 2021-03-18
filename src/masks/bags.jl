@@ -44,17 +44,6 @@ function invalidate!(mask::BagMask, observations::Vector{Int})
 	invalidate!(mask.child, invalid_instances)
 end
 
-function prune(ds::BagNode, mask::BagMask)
-	x = prune(ds.data, mask.child)
-	pmask = prunemask(mask)[:]
-	x = Mill.subset(x, findall(pmask))
-	bags = Mill.adjustbags(ds.bags, pmask)
-	if ismissing(x.data)
-		bags.bags .= [0:-1]
-	end
-	BagNode(x, bags)
-end
-
 function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds)))
 	if !any(presentobs)
 		return(ds[0:-1])

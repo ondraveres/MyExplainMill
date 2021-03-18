@@ -36,12 +36,6 @@ function invalidate!(mask::SparseArrayMask, observations::Vector{Int})
 	end
 end
 
-function prune(ds::ArrayNode{T,M}, mask::SparseArrayMask) where {T<:SparseMatrixCSC, M}
-	x = deepcopy(ds.data)
-	x.nzval[.!mask.mask.mask] .= 0
-	ArrayNode(x, ds.metadata)
-end
-
 function Base.getindex(ds::ArrayNode{T,M}, m::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
 	x = deepcopy(ds.data)
 	x.nzval[.!m.mask.mask] .= 0

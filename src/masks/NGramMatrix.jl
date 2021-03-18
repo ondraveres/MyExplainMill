@@ -21,12 +21,6 @@ function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
 	participate(mask)[observations] .= false
 end
 
-function prune(ds::ArrayNode{T,M}, m::NGramMatrixMask) where {T<:Mill.NGramMatrix{String}, M}
-	x = deepcopy(ds.data)
-	x.s[.!prunemask(m)] .= ""
-	ArrayNode(x, ds.metadata)
-end
-
 function Base.getindex(ds::ArrayNode{T,M}, m::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
 	x = ds.data
 	pm = prunemask(m) 

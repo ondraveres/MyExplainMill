@@ -21,7 +21,7 @@ end
     #end
     #
     #sample!(pruning_mask)
-    #pruned_ds = prune(ds, pruning_mask)
+    #pruned_ds = ds[pruning_mask]
     #o = model(pruned_ds)
     #Duff.update!(dafs, o, pruning_mask)
     #@test true
@@ -42,7 +42,7 @@ end
     #end
     #
     #sample!(pruning_mask)
-    #pruned_ds = prune(ds, pruning_mask)
+    #pruned_ds = ds[pruning_mask]
     #o = model(pruned_ds).data
     #Duff.update!(dafs, o, pruning_mask)
     @test true
