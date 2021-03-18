@@ -1,11 +1,17 @@
-function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000, max_time = 600)
+function functionalize(f, fv)
+    function ff(x)
+        fv .= x
+        f() 
+    end 
+    ff, fill(false, length(fv))
+end
+
+function branchandbound!(feval, fv::FlatView, significance; max_funevals = 1_000_000, max_time = 600)
     valid_indexes = findall(participate(fv))
-    println("Branch and bound in a solution vector of length ", length(fv))
-    # best_fval, best_x = initbyharr(f, fv, significance)
-    best_fval, best_x = initempty(f, fv, significance)
+    f, x = functionalize(feval, fv)
+    best_fval, best_x = f(x), x 
+    println("Branch and bound in a solution vector of length ", length(best_x))
     println("initial solution: objective = ", best_fval, " length = ", sum(best_x))
-    x = fill(false, length(fv))
-    fv .= x
     funevals = 0
     queue = PriorityQueue{typeof(x), typeof(best_fval)}(Base.Order.Reverse)
     enqueue!(queue, deepcopy(x), best_fval)
@@ -27,8 +33,7 @@ function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000
 
         mod(funevals, 10000) == 0 && println("funevals: ",funevals," size of the queue: ", length(queue))
 
-        fv .= x 
-        fval = f()
+        fval = f(x)
         evaluated[x] = fval
 
         # update the best solution found so far
@@ -37,7 +42,7 @@ function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000
             println("evaluations = ",funevals, " items = ", sum(best_x), " objective = ",best_fval)
             # If the solution is above threshold, we can try to prune it (which is cheap) to find better
             if best_fval > 0 
-                best_fval, best_x = removeexcess!(f, fv, x)
+                best_fval, best_x = removeexcess!(f, x)
             end
         end
 
@@ -50,8 +55,7 @@ function branchandbound!(f, fv::FlatView, significance; max_funevals = 1_000_000
             enqueue!(queue, x...)
         end
     end
-    fv .= best_x
-    println("returned solution: objective = ", f(), " length = ", sum(best_x))
+    println("returned solution: objective = ", f(best_x), " length = ", sum(best_x))
     evaluated
 end
 
@@ -61,17 +65,15 @@ end
     tries to remove superfluous items from `x` but while keeping
     f(x) above zero
 """
-function removeexcess!(f, fv::FlatView, x₀::Vector{Bool})
-    fv .= x₀
-    f₀ =  f()
+function removeexcess!(f, x₀::Vector{Bool})
+    f₀ =  f(x₀)
     x = deepcopy(x₀)
     f₀ < 0 && return(false)
     n = sum(x)
     while true 
         for i in findall(x)
             x[i] = false 
-            fv .= x 
-            fval = f()
+            fval = f(x)
             if fval < 0
                 x[i] = true
             end
@@ -79,33 +81,11 @@ function removeexcess!(f, fv::FlatView, x₀::Vector{Bool})
         n == sum(n) && break
         n = sum(n)
     end
-    fv .= x
-    fval = f()
+    fval = f(x)
     if sum(x) < sum(x₀)
         println("pruned to items = ", sum(x), " objective = ",fval)
     end
     better_solution(fval, x, f₀, x₀)
-end
-
-
-"""
-    function initbyharr(f, fv, significance)
-
-    initializes the solution by harr algorithm
-
-"""
-function initbyharr(f, fv, significance)
-    flatsearch!(f, fv, significance; participateonly = true, random_removal = true, fine_tuning = false)
-    x = fill(false, length(fv))
-    x[useditems(fv)] .= true
-    f(), x
-end
-
-
-function initempty(f, fv, significance)
-    x = fill(false, length(fv))
-    fv .= x
-    f(), x
 end
 
 """
