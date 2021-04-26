@@ -1,3 +1,11 @@
+using ExplainMill
+using Test
+using Mill
+using Flux
+using SparseArrays
+using Random
+using ExplainMill: Mask, FlatView
+
 """
     verifies that all parents are BagMasks (ProductMasks are igonored)
 """
@@ -95,6 +103,37 @@ end
 	map(m -> sample!(m.mask), fv)
 	@test_broken fv.masks[1].first.mask.mask == Bool[1, 1, 0, 0, 1]
 	@test_broken (fv.masks[2]).first.mask.mask== Bool[1, 1, 0, 0, 1, 0, 0, 1, 1, 0]
+end
+
+@testset "settrue! in FlatView" begin
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = ProductNode((a = an, c = cn))
+	m = Mask(ds, initstats);
+	fv = FlatView(m);
+
+	fill!(fv, false)
+	@test length(fv) == 7
+	ExplainMill.settrue!(fv, [true, false, true, false, true, false, false])
+	@test fv.masks[1].first.mask.mask == [true, false]
+	@test fv.masks[2].first.mask.mask == [true, false, true, false, false]
+	@test ExplainMill.useditems(fv) == [1,3,5]
+
+	ExplainMill.settrue!(fv, [false, true, false, true, false, false, true])
+	@test fv.masks[1].first.mask.mask == [false, true]
+	@test fv.masks[2].first.mask.mask == [false, true, false, false, true]
+	@test ExplainMill.useditems(fv) == [2,4,7]
+
+	#Let's test syntactic sugar
+	fv .= [true, false, true, false, true, false, false])
+	@test fv.masks[1].first.mask.mask == [true, false]
+	@test fv.masks[2].first.mask.mask == [true, false, true, false, false]
+	@test ExplainMill.useditems(fv) == [1,3,5]
+
+	fv .= [false, true, false, true, false, false, true])
+	@test fv.masks[1].first.mask.mask == [false, true]
+	@test fv.masks[2].first.mask.mask == [false, true, false, false, true]
+	@test ExplainMill.useditems(fv) == [2,4,7]
 end
 
 @testset "index in parent" begin
