@@ -16,6 +16,7 @@ using HierarchicalUtils
 
 # TODO integration tests of the whole pipeline
 # TODO test that explanations are indeed subsets of the original json
+# TODO call e2boolean with full and sampled masks
 
 @testset "ExplainMill.jl" begin
     include("maskstructure.jl")
