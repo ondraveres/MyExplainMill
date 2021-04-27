@@ -23,7 +23,7 @@ end
 function explain(e, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing)
     cg = ExplainMill.confidencegap(x -> softmax(model(x)), ds, i)
-    @assert all(cg .>= 0) "Cannot explain class with negative confidence gap!"
+    @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
     thresholds = get_thresholds(cg, abs_tol, rel_tol)
     ms = ExplainMill.stats(e, ds, model, i, clustering)
     ExplainMill.prune!(ms, model, ds, i, x -> ExplainMill.scorefun(e, x), thresholds, pruning_method)
