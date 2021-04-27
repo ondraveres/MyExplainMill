@@ -49,7 +49,8 @@ include("distances/clusterings.jl")
 include("distances/manual.jl")
 
 include("hierarchical_utils.jl")
-Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.typename(T))
+
+Base.show(io::IO, ::T) where T <: AbstractExplainMask = show(io, Base.nameof(T))
 Base.show(io::IO, ::MIME"text/plain", n::AbstractExplainMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractExplainMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
