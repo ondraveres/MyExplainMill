@@ -48,18 +48,15 @@ function prune!(f, ms, scorefun, method)
 end
 
 function prune!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, thresholds, method)
-	soft_model(x) = softmax(model(x))
-	if nobs(ds) == 1
-		f = () -> ExplainMill.confidencegap1(soft_model, ds[ms], i) - thresholds
-		return(prune!(f, ms, scorefun, method))
-	end
+    soft_model(x) = softmax(model(x))
 
-	if method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
-		f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- thresholds, 0))	
-		return(prune!(f, ms, scorefun, method))
-	end
+    if nobs(ds) == 1 ||
+        method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
+        f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[ms], i) .- thresholds, 0))
+        return prune!(f, ms, scorefun, method)
+    end
 
-	fine_tuning = method == :LbyL_HArrft
-	random_removal = method ∈ [:LbyL_HArr, :LbyL_HArrft]
-	levelbylevelsearch!(ms, model, ds, thresholds, i, scorefun; fine_tuning = fine_tuning, random_removal = random_removal)
+    fine_tuning = method == :LbyL_HArrft
+    random_removal = method ∈ [:LbyL_HArr, :LbyL_HArrft]
+    levelbylevelsearch!(ms, model, ds, thresholds, i, scorefun; fine_tuning = fine_tuning, random_removal = random_removal)
 end
