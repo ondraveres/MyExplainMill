@@ -21,10 +21,11 @@ end
 	iterations in the calculation of stats.
 """
 function explain(e, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; pruning_method=:LbyL_HArr,
-        abs_tol=nothing, rel_tol=nothing)
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
     cg = ExplainMill.confidencegap(x -> softmax(model(x)), ds, i)
     @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
     ms = ExplainMill.stats(e, ds, model, i, clustering)
+    ms = adjust_mask(ms)
     thresholds = get_thresholds(cg, abs_tol, rel_tol)
     ExplainMill.prune!(ms, model, ds, i, x -> ExplainMill.scorefun(e, x), thresholds, pruning_method)
     ms
@@ -40,10 +41,10 @@ end
 
 
 function explain(e, ds::AbstractNode, model::AbstractMillModel, clustering = ExplainMill._nocluster; pruning_method=:LbyL_HArr,
-        abs_tol=nothing, rel_tol=nothing)
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
     i = unique(Flux.onecold(softmax(model(ds).data)))
     @assert length(i) == 1 "Two or more classes predicted by the model!"
-    explain(e, ds, model, only(i), clustering; pruning_method, abs_tol, rel_tol)
+    explain(e, ds, model, only(i), clustering; pruning_method, abs_tol, rel_tol, adjust_mask)
 end
 
 # function explain(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, extractor::JsonGrinder.AbstractExtractor, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0, max_repetitions = 10)
