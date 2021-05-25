@@ -99,6 +99,8 @@ _retrieve_obs(ds::ArrayNode{<:Matrix, Nothing}, i, j) = ds.data[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractMatrix}, i, j) = ds.metadata[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractVector}, j) = ds.metadata[j]
 
+_reversedict(d) = Dict([v => k for (k,v) in d]...)
+
 """
 	contributing(m)
 
@@ -111,7 +113,7 @@ function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractExplainMask, 
     c = contributing(m, nobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
     if M === Nothing
-        d = reversedict(e.keyvalemap)
+        d = _reversedict(e.keyvalemap)
         x = map(i -> isabsent(i) ? i : get(d, i, "__UNKNOWN__"), x)
     end
     addor(m, x, exportobs)
