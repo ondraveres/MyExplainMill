@@ -6,7 +6,7 @@ using Zygote, Setfield
 struct GradExplainer
 end
 
-function stats(e::GradExplainer, ds, model, i, n, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::GradExplainer, ds, model, i, n, clustering = ExplainMill._nocluster)
 	GradMask(model, ds, model, ds, i)
 end
 

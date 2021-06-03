@@ -12,14 +12,14 @@ DafExplainer() = DafExplainer(200)
 BanzExplainer(n::Int) = DafExplainer(n, true, true)
 BanzExplainer() = BanzExplainer(200)
 
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster)
 	soft_model = (ds...) -> softmax(model(ds...));
 	# f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
     f = (ds, ms) -> ExplainMill.confidencegap(soft_model, ds[ms], i)
 	stats(e, ds, model, f, clustering)
 end
 
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, clustering = ExplainMill._nocluster; threshold = 0.1)
+function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, clustering = ExplainMill._nocluster)
 	ms = ExplainMill.Mask(ds, model, Duff.Daf, clustering)
 	updatesamplemembership!(ms, nobs(ds))
 	dafstats(e, ms, () -> f(ds, ms))

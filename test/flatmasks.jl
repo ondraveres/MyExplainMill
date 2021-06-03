@@ -148,12 +148,12 @@ end
 	@test ExplainMill.useditems(fv) == [2,4,7]
 
 	#Let's test syntactic sugar
-	fv .= [true, false, true, false, true, false, false])
+	fv .= [true, false, true, false, true, false, false]
 	@test fv.masks[1].first.mask.mask == [true, false]
 	@test fv.masks[2].first.mask.mask == [true, false, true, false, false]
 	@test ExplainMill.useditems(fv) == [1,3,5]
 
-	fv .= [false, true, false, true, false, false, true])
+	fv .= [false, true, false, true, false, false, true]
 	@test fv.masks[1].first.mask.mask == [false, true]
 	@test fv.masks[2].first.mask.mask == [false, true, false, false, true]
 	@test ExplainMill.useditems(fv) == [2,4,7]

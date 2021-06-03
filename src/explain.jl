@@ -1,3 +1,17 @@
+function get_thresholds(cg, abs_tol, rel_tol)
+    if isnothing(abs_tol) && isnothing(rel_tol)
+        @warn "No tolerance specified, setting rel_tol=0.9"
+        rel_tol = 0.9
+    end
+    if isnothing(abs_tol)
+        @assert 0 ≤ rel_tol ≤ 1 "Relative tolerance must be in [0, 1]!"
+        rel_tol .* cg
+    else
+        @assert all(abs_tol .≤ cg) "Absolute tolerance must be smaller than the confidence gap!"
+        cg .- abs_tol
+    end
+end
+
 """
 	explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0)
 
@@ -6,12 +20,15 @@
 	i is the index of the class which we are explaining and `n` is the number of repetitions / gradient
 	iterations in the calculation of stats.
 """
-function explain(e, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0)
-	threshold = adjustthreshold(threshold, gap, model, ds, i)
-	minimum(ExplainMill.confidencegap(model, ds, i) .- threshold) < 0 && error("cannot explain samples with negative confidence")
-	ms = ExplainMill.stats(e, ds, model, i, clustering)
-	ExplainMill.prune!(ms, model, ds, i, x -> ExplainMill.scorefun(e, x), threshold, pruning_method)
-	ms
+function explain(e, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster; pruning_method=:LbyL_HArr,
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+    cg = ExplainMill.confidencegap(x -> softmax(model(x)), ds, i)
+    @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
+    ms = ExplainMill.stats(e, ds, model, i, clustering)
+    ms = adjust_mask(ms)
+    thresholds = get_thresholds(cg, abs_tol, rel_tol)
+    ExplainMill.prune!(ms, model, ds, i, x -> ExplainMill.scorefun(e, x), thresholds, pruning_method)
+    ms
 end
 
 #This cannot work, as f is not defined
@@ -23,11 +40,11 @@ end
 # end
 
 
-function explain(e, ds::AbstractNode, model::AbstractMillModel, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0)
-	i = unique(Flux.onecold(softmax(model(ds).data)))
-	length(i) > 1 && error("We can explain only data with the same output class.")
-	i = only(i)
-	explain(e, ds, model, i, clustering; threshold = threshold, pruning_method=pruning_method, gap = gap)
+function explain(e, ds::AbstractNode, model::AbstractMillModel, clustering = ExplainMill._nocluster; pruning_method=:LbyL_HArr,
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+    i = unique(Flux.onecold(softmax(model(ds).data)))
+    @assert length(i) == 1 "Two or more classes predicted by the model!"
+    explain(e, ds, model, only(i), clustering; pruning_method, abs_tol, rel_tol, adjust_mask)
 end
 
 # function explain(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, extractor::JsonGrinder.AbstractExtractor, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0, max_repetitions = 10)
@@ -80,7 +97,6 @@ function explainy(e, ds::AbstractNode, negative_ds, model::AbstractMillModel, ex
 	i = unique(Flux.onecold(softmax(model(ds).data)))
 	length(i) > 1 && error("We can explain only data with the same output class.")
 	i = only(i)
-	threshold = adjustthreshold(threshold, gap, model, ds, i)
 
 	ms = ExplainMill.stats(e, ds, model, i, clustering)
 	soft_model = ds -> softmax(model(ds))
