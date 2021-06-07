@@ -46,5 +46,5 @@ In other (not listed) formulation, some constraints are exchanged with the optim
 ### Some thoughts about solving of the above
 * Due to the structure of the problem, a heuristic functions estimating importance of items might be replaced by the calculation of the gradient at a given point. This means that the solving of the above problems might be achieved using gradient descend problem **without any guarantees on optimality**.
 * The structure of `f` clearly defines a complexity. 
-	- The sub-modularity might be improved if the classifier uses independent estimates of probability instead of the softmax / `logitcrossentropy`.
+	- The sub-modularity might be improved if the classifier uses independent estimates of probability instead of the `softmax` / `logitcrossentropy`.
 	- If we would be searching for the optimality, decreasing the Lipschitz constant of the classifier would decrease the complexity (a lot).
