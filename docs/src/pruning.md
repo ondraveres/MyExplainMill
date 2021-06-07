@@ -5,7 +5,7 @@
 
 The explanation is understood as (a set of) minimal subset of the sample `x`, such that the output of a classifier `f(x)` on the class `y` is above thresholds `τ`. In a notation of a mathematical programming, the explanation solves the folowing problem
 
-``\min \|m\|_0``
+``min ||m||₀``
 
 subject to 
 ``f(x .* m)[y] >= τ	 ``
@@ -31,7 +31,7 @@ The rule creation of clusty is a use-case, where given a sample `x`, one wants t
 
 An interesting questions is, what is a constraint and what is an optimization criterion. For example in the spirit of the above, one can 
 
-``\min fₙ``
+``min fₙ``
 
 subject to 
 ``f(x .* m)[y] >= τ	 ``
