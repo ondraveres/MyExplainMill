@@ -1,6 +1,10 @@
 include("utils.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
+
+include("pareto.jl")
+
+# two below is a attempt for branch and bound
 include("branchandbound.jl")
 include("hackedsearch.jl")
 
