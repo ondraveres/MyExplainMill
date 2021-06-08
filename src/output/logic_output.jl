@@ -222,6 +222,9 @@ function _arrayofdicts(d::Dict, l)
     end
 end
 
+function _exportmatrix(args...)
+    @error "Cannot extract metadata from an ArrayNode, did you extract with `store_input=true`?"
+end
 function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.MatrixMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
     x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
     map(x -> _parcel(x, e), x)
@@ -266,12 +269,7 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, expo
 	map(x -> Dict(x[1] => x[2]), zip(k, d))
 end
 
-
-
-removeabsent(::Absent) = absent
-removeabsent(x::String) = x
-removeabsent(x::Number) = x
-removeabsent(x::Nothing) = "__MISSING__"
+removeabsent(x) = x
 
 function removeabsent(x::Vector)
     x = map(removeabsent, x);
@@ -290,7 +288,7 @@ removeabsent(x::LogicalOR) = LogicalOR(removeabsent(x.or))
 function removeabsent(d::Dict)
     x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
     x = filter(a -> !isabsent(a.second), x)
-    x = filter(a -> !isempty(a.second) || a.second == "", x)
+    x = filter(a -> isnothing(a.second) || a.second == "" || !isempty(a.second), x)
     isempty(x) ? absent : Dict(x)
 end
 
