@@ -44,7 +44,12 @@ An interesting property is that if `fₚ` and `fₙ` are estimated using a Naive
 In other (not listed) formulation, some constraints are exchanged with the optimization term, but the overall structure and properties are the same.
 
 ### Some thoughts about solving of the above
-* Due to the structure of the problem, a heuristic functions estimating importance of items might be replaced by the calculation of the gradient at a given point. This means that the solving of the above problems might be achieved using gradient descend problem **without any guarantees on optimality**.
+* Due to the structure of the problem, a heuristic functions estimating importance of items might be replaced by the calculation of the gradient at a given point. This might be a *crude* estimate of the gradient of a submodular function, which is equal to `f(x .* (m ∪ {j})) - f(x .* m)`. According to classical results, starting with an `m` being zero and following greedily the solution has a `1- 1/e` bound on worst-case optimality (this corresponds to `:Gadd` pruning). Thus, following the gradient, the explanation might be very cheap and very fast.
+
+* I have found a paper *Streaming weak submodularity: Interpreting Neural Networks on the fly, Elenberg, et al., 2017*, which solves the explanation problem casted as `max f(x .* m)` subject to ` ||m||₀` very efficiently.
+
 * The structure of `f` clearly defines a complexity. 
 	- The sub-modularity might be improved if the classifier uses independent estimates of probability instead of the `softmax` / `logitcrossentropy`.
 	- If we would be searching for the optimality, decreasing the Lipschitz constant of the classifier would decrease the complexity (a lot).
+
+* A good intro to submodularity is *Submodular function maximization* by Andreas Krause.
