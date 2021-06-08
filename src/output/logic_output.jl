@@ -288,7 +288,7 @@ removeabsent(x::LogicalOR) = LogicalOR(removeabsent(x.or))
 function removeabsent(d::Dict)
     x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
     x = filter(a -> !isabsent(a.second), x)
-    x = filter(a -> isnothing(a.second) || a.second == "" || !isempty(a.second), x)
+    x = filter(a -> ismissing(a.second) || a.second == "" || !isempty(a.second), x)
     isempty(x) ? absent : Dict(x)
 end
 
