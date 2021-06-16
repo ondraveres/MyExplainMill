@@ -91,7 +91,7 @@ addor(m::Mask{<:Nothing}, x::Absent, active) = absent
 addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
 addor(m::EmptyMask, x, active) = x
 
-_retrieve_obs(::LazyNode, i) = @error "LazyNode in Mill.jl does not support metadata (yet)."
+_retrieve_obs(::LazyNode, i) = error("LazyNode in Mill.jl does not support metadata (yet)")
 
 _retrieve_obs(ds::ArrayNode{<:NGramMatrix, Nothing}, i) = ds.data.s[i]
 _retrieve_obs(ds::ArrayNode{<:Flux.OneHotMatrix, Nothing}, i) = ds.data.data[i].ix
@@ -270,6 +270,7 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, expo
 end
 
 removeabsent(x) = x
+removeabsent(x::Nothing) = missing
 
 function removeabsent(x::Vector)
     x = map(removeabsent, x);
