@@ -91,13 +91,15 @@ addor(m::Mask{<:Nothing}, x::Absent, active) = absent
 addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
 addor(m::EmptyMask, x, active) = x
 
-_retrieve_obs(::LazyNode, i) = @error "LazyNode in Mill.jl does not support metadata (yet)."
+_retrieve_obs(::LazyNode, i) = error("LazyNode in Mill.jl does not support metadata (yet)")
 
 _retrieve_obs(ds::ArrayNode{<:NGramMatrix, Nothing}, i) = ds.data.s[i]
 _retrieve_obs(ds::ArrayNode{<:Flux.OneHotMatrix, Nothing}, i) = ds.data.data[i].ix
 _retrieve_obs(ds::ArrayNode{<:Matrix, Nothing}, i, j) = ds.data[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractMatrix}, i, j) = ds.metadata[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractVector}, j) = ds.metadata[j]
+
+_reversedict(d) = Dict([v => k for (k,v) in d]...)
 
 """
 	contributing(m)
@@ -111,7 +113,7 @@ function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractExplainMask, 
     c = contributing(m, nobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
     if M === Nothing
-        d = reversedict(e.keyvalemap)
+        d = _reversedict(e.keyvalemap)
         x = map(i -> isabsent(i) ? i : get(d, i, "__UNKNOWN__"), x)
     end
     addor(m, x, exportobs)
@@ -220,6 +222,9 @@ function _arrayofdicts(d::Dict, l)
     end
 end
 
+function _exportmatrix(args...)
+    @error "Cannot extract metadata from an ArrayNode, did you extract with `store_input=true`?"
+end
 function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.MatrixMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
     x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
     map(x -> _parcel(x, e), x)
@@ -264,12 +269,8 @@ function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, expo
 	map(x -> Dict(x[1] => x[2]), zip(k, d))
 end
 
-
-
-removeabsent(::Absent) = absent
-removeabsent(x::String) = x
-removeabsent(x::Number) = x
-removeabsent(x::Nothing) = "__MISSING__"
+removeabsent(x) = x
+removeabsent(x::Nothing) = missing
 
 function removeabsent(x::Vector)
     x = map(removeabsent, x);
@@ -288,7 +289,7 @@ removeabsent(x::LogicalOR) = LogicalOR(removeabsent(x.or))
 function removeabsent(d::Dict)
     x = map(k -> k => removeabsent(d[k]), collect(keys(d)))
     x = filter(a -> !isabsent(a.second), x)
-    x = filter(a -> !isempty(a.second) || a.second == "", x)
+    x = filter(a -> ismissing(a.second) || a.second == "" || !isempty(a.second), x)
     isempty(x) ? absent : Dict(x)
 end
 
