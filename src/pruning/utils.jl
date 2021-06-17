@@ -2,7 +2,7 @@ function removeexcess!(f, flatmask::FlatView, x::Vector{Int})
 	previous =  f()
 	previous < 0 && return(false)
 	changed = false
-	for i in ii
+	for i in useditems(flatmask)
 		flatmask[i] == false && continue
 		flatmask[i] = false
 		o = f()

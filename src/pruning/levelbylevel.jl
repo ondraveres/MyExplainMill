@@ -1,5 +1,5 @@
 function prepare_level!(m, ms, parents, scorefun)
-	fv = FlatView(firstparents(m, parents))
+	fv = FlatView(m)
 	updateparticipation!(ms)
 	significance = map(scorefun, fv)
 	fv, significance
@@ -8,22 +8,19 @@ end
 function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
+	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
 	masks = map(x -> x.first, parents)
 
 	#get rid of masks, which does not have any explainable item
-	masks = filter(x -> !isa(x, AbstractNoMask), masks)
 
 	if isempty(masks) 
 		@warn "Cannot explain empty samples"
 		return()
 	end
 
-	dp = map(masks) do x
-		length(allparents(masks, parents, idofnode(x, parents)))
-	end
-
+	dp = map(x -> x.second, parents)
 	max_depth = maximum(dp)
-	fullmask = FlatView(ms)
+	fullmask = FlatView(masks)
 	fill!(fullmask, true)
 	for j in 1:max_depth
 		m = masks[dp .== j]
@@ -43,17 +40,14 @@ end
 function levelbylevelsearch!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, threshold, i, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
+	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
 	masks = map(x -> x.first, parents)
 
 	#get rid of masks, which does not have any explainable item
-	masks = filter(x -> !isa(x, AbstractNoMask), masks)
-
-	dp = map(masks) do x
-		length(allparents(masks, parents, idofnode(x, parents)))
-	end
+	dp = map(x -> x.second, parents)
 
 	max_depth = maximum(dp)
-	fullmask = FlatView(ms)
+	fullmask = FlatView(masks)
 	fill!(fullmask, true)
 	f = () -> sum(min.(ExplainMill.confidencegap(ds -> softmax(model(ds)), ds[ms], i) .- threshold, 0))
 	for j in 1:max_depth
@@ -80,17 +74,15 @@ end
 function levelbylevelsfs!(f, ms::AbstractExplainMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = false)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
+	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
 	masks = map(x -> x.first, parents)
 
 	#get rid of masks, which does not have any explainable item
 	masks = filter(x -> !isa(x, AbstractNoMask), masks)
-
-	dp = map(masks) do x
-		length(allparents(masks, parents, idofnode(x, parents)))
-	end
+	dp = map(x -> x.second, parents)
 
 	max_depth = maximum(dp)
-	fullmask = FlatView(ms)
+	fullmask = FlatView(masks)
 	fill!(fullmask, true)
 	for j in 1:max_depth
 		m = masks[dp .== j]

@@ -1,4 +1,4 @@
-ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(0, length(m)), Daf(length(m)), nothing)
+ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(0, length(m)), ones(length(m)), nothing)
 ExplainMill.MatrixMask(m::Vector{Bool}, d) = ExplainMill.MatrixMask(ExplainMill.Mask(m), length(m), d)
 ExplainMill.CategoricalMask(m::Vector{Bool}) = ExplainMill.CategoricalMask(ExplainMill.Mask(m))
 ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, ExplainMill.Mask(m))

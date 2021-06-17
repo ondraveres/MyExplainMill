@@ -77,8 +77,8 @@ clustermask(m::Mask) = reshape(m.mask,:)
 	after passed through `σ` function.
 """
 mulmask(m::AbstractExplainMask) = mulmask(m.mask)
-mulmask(m::Mask{Nothing,M}) where {M<:RealArray} = σ.(m.stats)
-mulmask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = σ.(m.stats[m.cluster_membership,:])
+mulmask(m::Mask{Nothing,M}) where {M<:RealArray} = m.stats
+mulmask(m::Mask{Array{Int64,1},M}) where {M<:RealArray} = m.stats[m.cluster_membership,:]
 mulmask(m::Mask{Nothing,M}) where {M<:Duff.Daf} = prunemask(m)
 mulmask(m::Mask{Array{Int64,1},M}) where {M<:Duff.Daf} = prunemask(m)
 

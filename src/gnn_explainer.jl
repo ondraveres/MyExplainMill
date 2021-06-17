@@ -10,6 +10,7 @@ GnnExplainer(n::Int) = GnnExplainer(n, 1f0, 5f-3)
 GnnExplainer(n) = GnnExplainer(200)
 
 function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluster)
+	error("broken as the sigmoid in mulmask is not included. ")
 	soft_model = (ds...) -> softmax(model(ds...));
 	mask = ExplainMill.Mask(ds, model, d -> rand(Float32, d, 1), clustering)
 	ms = filter(x -> !isa(x,ExplainMill.AbstractNoMask), collect(NodeIterator(mask)))

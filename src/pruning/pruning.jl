@@ -2,7 +2,8 @@ include("utils.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
 
-include("pareto.jl")
+# include("pareto.jl")
+include("gradient_submodular.jl")
 
 # two below is a attempt for branch and bound
 include("branchandbound.jl")

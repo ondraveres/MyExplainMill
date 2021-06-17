@@ -17,40 +17,30 @@ end
 
 Parents = Array{Pair{k,Int64} where k,1}
 
-function FlatView(m::AbstractExplainMask; noleaves = false, onlyleaves = false)
-	(noleaves && onlyleaves ) && error("no leaves and onlyleaves does not make sense")
-	parents = parent_structure(m)
-	masks = map(x -> x.first, parents)
-	masks = filter(x -> !isa(x, AbstractNoMask), masks)
-	masks = noleaves ? filter(x -> isa(x, BagMask), masks) : masks
-	masks = onlyleaves ? filter(x -> !isa(x, BagMask), masks) : masks
-
-	isempty(masks) && return(nothing)
-	FlatView(firstparents(masks, parents))
+function FlatView(mk::AbstractExplainMask)
+	FlatView(map(first, parent_structure(mk)))
 end
 
-
-function FlatView(m::AbstractExplainMask, masks::Parents)
-	parents = parent_structure(m)
-	FlatView(firstparents(masks, parents))
+function FlatView(masks::Vector{<:Pair})
+	FlatView(map(first, masks))
 end
 
 function FlatView(masks::Vector)
 	itemno = 0
 	itemmap = map(enumerate(masks)) do (i,m)
-		map(1:length(m.first.mask)) do j
+		map(1:length(m.mask)) do j
 			itemno += 1
 			(itemid = itemno, maskid = i, innerid = j)
 		end
 	end
 	itemmap = reduce(vcat, itemmap)
-	starts = vcat(0, accumulate(+,map(m -> length(m.first.mask), masks))[1:end-1])
+	starts = vcat(0, accumulate(+,map(m -> length(m.mask), masks))[1:end-1])
 	FlatView(tuple(masks...), itemmap,starts)
 end
 
 function Base.setindex!(m::FlatView, v, i::Int) 
 	j = m.itemmap[i]
-	m.masks[j.maskid].first.mask[j.innerid] = v
+	m.masks[j.maskid].mask[j.innerid] = v
 end
 
 
@@ -61,7 +51,7 @@ end
 """
 function settrue!(fv::FlatView, bitmask::Vector{Bool})
 	for i in 1:length(fv.masks)
-		m = ExplainMill.prunemask(fv.masks[i].first)
+		m = ExplainMill.prunemask(fv.masks[i])
 		rg = fv.starts[i]+1:fv.starts[i]+length(m)
 		m .= bitmask[rg]
 	end
@@ -74,7 +64,7 @@ end
 
 function Base.getindex(m::FlatView, i::Int) 
 	j = m.itemmap[i]
-	only(unique(m.masks[j.maskid].first.mask[j.innerid]))
+	only(unique(m.masks[j.maskid].mask[j.innerid]))
 end
 
 function Base.getindex(m::FlatView, ii::Vector{Int}) 
@@ -82,19 +72,19 @@ function Base.getindex(m::FlatView, ii::Vector{Int})
 end
 
 Base.length(m::FlatView) = length(m.itemmap)
-Base.fill!(m::FlatView, v) = map(x -> fill!(x.first.mask.mask, v), m.masks)
+Base.fill!(m::FlatView, v) = map(x -> fill!(x.mask.mask, v), m.masks)
 
 function parent(m::FlatView, i) 
 	j = m.itemmap[i]
 	parent_id = m.masks[j.maskid].second
 	parent_id == 0 && return(0)
-	m.starts[parent_id] + index_in_parent(m.masks[j.maskid].first, j.innerid)
+	m.starts[parent_id] + index_in_parent(m.masks[j.maskid], j.innerid)
 end
 
 function Base.map(f, m::FlatView)
-	vcat(map(x -> f(x.first), m.masks)...)
+	vcat(map(x -> f(x), m.masks)...)
 end
 
 useditems(m::FlatView) = findall(usedmask(m))
 usedmask(m::FlatView) = map(i -> m[i], 1:length(m))
-participate(m::FlatView) = reduce(vcat, map(i -> participate_item(i.first.mask), m.masks))
+participate(m::FlatView) = reduce(vcat, map(i -> participate_item(i.mask), m.masks))
