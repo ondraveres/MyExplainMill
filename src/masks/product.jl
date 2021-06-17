@@ -62,7 +62,7 @@ function Base.getindex(ds::ProductNode{T,M}, mask::ProductMask, presentobs=fill(
 end
 
 function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mask::ExplainMill.ProductMask) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
-    xx = vcat([m[k](x[k], mask[k]) for k in keys(m.ms)]...)
+    xx = ArrayNode(vcat([m[k](x[k], mask[k]).data for k in keys(m.ms)]...))
     m.m(xx)
 end
 
