@@ -56,20 +56,27 @@ Problems ?
 * `outputid` is used only by Shapley values.
 
 
-### Principal solution?
+### A working idea
+I would like to abstract the structure (or its part) such that it will behave as a vector. That means that I can access it and modify it using `setindex!`, `getindex`, `length`, and `empty`. Moreover, for a given set of masks, I would like to get a heuristic values. At the same time, whole sample should be indexable by a a structural mask.
 
-A principal solution would be to create a special `Mask` for each (class) of heuristic values with a well defined interface, which would consist of 
-* `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`
-* `diffmask(m)` used differentiable simulation of subsetting `model(ds, diffmask(m))`
-* `setindex!(m, i, ::Bool)` for pruning
-* `getindex(m, i)` to get current values
-* `heuristic(m)` which would provide heuristic at a given state, but it can be for example state-independent (e.g. Banzhaf, etc...)
-* The `ClusteredMask` will wrap the above mask and expose `diffmask` and `prunemask` with a correct mapping of clusters to corresponding items. Contrary, `setindex!` and `getindex` will operate on cluster level, since they will be used mainly for prunning. Similarly `heuristic` needs to return values for **clusters**.
+So the current idea would be to have:
+* structural Mask elements, that are specialized for corresponding Node Elements. So `BagNode` has a `BagMask`, `ProductNode` has a `ProductMask`, `ArrayNode` has `ArrayMask`, etc.
+* Each structural mask will contain a `SomeMask` which will behave like a vector. It will implement
+	- `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`
+	- `diffmask(m)` used differentiable simulation of subsetting `model(ds, diffmask(m))`
+	- `setindex!(m, i, ::Bool)` for pruning
+	- `getindex(m, i)` to get current values
+	- `length(m)` to get number of items
+	- `isempty(m)` to get number of items
+	- `heuristic(m)` which would provide heuristic at a given state, but it can be for example state-independent (e.g. Banzhaf, etc...)
 
-While the above solution is principled, it is not clear to me (yet) how much work it will be and we will need a pretty good set of unit test to test the stuff.
+* The heuristic can specialize on `SomeMask`, which can be special for a  combination of Heuristic and `Mask`. This would allow to solve issue of GnnExplainer requiring a different transformation then GradExplainer and / or sub-modular grad method. 
 
-At the moment, an interesting study is if we can get rid of `participation` everywhere except the Shapley / Bazhaffs.
+* The `ClusteredMask` can wrap `SomeMask` (or vice versa).
 
-### What I want?
+#### Discussion
 
-I would like to abstract the structure (or part of the structure, for example one level) to behave as a vector, i.e. I need to implement at least `setindex!`, `getindex`, `length`, and `empty`.
+It is not clear to me, if the above is not over-engineered and / or sufficiently general, as there are many open questions. 
+* Can get rid of `participation` everywhere except the Shapley / Bazhaffs.
+* Can we support multi banzhaf values?
+* 

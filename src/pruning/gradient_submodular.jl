@@ -20,7 +20,6 @@ end
 
 function gradient_submodular_flat!(f, level_fv)
 	level_mk = level_fv.masks
-	#this is the core of the grad Gadd
 	ps = Flux.Params(map(x -> x.mask.stats, level_mk))
 	foreach(p -> fill!(p, 0), ps)
 	f₀ = f()
@@ -30,16 +29,15 @@ function gradient_submodular_flat!(f, level_fv)
 		scores = reduce(vcat, map(x -> gs[x.mask.stats][:], level_mk))
 		changed = false
 		for i in sortperm(scores)
-			a = level_fv.itemmap[i]
-			level_mk[a.maskid].mask.stats[a.innerid] == 1 && continue
-			level_mk[a.maskid].mask.stats[a.innerid] = 1
+			level_fv[i] == 1 && continue
+			level_fv[i] = 1
 			fᵢ = f()
 			if fᵢ > f₀
 				f₀ = fᵢ
 				changed = true
 				break;
 			end
-			level_mk[a.maskid].mask.stats[a.innerid] = 0
+			level_fv[i] = 0
 		end
 		iter += 1
 		f₀ > 0 && break 
