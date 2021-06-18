@@ -114,10 +114,10 @@ end
 		participate(m)[1] = false
 		prunemask(m)[2] = false
 	end
-	@test prunemask(an.childs.a) ≈ [true, false, true, true, true]
-	@test participate(an.childs.a) ≈ [false, true, true, true, true]
-	@test prunemask(an.childs.b) ≈ [true, false]
-	@test participate(an.childs.b) ≈ [false, true]
+	@test prunemask(an[:a]) ≈ [true, false, true, true, true]
+	@test participate(an[:a]) ≈ [false, true, true, true, true]
+	@test prunemask(an[:b]) ≈ [true, false]
+	@test participate(an[:b]) ≈ [false, true]
 	@test participate(an) == nothing
 	@test prunemask(an) == nothing
 
@@ -250,18 +250,18 @@ end
 			ds.bags,
 			[true,true,true])
 
-    @test_broken begin
-        # buf = IOBuffer()
-        # printtree(buf, m, trav=true)
-        # str_repr = String(take!(buf))
-        str_repr = ""
-        str_repr ==
-        """
-        BagMask [""]
-        └── BagMask ["U"]
-        └── ProductMask ["k"]
-        ├── a: MatrixMask ["o"]
-        ├── c: SparseArrayMask ["s"]
-        └── o: CategoricalMask ["w"]"""
-    end
+    # @test_broken begin
+    #     # buf = IOBuffer()
+    #     # printtree(buf, m, trav=true)
+    #     # str_repr = String(take!(buf))
+    #     str_repr = ""
+    #     str_repr ==
+    #     """
+    #     BagMask [""]
+    #     └── BagMask ["U"]
+    #     └── ProductMask ["k"]
+    #     ├── a: MatrixMask ["o"]
+    #     ├── c: SparseArrayMask ["s"]
+    #     └── o: CategoricalMask ["w"]"""
+    # end
 end

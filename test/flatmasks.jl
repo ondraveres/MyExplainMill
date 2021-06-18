@@ -6,15 +6,6 @@ using SparseArrays
 using Random
 using ExplainMill: Mask, FlatView
 
-"""
-    verifies that all parents are BagMasks (ProductMasks are igonored)
-"""
-function testparentship(masks)
-    ns, ii = [v.first for v in masks],[v.second for v in masks]
-    ii = filter(i -> i != 0, ii)
-    all(map(x -> isa(x, ExplainMill.BagMask), ns[ii]))
-end
-
 initstats = d -> ones(d)
 
 # ms = Mask(ds, model, d -> collect(d:-1:1), ExplainMill._nocluster);

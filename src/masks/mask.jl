@@ -26,8 +26,8 @@ daf --- Shappley value statistics for each item (cluster of items)
 cluster_membership --- this identifies to which cluster the item belongs to.
 	This is created if clustering of items is on
 """
-struct Mask{I<:Union{Nothing, Vector{Int}}, D}
-	mask::Array{Bool,1}
+struct Mask{I<:Union{Nothing, Vector{Int}}, M, D}
+	mask::M
 	participate::Array{Bool,1}
 	outputid::Array{Int,1}
 	stats::D
@@ -81,11 +81,3 @@ _cluster_membership(ij::Nothing, i) = i
 function invalidate!(mask::Mask, i)
 	mask.participate[i] .= false
 end
-
-# function StatsBase.sample!(m::Mask{Vector{Int64}})
-# 	ci = m.cluster_membership
-# 	_mask = sample([true, false], maximum(ci))
-# 	for (i,k) in enumerate(ci)
-# 		m.mask[i] = _mask[k]
-# 	end
-# end

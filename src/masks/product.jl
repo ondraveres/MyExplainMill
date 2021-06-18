@@ -72,3 +72,5 @@ function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mask::ExplainMill.Pro
 end
 
 _nocluster(m::ProductModel, ds::ProductNode) = nobs(ds)
+
+prunemask(m::ProductMask) = nothing
