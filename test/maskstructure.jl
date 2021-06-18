@@ -211,6 +211,16 @@ end
 	@test nobs(bs[ExplainMill.EmptyMask(), [true,false,true]]) == 2
 end
 
+@testset "testing multiplication masks" begin 
+	#for now I will test that they just pass
+	x = ProductNode((a = ArrayNode(randn(Float32, 2,4)), b = ArrayNode(randn(Float32, 2, 4))))
+	m = reflectinmodel(x, d -> Dense(d, 4), d -> SegmentedMeanMax(d))
+	mk = ExplainMill.Mask(x, m, d -> fill(1f0, d, 1), ExplainMill._nocluster)
+	ps = Flux.Params([mk[:a].mask.stats, mk[:b].mask.stats])
+	gradient(() -> sum(m(x, mk).data), ps)
+end
+
+
 @testset "testing infering of sample membership" begin
 	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))

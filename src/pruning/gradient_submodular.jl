@@ -13,6 +13,7 @@ function gradient_submodular_flat!(f, level_fv)
 	foreach(p -> fill!(p, 0), ps)
 	f₀ = f()
 	iter = 0
+	# @info "f₀ = $(f₀)"
 	while(true)
 		gs = gradient(() -> -f(), ps)
 		scores = reduce(vcat, map(x -> gs[x.mask.stats][:], level_mk))
@@ -23,10 +24,12 @@ function gradient_submodular_flat!(f, level_fv)
 			level_mk[a.maskid].mask.stats[a.innerid] = 1
 			fᵢ = f()
 			if fᵢ > f₀
+				# @info "added $(i) improving to $(fᵢ)"
 				f₀ = fᵢ
 				changed = true
 				break;
 			end
+			# @info "skipped $(i) $(fᵢ)"
 			level_mk[a.maskid].mask.stats[a.innerid] = 0
 		end
 		iter += 1
@@ -41,19 +44,20 @@ end
 
 function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial_evaluation)
 	mk = ExplainMill.Mask(ds, model, d -> fill(1f0, d, 1), clustering)
-	hard_f = () -> logsoftmax(model(ds[mk]).data)[class]
-	soft_f = () -> logsoftmax(model(ds, mk).data)[class]
-	τ = soft_f() + log(rel_tol)
 	parents = parent_structure(mk)
 	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
 	if isempty(parents) 
 		@warn "Cannot explain empty samples"
 		return()
 	end
-
 	max_depth = maximum(x.second for x in parents)
 	fullmask = FlatView(map(first, parents))
 	fill!(fullmask, true)
+
+	hard_f = () -> logsoftmax(model(ds[mk]).data)[class]
+	soft_f = () -> logsoftmax(model(ds, mk).data)[class]
+	τ = soft_f() + log(rel_tol)
+	f₀ = exp(hard_f())
 	for j in 1:max_depth
 		level_mk = map(first, filter(i -> i.second == j, parents))
 		isempty(level_mk) && continue
@@ -67,11 +71,17 @@ function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial
 			gradient_submodular_flat!(() -> soft_f() - τ, level_fv)
 		end
 
-		f₀ = exp(soft_f())
+		fₛ = exp(soft_f())
 		fₕ = exp(hard_f())
-		@info "soft f:  = $(f₀) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
-		randomremoval!(() -> hard_f() - τ, level_fv)
-		@info "soft f:  = $(f₀) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
+		@info "level: $(j)  soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
+
+		greedyremoval!(() -> hard_f() - τ, level_fv)
+		for m in level_mk
+			m.mask.stats .= m.mask.mask
+		end
+		fₛ = exp(soft_f())
+		fₕ = exp(hard_f())
+		@info "level: $(j) after rr soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
 	end
 
 	used = useditems(fullmask)

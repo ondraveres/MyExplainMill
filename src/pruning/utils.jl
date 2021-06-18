@@ -106,14 +106,13 @@ function addone!(f, flatmask)
 end
 
 """
-	removeone!(f, flatmask)
+	removeone!(f, flatmask, ii = ExplainMill.useditems(flatmask))
 
 	removes one feature which least decreased the value without taking the importance in the account
 """
-function removeone!(f, flatmask)
+function removeone!(f, flatmask, ii = ExplainMill.useditems(flatmask))
 	o = f()
 	best, j =  typemin(o), -1
-	ii = ExplainMill.useditems(flatmask)
 	for i in ii
 		!all(flatmask[i]) && continue
 		flatmask[i] = false
@@ -223,5 +222,25 @@ function randomremoval!(f, flatmask)
 		used = useditems(flatmask)
 		length(used) == length(used_old) && break
 		used_old = used
+	end
+end
+
+
+"""
+	greedyremoval!(f, flatmask)
+
+	greedily remove items such that `f` uses minimal number 
+	of items and it is above zero. In each iteration, it removes
+	the item causing least decrease of `f`
+"""
+function greedyremoval!(f, flatmask)
+	while true
+		ii = useditems(flatmask)
+		changed = removeone!(f, flatmask, ii)
+		!changed && break
+		if f() < 0 
+			foreach(i -> flatmask[i] = true, ii)
+			break
+		end
 	end
 end
