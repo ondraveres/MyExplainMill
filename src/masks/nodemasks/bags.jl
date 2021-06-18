@@ -6,23 +6,17 @@ end
 
 Flux.@functor(BagMask)
 
-function Mask(ds::BagNode, model::BagModel, initstats, cluster; verbose::Bool = false)
-	isnothing(ds.data) && return(EmptyMask())
-	nobs(ds.data) == 0 && return(EmptyMask())
-	child_mask = Mask(ds.data, model.im, initstats, cluster)
+function create_mask_structure(ds::BagNode, model::BagModel, create_mask, cluster)
+	(isnothing(ds.data) || nobs(ds.data) == 0) && return(EmptyMask())
+	child_mask = create_mask_structure(ds.data, model.im, create_mask, cluster)
 	cluster_assignments = cluster(model, ds)
-	if verbose
-		n, m = nobs(ds.data), length(unique(cluster_assignments))
-		println("number of instances: ", n, " ratio: ", round(m/n, digits = 3))
-	end
-	BagMask(child_mask, ds.bags, Mask(cluster_assignments, initstats))
+	BagMask(child_mask, ds.bags, create_mask(cluster_assignments))
 end
 
-function Mask(ds::BagNode, initstats; verbose::Bool = false)
-	isnothing(ds.data) && return(EmptyMask())
-	nobs(ds.data) == 0 && return(EmptyMask())
-	child_mask = Mask(ds.data, initstats; verbose = verbose)
-	BagMask(child_mask, ds.bags, Mask(nobs(ds.data), initstats))
+function create_mask_structure(ds::BagNode, create_mask)
+	(isnothing(ds.data) || nobs(ds.data) == 0) && return(EmptyMask())
+	child_mask = create_mask_structure(ds.data, create_mask)
+	BagMask(child_mask, ds.bags, create_mask(nobs(ds.data)))
 end
 
 function Base.getindex(m::BagMask, i::Mill.VecOrRange)
@@ -63,14 +57,12 @@ end
 
 function (m::Mill.BagModel)(x::BagNode, mask::BagMask)
 	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
-	xx = ArrayNode(transpose(mulmask(mask)) .* m.im(x.data, mask.child).data)
+	xx = ArrayNode(transpose(diffmask(mask)) .* m.im(x.data, mask.child).data)
     m.bm(m.a(xx, x.bags))
 end
 
 function (m::Mill.BagModel)(x::BagNode, mask::EmptyMask)
 	m(x)
 end
-
-index_in_parent(m::BagMask, i) = only(findall(map(b -> i ∈ b, m.bags)))
 
 _nocluster(m::BagModel, ds::BagNode) = nobs(ds.data)

@@ -1,18 +1,24 @@
+const ParentStructure = Vector{Pair{AbstractExplainMask, Int}}
 """
-	parent_structure(ms::AbstractExplainMask, level = 1)
+	parent_structure(mk::AbstractExplainMask, level = 1)
 
 	recursively traverse the hierarchical mask structure and 
 	collect mask that have explainable content and identifies their level.
 """
-function parent_structure(ms::AbstractExplainMask, level = 1)
-	res = ((mask(ms) === nothing) || isempty(mask(ms))) ? nothing : ms => level
-	level = res == nothing ? level : level + 1
-	cs = collect(children(ms))
-	isempty(cs) && return(res)
-	c = map(cs) do n 
+function parent_structure(mk::AbstractNoMask, level = 1)
+	cs = collect(children(mk))
+	isempty(cs) && return(ParentStructure())
+	cs = map(cs) do n 
 		parent_structure(n, level)
 	end
-	c = vcat(res, c...)
-	c = filter(!isnothing, c)
-	isempty(c) ? nothing : c
+	reduce(vcat, cs)
+end
+
+function parent_structure(mk::AbstractExplainMask, level = 1)
+	cs = collect(children(mk))
+	isempty(cs) && return([mk => level])
+	cs = map(cs) do n 
+		parent_structure(n, level + 1)
+	end
+	reduce(vcat, [mk => level, cs...])
 end

@@ -49,23 +49,27 @@ containing information about:
 * mapping from clusters to items if they are clustered.
 
 Problems ?
-* Methods requiring gradients (GNNExplainer, Grad methods) uses two masks, as in `stats` they store the differentiable mask and in `mask` they store the pruning mask. Pruning mask is accessed by `prunemask` used in subsetting the sample `ds` as `ds[m]`, while differentiable mask is accessed by `mulmask` used in differential evaluation of a sample by a `model` as `model(ds, m)`.
+* Methods requiring gradients (GNNExplainer, Grad methods) uses two masks, as in `stats` they store the differentiable mask and in `mask` they store the pruning mask. Pruning mask is accessed by `prunemask` used in subsetting the sample `ds` as `ds[m]`, while differentiable mask is accessed by `diffmask` used in differential evaluation of a sample by a `model` as `model(ds, m)`.
 * 
-* `mulmask` has to output the correctly masked item, therefore for GNNExplainer the `mulmask(m) = σ(m.stats)` but for `GradExaplainer` it should be `mulmask(m) = m.stats` (this problem is currently caused by insufficient dispatch). Moreover, `model(ds, m) ≠ model(ds[m])`, which causes discrepancy between the view on the sample of gradient based beuristics and that of the sub-sampling based heuristics. 
+* `diffmask` has to output the correctly masked item, therefore for GNNExplainer the `diffmask(m) = σ(m.stats)` but for `GradExaplainer` it should be `diffmask(m) = m.stats` (this problem is currently caused by insufficient dispatch). Moreover, `model(ds, m) ≠ model(ds[m])`, which causes discrepancy between the view on the sample of gradient based beuristics and that of the sub-sampling based heuristics. 
 * Is participation really needed? Can we get away with it? It is used mainly in Shapley, where it makes a difference between Banzhaf and Shapley. It is also used in pruning, where it helps to identify parts of masks, which does not have to be optimized over?
 * `outputid` is used only by Shapley values.
 
 
-### Principal solution
+### Principal solution?
 
-A principla solution would be to create a special `Mask` for each (class) of heuristic values with a well defined interface, which would consist of 
+A principal solution would be to create a special `Mask` for each (class) of heuristic values with a well defined interface, which would consist of 
 * `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`
-* `mulmask(m)` used differentiable simulation of subsetting `model(ds, mulmask(m))`
+* `diffmask(m)` used differentiable simulation of subsetting `model(ds, diffmask(m))`
 * `setindex!(m, i, ::Bool)` for pruning
 * `getindex(m, i)` to get current values
 * `heuristic(m)` which would provide heuristic at a given state, but it can be for example state-independent (e.g. Banzhaf, etc...)
-* The `ClusteredMask` will wrap the above mask and expose `mulmask` and `prunemask` with a correct mapping of clusters to corresponding items. Contrary, `setindex!` and `getindex` will operate on cluster level, since they will be used mainly for prunning. Similarly `heuristic` needs to return values for **clusters**.
+* The `ClusteredMask` will wrap the above mask and expose `diffmask` and `prunemask` with a correct mapping of clusters to corresponding items. Contrary, `setindex!` and `getindex` will operate on cluster level, since they will be used mainly for prunning. Similarly `heuristic` needs to return values for **clusters**.
 
 While the above solution is principled, it is not clear to me (yet) how much work it will be and we will need a pretty good set of unit test to test the stuff.
 
 At the moment, an interesting study is if we can get rid of `participation` everywhere except the Shapley / Bazhaffs.
+
+### What I want?
+
+I would like to abstract the structure (or part of the structure, for example one level) to behave as a vector, i.e. I need to implement at least `setindex!`, `getindex`, `length`, and `empty`.

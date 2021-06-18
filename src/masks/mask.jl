@@ -42,7 +42,7 @@ function participate_item(m::Mask{Vector{Int}})
 	end
 end
 
-Base.length(m::Mask) = length(m.stats)
+Base.length(m::Mask) = length(m.mask)
 Base.fill!(m::Mask, v) = Base.fill!(m.mask, v)
 Base.getindex(m::Mask, i) = m.mask[i]
 Base.setindex!(m::Mask, v, i) = m.mask[i] = v
@@ -50,7 +50,7 @@ Base.setindex!(m::Mask, v, i) = m.mask[i] = v
 ####
 #	Explaination without clustering, where each item is independent of others
 ####
-Mask(d::Int, initstats) = Mask(fill(true, d), fill(true, d), fill(0, d), initstats(d), nothing)
+legacy_mask(d::Int, initstats) = Mask(fill(true, d), fill(true, d), fill(0, d), initstats(d), nothing)
 
 function StatsBase.sample!(m::Mask)
 	m.mask .= sample([true, false], length(m.mask))

@@ -70,7 +70,7 @@ end
 	This explanation was used in GNN explainer by Leskovec et al. in experimental
 	section to show that their method is better.
 
-	Disclaimer. The gradients are caclulated by hooking the `mulmask` used in GNN explainer.
+	Disclaimer. The gradients are caclulated by hooking the `diffmask` used in GNN explainer.
 	Since weights there are passed through `σ` function, we approximate the correct computation
 	by setting mask to invσ(0.999) and then correcting the gradient. By doing so, we are inducing
 	about 1e-3 error, but we do not have to add any additional infrastructure.

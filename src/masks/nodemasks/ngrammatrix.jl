@@ -4,17 +4,13 @@ end
 
 Flux.@functor(NGramMatrixMask)
 
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose = false) where {T<:Mill.NGramMatrix{String}, M}
+function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Mill.NGramMatrix{String}, M}
 	cluster_assignments = cluster(m, ds)
-	if verbose
-		n, m = nobs(ds), length(unique(cluster_assignments)), length(unique(ds.data.s))
-		println("number of strings: ", n, " number of clusters: ", m, " ratio: ", round(m/n, digits = 3))
-	end
-	NGramMatrixMask(Mask(cluster_assignments, initstats))
+	NGramMatrixMask(create_mask(cluster_assignments))
 end
 
-function Mask(ds::ArrayNode{T,M}, initstats; verbose = false) where {T<:Mill.NGramMatrix{String}, M}
-	NGramMatrixMask(Mask(nobs(ds.data), initstats))
+function create_mask_structure(ds::ArrayNode{T,M}, initstats) where {T<:Mill.NGramMatrix{String}, M}
+	NGramMatrixMask(create_mask(nobs(ds.data)))
 end
 
 function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
@@ -32,7 +28,7 @@ end
 
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
-    ArrayNode(m.m(ds.data) .* transpose(mulmask(mask)))
+    ArrayNode(m.m(ds.data) .* transpose(diffmask(mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)

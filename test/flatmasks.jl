@@ -150,32 +150,6 @@ end
 	@test ExplainMill.useditems(fv) == [2,4,7]
 end
 
-@testset "index in parent" begin
-	ds = ArrayNode(reshape(collect(1:10), 2, 5))
-	m = Mask(ds, initstats);
-	@test index_in_parent(m,1) == 1
-	@test index_in_parent(m,2) == 1
-	@test index_in_parent(m,3) == 2
-	@test index_in_parent(m,4) == 2
-
-	ds = ArrayNode(sparse([1 0 3 0 5; 2 2 0 4 3]))
-	m = Mask(ds, initstats);
-	@test index_in_parent(m,1) == 1
-	@test index_in_parent(m,2) == 1
-	@test index_in_parent(m,3) == 2
-	@test index_in_parent(m,4) == 3
-	@test index_in_parent(m,7) == 5
-
-	ds = BagNode(ArrayNode(reshape(collect(1:10), 2, 5)), AlignedBags([1:2,3:3,4:5]))
-	m = Mask(ds, initstats);
-	@test index_in_parent(m,1) == 1
-	@test index_in_parent(m,2) == 1
-	@test index_in_parent(m,3) == 2
-	@test index_in_parent(m,4) == 3
-	@test index_in_parent(m,5) == 3
-end
-
-
 @testset "Parental structure" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))

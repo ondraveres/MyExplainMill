@@ -35,6 +35,7 @@ end
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
 include("masks/masks.jl")
+export prunemask, diffmask
 include("output/logic_output.jl")
 include("dafstats.jl")
 include("gnn_explainer.jl")

@@ -4,15 +4,15 @@ end
 
 Flux.@functor(CategoricalMask)
 
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
+function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Flux.OneHotMatrix, M}
 	nobs(ds) == 0 && return(EmptyMask())
 	cluster_assignments = cluster(m, ds)
-	CategoricalMask(Mask(cluster_assignments, initstats))
+	CategoricalMask(create_mask(cluster_assignments))
 end
 
-function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:Flux.OneHotMatrix, M}
+function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Flux.OneHotMatrix, M}
 	nobs(ds) == 0 && return(EmptyMask())
-	CategoricalMask(Mask(nobs(ds.data), initstats))
+	CategoricalMask(create_mask(nobs(ds.data)))
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, m::CategoricalMask, presentobs=fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix, M}
@@ -30,7 +30,7 @@ function invalidate!(mask::CategoricalMask, observations::Vector{Int})
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::CategoricalMask)
-    ArrayNode(m.m(ds.data) .* transpose(mulmask(mask)))
+    ArrayNode(m.m(ds.data) .* transpose(diffmask(mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Flux.OneHotMatrix, M} = nobs(ds.data)

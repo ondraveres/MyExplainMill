@@ -1,3 +1,15 @@
+# This will be a PoC of the AbstractMask behavior
+
+struct GradientMask{T<:Number}
+	x::Vector{T}
+end
+
+prunemask(m::GradientMask) = m.x .> 0.5
+diffmask(m::GradientMask) = m.x
+Base.length(m::GradientMask) = length(m.x)
+Base.getindex(m::GradientMask, i) = m.x[i]
+Base.setindex!(m::GradientMask, v, i) = m.x[i] = v
+
 struct GradGreedyExplainer
 
 end
@@ -13,7 +25,6 @@ function gradient_submodular_flat!(f, level_fv)
 	foreach(p -> fill!(p, 0), ps)
 	f₀ = f()
 	iter = 0
-	# @info "f₀ = $(f₀)"
 	while(true)
 		gs = gradient(() -> -f(), ps)
 		scores = reduce(vcat, map(x -> gs[x.mask.stats][:], level_mk))
@@ -24,12 +35,10 @@ function gradient_submodular_flat!(f, level_fv)
 			level_mk[a.maskid].mask.stats[a.innerid] = 1
 			fᵢ = f()
 			if fᵢ > f₀
-				# @info "added $(i) improving to $(fᵢ)"
 				f₀ = fᵢ
 				changed = true
 				break;
 			end
-			# @info "skipped $(i) $(fᵢ)"
 			level_mk[a.maskid].mask.stats[a.innerid] = 0
 		end
 		iter += 1

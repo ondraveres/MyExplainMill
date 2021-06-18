@@ -11,26 +11,15 @@ mask(::ProductMask) = nothing
 participate(::ProductMask) = nothing
 
 
-function Mask(ds::ProductNode{T,M}, m::ProductModel, initstats, cluster; verbose::Bool = false) where {T<:NamedTuple,M}
+function create_mask_structure(ds::ProductNode{T,M}, m::ProductModel, create_mask, cluster) where {T<:NamedTuple,M}
 	ks = keys(ds.data)
-	s = (;[k => Mask(ds.data[k], m.ms[k], initstats, cluster, verbose = verbose) for k in ks]...)
+	s = (;[k => create_mask_structure(ds.data[k], m.ms[k], create_mask, cluster) for k in ks]...)
 	ProductMask(s)
 end
 
-function Mask(ds::ProductNode{T,M}, m::ProductModel, initstats, cluster; verbose::Bool = false) where {T<:Tuple,M}
-	s = tuple([Mask(ds.data[k], m.ms[k], initstats, cluster, verbose = verbose) for k in 1:length(ds.data)]...)
-	ProductMask(s)
-end
-
-function Mask(ds::ProductNode{T,M}, initstats; verbose::Bool = false) where {T<:NamedTuple,M}
+function create_mask_structure(ds::ProductNode{T,M}, create_mask) where {T<:NamedTuple,M}
 	ks = keys(ds.data)
-	s = (;[k => Mask(ds.data[k], initstats, verbose = verbose) for k in ks]...)
-	ProductMask(s)
-end
-
-
-function Mask(ds::ProductNode{T,M}, initstats; verbose::Bool = false) where {T<:Tuple,M}
-	s = tuple([Mask(ds.data[k], initstats, verbose = verbose) for k in 1:length(ds.data)]...)
+	s = (;[k => create_mask_structure(ds.data[k], create_mask) for k in ks]...)
 	ProductMask(s)
 end
 

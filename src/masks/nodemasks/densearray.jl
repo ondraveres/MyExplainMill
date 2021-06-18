@@ -18,14 +18,12 @@ end
 
 Flux.@functor(MatrixMask)
 
-# Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:Matrix, M}  = EmptyMask()
-
-function Mask(ds::ArrayNode{T,M}, m::ArrayModel, initstats, cluster; verbose::Bool = false) where {T<:Matrix, M} 
-	MatrixMask(Mask(size(ds.data, 1), initstats), size(ds.data)...)
+function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Matrix, M} 
+	create_mask_structure(ds, create_mask)
 end
 
-function Mask(ds::ArrayNode{T,M}, initstats; verbose::Bool = false) where {T<:Matrix, M} 
-	MatrixMask(Mask(size(ds.data, 1), initstats), size(ds.data)...)
+function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Matrix, M} 
+	MatrixMask(create_mask(size(ds.data, 1)), size(ds.data)...)
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, m::MatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
@@ -35,19 +33,11 @@ function Base.getindex(ds::ArrayNode{T,M}, m::MatrixMask, presentobs=fill(true,n
 end
 
 function invalidate!(mask::MatrixMask, observations::Vector{Int})
+	
 end
-
-# function invalidate!(m::MatrixMask, observations::Vector{Int})
-# 	@show m.mask.mask
-# 	for i in observations
-# 		m.mask.mask[:,i] .= 0 
-# 	end
-# end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mask::MatrixMask)
-    ArrayNode(m.m(mulmask(mask) .* ds.data))
+    ArrayNode(m.m(diffmask(mask) .* ds.data))
 end
-
-index_in_parent(m::MatrixMask, i) = CartesianIndices((m.rows, m.cols))[i][2]
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 2)

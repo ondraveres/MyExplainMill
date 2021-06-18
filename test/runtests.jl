@@ -3,7 +3,7 @@ using ExplainMill
 using ExplainMill: prune, Mask, invalidate!, mapmask, participate, mask, prunemask
 using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
 using ExplainMill: NGramMatrixMask, EmptyMask
-using ExplainMill: FlatView, index_in_parent, identifycolumns
+using ExplainMill: FlatView, identifycolumns
 using ExplainMill: sigmoid, scale201, fuseaffine!, minimax, rescale
 using Random, StatsBase
 using Test
