@@ -31,7 +31,7 @@ Poorly of course. The structural (hierarchical) aspect of masks is kept in speci
 
 
 Each of the above holds one (or more) `Mask` objects
-```
+```julia
 struct Mask{I<:Union{Nothing, Vector{Int}}, D}
 	mask::Vector{Bool}
 	participate::Vector{Bool}
