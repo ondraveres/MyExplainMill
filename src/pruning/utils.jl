@@ -114,7 +114,7 @@ function removeone!(f, flatmask, ii = ExplainMill.useditems(flatmask))
 	o = f()
 	best, j =  typemin(o), -1
 	for i in ii
-		!all(flatmask[i]) && continue
+		!flatmask[i] && continue
 		flatmask[i] = false
 		o = f()
 		flatmask[i] = true

@@ -17,9 +17,9 @@ function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
 	participate(mask)[observations] .= false
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, m::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
+function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
 	x = ds.data
-	pm = prunemask(m) 
+	pm = prunemask(mk.mask) 
 	s = map(findall(presentobs)) do i 
 		pm[i] ? x.s[i] : ""
 	end
@@ -27,8 +27,8 @@ function Base.getindex(ds::ArrayNode{T,M}, m::NGramMatrixMask, presentobs=fill(t
 end
 
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::NGramMatrixMask)
-    ArrayNode(m.m(ds.data) .* transpose(diffmask(mask)))
+function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
+    ArrayNode(m.m(ds.data) .* transpose(diffmask(mk.mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)

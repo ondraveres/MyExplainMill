@@ -15,17 +15,17 @@ mask(::EmptyMask) = Vector{Bool}()
 
 participate(::EmptyMask) = Vector{Bool}()
 
-prune(ds, mask::EmptyMask) = ds
+prune(ds, mk::EmptyMask) = ds
 
-function Base.getindex(ds, mask::EmptyMask, presentobs = fill(true, nobs(ds))) 
+function Base.getindex(ds, mk::EmptyMask, presentobs = fill(true, nobs(ds))) 
 	all(presentobs) && return(ds)
 	ds[presentobs]
 end
 
-mapmask(f, mask::EmptyMask) = nothing
+mapmask(f, mk::EmptyMask) = nothing
 
-invalidate!(mask::EmptyMask, observations::Vector{Int}) = nothing
+invalidate!(mk::EmptyMask, observations::Vector{Int}) = nothing
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::EmptyMask)
+function (m::Mill.ArrayModel)(ds::ArrayNode, mk::EmptyMask)
     m(ds)
 end

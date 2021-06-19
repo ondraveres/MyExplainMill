@@ -25,7 +25,7 @@ function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, c
 	dafstats(e, ms, () -> f(ds, ms))
 end
 
-function dafstats(e::DafExplainer, pruning_mask::AbstractExplainMask, f)
+function dafstats(e::DafExplainer, pruning_mask::AbstractStructureMask, f)
 	dafs = []
 	mapmask(pruning_mask) do m
 		m != nothing && push!(dafs, m)
@@ -56,10 +56,10 @@ function Duff.update!(e::DafExplainer, d::Mask, v::AbstractArray)
 	end
 end
 
-scorefun(e::DafExplainer, x::AbstractExplainMask) = Duff.meanscore(x.mask.stats)
+scorefun(e::DafExplainer, x::AbstractStructureMask) = Duff.meanscore(x.mask.stats)
 scorefun(e::DafExplainer, x::Mask) = Duff.meanscore(x.stats)
 
-function StatsBase.sample!(pruning_mask::AbstractExplainMask)
+function StatsBase.sample!(pruning_mask::AbstractStructureMask)
 	mapmask(sample!, pruning_mask)
 end
 

@@ -34,6 +34,9 @@ struct Mask{I<:Union{Nothing, Vector{Int}}, M, D}
 	cluster_membership::I
 end
 
+const ClusteredMask{M,D} = Mask{Vector{Int},M,D}
+const NonClusteredMask{M,D} = Mask{Nothing,M,D}
+
 participate(m::Mask) = m.participate
 participate_item(m::Mask{Nothing}) = m.participate
 function participate_item(m::Mask{Vector{Int}})
@@ -46,6 +49,11 @@ Base.length(m::Mask) = length(m.mask)
 Base.fill!(m::Mask, v) = Base.fill!(m.mask, v)
 Base.getindex(m::Mask, i) = m.mask[i]
 Base.setindex!(m::Mask, v, i) = m.mask[i] = v
+
+prunemask(m::NonClusteredMask) = prunemask(m.mask)
+diffmask(m::NonClusteredMask) = diffmask(m.mask)
+prunemask(m::ClusteredMask) = view(prunemask(m.mask), m.cluster_membership)
+diffmask(m::ClusteredMask) = diffmask(m.mask)[m.cluster_membership]
 
 ####
 #	Explaination without clustering, where each item is independent of others

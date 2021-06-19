@@ -15,8 +15,8 @@ function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Flux.O
 	CategoricalMask(create_mask(nobs(ds.data)))
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, m::CategoricalMask, presentobs=fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix, M}
-	pm = prunemask(m)
+function Base.getindex(ds::ArrayNode{T,M}, mk::CategoricalMask, presentobs=fill(true, nobs(ds))) where {T<:Flux.OneHotMatrix, M}
+	pm = prunemask(mk.mask)
 	ii = map(findall(presentobs)) do j
 		i = ds.data.data[j]
 		pm[j] ? i.ix : i.of
@@ -25,12 +25,12 @@ function Base.getindex(ds::ArrayNode{T,M}, m::CategoricalMask, presentobs=fill(t
 	ArrayNode(x, ds.metadata)
 end
 
-function invalidate!(mask::CategoricalMask, observations::Vector{Int})
-	participate(mask.mask)[observations] .= false
+function invalidate!(mk::CategoricalMask, observations::Vector{Int})
+	participate(mk.mask)[observations] .= false
 end
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::CategoricalMask)
-    ArrayNode(m.m(ds.data) .* transpose(diffmask(mask)))
+function (m::Mill.ArrayModel)(ds::ArrayNode, mk::CategoricalMask)
+    ArrayNode(m.m(ds.data) .* transpose(diffmask(mk.mask)))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Flux.OneHotMatrix, M} = nobs(ds.data)

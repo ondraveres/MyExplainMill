@@ -17,7 +17,7 @@ end
 
 Parents = Array{Pair{k,Int64} where k,1}
 
-function FlatView(mk::AbstractExplainMask)
+function FlatView(mk::AbstractStructureMask)
 	FlatView(map(first, parent_structure(mk)))
 end
 
@@ -75,6 +75,8 @@ Base.length(m::FlatView) = length(m.itemmap)
 function Base.map(f, m::FlatView)
 	vcat(map(x -> f(x), m.masks)...)
 end
+
+Base.fill!(fv::FlatView, v) = foreach(i -> fv[i] = v, 1:length(fv))
 
 useditems(m::FlatView) = findall(usedmask(m))
 usedmask(m::FlatView) = map(i -> m[i], 1:length(m)) #this is really ineffective but that is life

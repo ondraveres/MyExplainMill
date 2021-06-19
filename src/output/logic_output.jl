@@ -88,7 +88,7 @@ end
 addor(m::Mask{<:Vector{Int}}, x::Absent, active) = absent
 addor(m::Mask{<:Nothing}, x, active) = x
 addor(m::Mask{<:Nothing}, x::Absent, active) = absent
-addor(m::AbstractExplainMask, x, active) = addor(m.mask, x, active)
+addor(m::AbstractStructureMask, x, active) = addor(m.mask, x, active)
 addor(m::EmptyMask, x, active) = x
 
 _retrieve_obs(::LazyNode, i) = error("LazyNode in Mill.jl does not support metadata (yet)")
@@ -106,10 +106,10 @@ _reversedict(d) = Dict([v => k for (k,v) in d]...)
 
 	returns a mask of items contributing to the explanation
 """
-contributing(m::AbstractExplainMask, l) = participate(m) .& prunemask(m)
+contributing(m::AbstractStructureMask, l) = participate(m) .& prunemask(m)
 contributing(m::EmptyMask, l) = Fill(true, l)
 
-function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractExplainMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
+function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
     c = contributing(m, nobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
     if M === Nothing

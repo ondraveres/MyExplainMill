@@ -24,23 +24,23 @@ function identifycolumns(x::SparseMatrixCSC)
 	columns = [c.I[2] for c in columns]
 end
 
-function invalidate!(mask::SparseArrayMask, observations::Vector{Int})
-	for (i,c) in enumerate(mask.columns)
+function invalidate!(mk::SparseArrayMask, observations::Vector{Int})
+	for (i,c) in enumerate(mk.columns)
 		if c ∈ observations
-			mask.mask.participate[i] = false
+			mk.mask.participate[i] = false
 		end
 	end
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, m::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
 	x = deepcopy(ds.data)
-	x.nzval[.!m.mask.mask] .= 0
+	x.nzval[.!prunemask(mk.mask)] .= 0
 	ArrayNode(x[:,presentobs], ds.metadata)
 end
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mask::SparseArrayMask)
+function (m::Mill.ArrayModel)(ds::ArrayNode, mk::SparseArrayMask)
 	x = ds.data
-	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* diffmask(mask))
+	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* diffmask(mk.mask))
     ArrayNode(m.m(xx))
 end
 

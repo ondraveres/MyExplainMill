@@ -7,4 +7,4 @@ function stats(e::StochasticExplainer, ds, model, i, n, clustering = ExplainMill
 	ExplainMill.Mask(ds, model, d -> rand(Float32, d), clustering)
 end
 
-scorefun(e::StochasticExplainer, x::AbstractExplainMask) = x.mask.stats
+scorefun(e::StochasticExplainer, x::AbstractStructureMask) = x.mask.stats

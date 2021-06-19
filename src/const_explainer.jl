@@ -10,4 +10,4 @@ function stats(e::ConstExplainer, ds, model, i, n, clustering = ExplainMill._noc
 	ExplainMill.Mask(ds, model, d -> e.α .* ones(Float32, d), clustering)
 end
 
-scorefun(e::ConstExplainer, x::AbstractExplainMask) = x.mask.stats
+scorefun(e::ConstExplainer, x::AbstractStructureMask) = x.mask.stats

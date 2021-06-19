@@ -10,7 +10,7 @@ function stats(e::GradExplainer, ds, model, i, n, clustering = ExplainMill._nocl
 	GradMask(model, ds, model, ds, i)
 end
 
-scorefun(e::GradExplainer, x::AbstractExplainMask) = x.mask.stats[:]
+scorefun(e::GradExplainer, x::AbstractStructureMask) = x.mask.stats[:]
 
 
 function ∇data(m, ds, subm, subds, i)
@@ -97,7 +97,7 @@ function stats(e::GradExplainer2, ds, model, i, clustering = ExplainMill._noclus
  	mask
  end
 
-scorefun(e::GradExplainer2, x::AbstractExplainMask) = x.mask.stats[:]
+scorefun(e::GradExplainer2, x::AbstractStructureMask) = x.mask.stats[:]
 
 
 struct GradExplainer3{T}
@@ -120,4 +120,4 @@ function stats(e::GradExplainer3, ds, model, i, clustering = ExplainMill._noclus
  	mask
  end
 
-scorefun(e::GradExplainer3, x::AbstractExplainMask) = x.mask.stats[:]
+scorefun(e::GradExplainer3, x::AbstractStructureMask) = x.mask.stats[:]

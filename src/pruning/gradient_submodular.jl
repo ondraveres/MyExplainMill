@@ -7,7 +7,7 @@ end
 prunemask(m::GradientMask) = m.x .> 0.5
 diffmask(m::GradientMask) = m.x
 Base.length(m::GradientMask) = length(m.x)
-Base.getindex(m::GradientMask, i) = m.x[i]
+Base.getindex(m::GradientMask, i) = m.x[i] .> 0.5
 Base.setindex!(m::GradientMask, v, i) = m.x[i] = v
 
 struct GradGreedyExplainer
@@ -20,13 +20,13 @@ end
 
 function gradient_submodular_flat!(f, level_fv)
 	level_mk = level_fv.masks
-	ps = Flux.Params(map(x -> x.mask.stats, level_mk))
+	ps = Flux.Params(map(x -> x.mask.x, level_mk))
 	foreach(p -> fill!(p, 0), ps)
 	f₀ = f()
 	iter = 0
 	while(true)
 		gs = gradient(() -> -f(), ps)
-		scores = reduce(vcat, map(x -> gs[x.mask.stats][:], level_mk))
+		scores = reduce(vcat, map(x -> gs[x.mask.x][:], level_mk))
 		changed = false
 		for i in sortperm(scores)
 			level_fv[i] == 1 && continue
@@ -43,16 +43,13 @@ function gradient_submodular_flat!(f, level_fv)
 		f₀ > 0 && break 
 		!changed && break
 	end
-	for m in level_mk
-		m.mask.mask .= m.mask.stats[:] .> 0.5
-	end
 	f₀
 end
 
 function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial_evaluation)
-	mk = ExplainMill.Mask(ds, model, d -> fill(1f0, d, 1), clustering)
+	create_mask = d -> GradientMask(ones(Float32, d))
+	mk = create_mask_structure(ds, model, create_mask, clustering)
 	parents = parent_structure(mk)
-	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
 	if isempty(parents) 
 		@warn "Cannot explain empty samples"
 		return()
@@ -83,9 +80,6 @@ function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial
 		@info "level: $(j)  soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
 
 		greedyremoval!(() -> hard_f() - τ, level_fv)
-		for m in level_mk
-			m.mask.stats .= m.mask.mask
-		end
 		fₛ = exp(soft_f())
 		fₕ = exp(hard_f())
 		@info "level: $(j) after rr soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"

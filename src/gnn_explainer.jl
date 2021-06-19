@@ -32,7 +32,7 @@ function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluste
  	mask
 end
 
-scorefun(e::GnnExplainer, x::AbstractExplainMask) = σ.(x.mask.stats[:])
+scorefun(e::GnnExplainer, x::AbstractStructureMask) = σ.(x.mask.stats[:])
 
 function regularization(p::AbstractArray{T}, α, β) where {T<:Real} 
 	x = σ.(p)

@@ -54,7 +54,7 @@ function prune!(f, ms, scorefun, method)
 	end
 end
 
-function prune!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, thresholds, method)
+function prune!(ms::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, i, scorefun, thresholds, method)
     soft_model(x) = softmax(model(x))
 
     if nobs(ds) == 1 ||

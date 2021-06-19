@@ -5,7 +5,7 @@ function prepare_level!(m, ms, parents, scorefun)
 	fv, significance
 end
 
-function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
+function levelbylevelsearch!(f, ms::AbstractStructureMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
@@ -37,7 +37,7 @@ function levelbylevelsearch!(f, ms::AbstractExplainMask, scorefun; fine_tuning::
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function levelbylevelsearch!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode, threshold, i, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
+function levelbylevelsearch!(ms::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, threshold, i, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
@@ -71,7 +71,7 @@ function levelbylevelsearch!(ms::AbstractExplainMask, model::AbstractMillModel, 
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function levelbylevelsfs!(f, ms::AbstractExplainMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = false)
+function levelbylevelsfs!(f, ms::AbstractStructureMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = false)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)

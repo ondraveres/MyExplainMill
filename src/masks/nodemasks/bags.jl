@@ -1,4 +1,4 @@
-struct BagMask{C,B,M} <: AbstractExplainMask
+struct BagMask{C,B,M} <: AbstractStructureMask
 	child::C
 	bags::B
 	mask::M
@@ -31,23 +31,23 @@ function mapmask(f, m::BagMask)
 end
 
 
-function invalidate!(mask::BagMask, observations::Vector{Int})
-	invalid_instances = isempty(observations) ? observations : reduce(vcat, [collect(mask.bags[i]) for i in observations])
-	participate(mask)[invalid_instances] .= false
-	invalid_instances = unique(vcat(invalid_instances, findall(.!(prunemask(mask) .& participate(mask)))))
-	invalidate!(mask.child, invalid_instances)
+function invalidate!(mk::BagMask, observations::Vector{Int})
+	invalid_instances = isempty(observations) ? observations : reduce(vcat, [collect(mk.bags[i]) for i in observations])
+	participate(mk)[invalid_instances] .= false
+	invalid_instances = unique(vcat(invalid_instances, findall(.!(prunemask(mk.mask) .& participate(mk)))))
+	invalidate!(mk.child, invalid_instances)
 end
 
-function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds)))
+function Base.getindex(ds::BagNode, mk::BagMask, presentobs=fill(true, nobs(ds)))
 	if !any(presentobs)
 		return(ds[0:-1])
 	end
-	present_childs = prunemask(mask)[:]
+	present_childs = prunemask(mk.mask)[:]
 	for (i,b) in enumerate(ds.bags) 
 	    presentobs[i] && continue
 	    present_childs[b] .= false
 	end
-	x = ds.data[mask.child, present_childs]
+	x = ds.data[mk.child, present_childs]
 	bags = Mill.adjustbags(ds.bags, present_childs)
 	if ismissing(x.data)
 		bags.bags .= [0:-1]
@@ -55,13 +55,13 @@ function Base.getindex(ds::BagNode, mask::BagMask, presentobs=fill(true, nobs(ds
 	BagNode(x, bags[presentobs])
 end
 
-function (m::Mill.BagModel)(x::BagNode, mask::BagMask)
+function (m::Mill.BagModel)(x::BagNode, mk::BagMask)
 	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
-	xx = ArrayNode(transpose(diffmask(mask)) .* m.im(x.data, mask.child).data)
+	xx = ArrayNode(transpose(diffmask(mk.mask)) .* m.im(x.data, mk.child).data)
     m.bm(m.a(xx, x.bags))
 end
 
-function (m::Mill.BagModel)(x::BagNode, mask::EmptyMask)
+function (m::Mill.BagModel)(x::BagNode, mk::EmptyMask)
 	m(x)
 end
 

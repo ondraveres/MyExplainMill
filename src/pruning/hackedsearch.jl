@@ -1,4 +1,4 @@
-function hackedsearch!(f, ms::AbstractExplainMask, scorefun)
+function hackedsearch!(f, ms::AbstractStructureMask, scorefun)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	masks = map(x -> x.first, parents)
@@ -38,7 +38,7 @@ function hackedsearch!(f, ms::AbstractExplainMask, scorefun)
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function hackedsearch!(ms::AbstractExplainMask, model::AbstractMillModel, ds::AbstractNode , scorefun)
+function hackedsearch!(ms::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode , scorefun)
 	# sort all explainable masks by depth and types
 	parents = parent_structure(ms)
 	masks = map(x -> x.first, parents)

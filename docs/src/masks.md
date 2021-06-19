@@ -79,4 +79,4 @@ So the current idea would be to have:
 It is not clear to me, if the above is not over-engineered and / or sufficiently general, as there are many open questions. 
 * Can get rid of `participation` everywhere except the Shapley / Bazhaffs.
 * Can we support multi banzhaf values?
-* 
+* I do not know, if the FlatView should contain `StructureMask` or `Mask`. The latter has the advantage that it has a clearly defined 

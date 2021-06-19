@@ -6,8 +6,8 @@ function Base.repr(::MIME{Symbol("text/json")}, ::ExplainMill.EmptyMask, ds::T, 
 	repr_boolean(:and, ds.data)
 end
 
-function Base.repr(::MIME{Symbol("text/json")}, m::ExplainMill.Mask, ds::T, e) where {T<:LazyNode}
-	repr_boolean(:and, ds.data[ExplainMill.participate(m) .& ExplainMill.prunemask(m)])
+function Base.repr(::MIME{Symbol("text/json")}, mk::ExplainMill.Mask, ds::T, e) where {T<:LazyNode}
+	repr_boolean(:and, ds.data[ExplainMill.participate(m) .& ExplainMill.prunemask(m.mk)])
 end
 
 function Base.match(s::String, e, v::T; path = (), verbose = false) where {T<:LazyNode}
