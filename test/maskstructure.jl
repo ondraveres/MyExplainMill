@@ -2,8 +2,9 @@ using ExplainMill
 using Mill
 using Test
 using Flux
+using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure
-using ExplainMill: CategoricalMask, MatrixMask
+using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask
 using FiniteDifferences
 
 function testmaskgrad(f, ps::Flux.Params; detailed = false, ϵ = 1e-6)
@@ -80,10 +81,36 @@ end
 		testmaskgrad(() -> sum(model(on, mk).data),  ps)
 	end
 
+	@testset "Sparse Mask" begin
+		cn = ArrayNode(sparse([1 2 3 0 5; 0 2 0 4 0]))
+		mk = create_mask_structure(cn, d -> SimpleMask(fill(true, d)))
+		@test mk isa SparseArrayMask
+		@test cn[mk] == cn
+
+		# subsetting
+		prunemask(mk.mask)[[1,3]] .= false
+		@test prunemask(mk.mask) == [false, true, false, true, true]
+
+		# multiplication is equicalent to subsetting
+		@test cn[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+
+		# calculation of gradient with respect to boolean mask
+		model = f64(reflectinmodel(cn, d -> Chain(Dense(d, 10), Dense(10,10))))
+		@test model(cn[mk]).data ≈ model(cn, mk).data
+
+		# Verify that calculation of the gradient for real mask is correct 
+		gs = gradient(() -> sum(model(cn, mk).data),  Flux.Params([mk.mask.x]))
+		@test all(abs.(gs[mk.mask.x]) .> 0)
+
+		mk = create_mask_structure(cn, d -> SimpleMask(rand(d)))
+		ps = Flux.Params([mk.mask.x])
+		testmaskgrad(() -> sum(model(cn, mk).data),  ps)
+	end
+
 	@testset "String Mask" begin
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
 		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
-		@test mk isa CategoricalMask
+		@test mk isa NGramMatrixMask
 		@test sn[mk] == sn
 
 		# subsetting
@@ -91,7 +118,7 @@ end
 		@test prunemask(mk.mask) == [false, true, false, true, true]
 
 		# multiplication is equicalent to subsetting
-		@test sn[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
 
 		# calculation of gradient with respect to boolean mask
 		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
@@ -99,7 +126,7 @@ end
 
 		# Verify that calculation of the gradient for real mask is correct 
 		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
-		@test all(abs.(gs[mk.mask.x]) .> 0)
+		@test sum(abs.(gs[mk.mask.x])) > 0
 
 		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])

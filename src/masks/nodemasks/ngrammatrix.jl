@@ -26,11 +26,16 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
 
+
+
+# TODO: We should make this one faster by writing a custom gradient for interpolation
+# since we do not need gradients with respect to `x` and `y`
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
-	x = Zygote.@ignore SparseMatrixCSC{Float32, Int64}(ds.data)
-	y = Zygote.@ignore SparseMatrixCSC{Float32, Int64}(ds[mk].data)
+	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ds.data))
+	y = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ds[mk].data))
 	dm = reshape(diffmask(mk.mask), 1, :)
-    m(ArrayNode(@. dm * x + (1 - dm) * y))
+	x′ = @. dm * x + (1 - dm) * y
+    m(ArrayNode(x′))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)

@@ -32,7 +32,7 @@ function invalidate!(mk::SparseArrayMask, observations::Vector{Int})
 	end
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, m::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
+function Base.getindex(ds::ArrayNode{T,M}, mk::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
 	x = deepcopy(ds.data)
 	x.nzval[.!prunemask(mk.mask)] .= 0
 	ArrayNode(x[:,presentobs], ds.metadata)
@@ -40,8 +40,27 @@ end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::SparseArrayMask)
 	x = ds.data
-	xx = SparseMatrixCSC(x.m, x.n, x.colptr, x.rowval, x.nzval .* diffmask(mk.mask))
+	nzval = x.nzval .* diffmask(mk.mask)
+	xx = dense_sparse(x.m, x.n, x.colptr, x.rowval, nzval)
     ArrayNode(m.m(xx))
+end
+
+dense_sparse(m::Int, n::Int, colptr, rowval, nzval) = Matrix(SparseMatrixCSC(m, n, colptr, rowval, nzval))
+
+Zygote.@adjoint function dense_sparse(m::Int, n::Int, colptr, rowval, nzval)
+	∂f = Δ -> begin
+		∇nzval = similar(nzval)
+		iₙ = 1 
+		for ci in 1:n
+			for j in colptr[ci]:(colptr[ci+1] - 1)
+				ri = rowval[j]
+				∇nzval[iₙ] = Δ[ri,ci]
+				iₙ += 1
+			end
+		end
+		(nothing, nothing, nothing, nothing, ∇nzval)
+	end
+	Matrix(SparseMatrixCSC(m, n, colptr, rowval, nzval)), ∂f
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:SparseMatrixCSC, M} = unique(identifycolumns(ds.data))
