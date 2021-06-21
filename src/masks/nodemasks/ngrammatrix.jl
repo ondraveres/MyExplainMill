@@ -9,7 +9,7 @@ function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, c
 	NGramMatrixMask(create_mask(cluster_assignments))
 end
 
-function create_mask_structure(ds::ArrayNode{T,M}, initstats) where {T<:Mill.NGramMatrix{String}, M}
+function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Mill.NGramMatrix{String}, M}
 	NGramMatrixMask(create_mask(nobs(ds.data)))
 end
 
@@ -26,9 +26,11 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
 
-
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
-    ArrayNode(m.m(ds.data) .* transpose(diffmask(mk.mask)))
+	x = Zygote.@ignore SparseMatrixCSC{Float32, Int64}(ds.data)
+	y = Zygote.@ignore SparseMatrixCSC{Float32, Int64}(ds[mk].data)
+	dm = reshape(diffmask(mk.mask), 1, :)
+    m(ArrayNode(@. dm * x + (1 - dm) * y))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)

@@ -80,3 +80,74 @@ It is not clear to me, if the above is not over-engineered and / or sufficiently
 * Can get rid of `participation` everywhere except the Shapley / Bazhaffs.
 * Can we support multi banzhaf values?
 * I do not know, if the FlatView should contain `StructureMask` or `Mask`. The latter has the advantage that it has a clearly defined 
+
+#### What needs to be tested and verified for structured masks
+The goal is to put as much test related to a single `Type` in one block, such that when someone will be introducing new type, he can see all tests in a single block of code.
+
+* Test that matrix is correctly created and full matrix does not change the element
+```julia
+	an = ArrayNode(randn(4,5))
+	mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
+	@test mk isa MatrixMask
+	@test an[mk] == an
+```		
+* Verify pruning has an effect
+
+```julia
+	prunemask(mk.mask)[[1,3]] .= false
+	@test prunemask(mk.mask) == [false, true, false, true]
+
+	# testing that subsetting works as it should
+	@test an[mk].data ≈ an.data .* [false, true, false, true]	
+```
+* Test that multiplication and masking has the same effect (more on that below). Notice that weigths of the model is converted to `Float64` for the sake of analysis.
+```julia
+	# testing that multiplication is equicalent to subsetting
+	model = reflectinmodel(an, d -> Dense(d, 10))
+	@test f64(model(an[mk]).data ≈ model(an, mk).data)
+```
+* Test that we can calculate the gradient with respect to diff mask
+```julia
+	# We should test that we can calculate gradent
+	gs = gradient(() -> sum(model(an, mk).data),  Flux.Params([mk.mask.x]))
+	# ∇mk = gs[mk.mask.x]
+	@test sum(abs.(gs[mk.mask.x])) > 0
+```
+
+* Verify that calculation of the gradient for real mask is correct 
+```julia
+	mk = create_mask_structure(an, d -> SimpleMask(rand(d)))
+	ps = Flux.Params([mk.mask.x])
+	testmaskgrad(() -> sum(model(an, mk).data),  ps)
+	@test all(abs.(gs[mk.mask.x]) .> 0)
+```
+
+#### Differentiable mask is not trivial
+Recall the need for differentiable mask is that some heuristic methods likes to calculate gradient with respect to the mask. Therefore we need 
+to calculate gradient with respect to the mask (correctly), which might not be tricky.
+
+As an example, consider masking categorical variable. The *absence* is commonly (and done in Mill) represented as a special category.  For example we have a categorical matrix with `x = [1,2,3,1,2]` with categories `[1,2,3]` and [4] reserved for missing. Such `x` can be represented as a sparse Matrix
+```julia
+julia> x = sparse(ds.data)
+4×5 SparseMatrixCSC{Bool, Int64} with 5 stored entries:
+ 1  ⋅  ⋅  1  ⋅
+ ⋅  1  ⋅  ⋅  1
+ ⋅  ⋅  1  ⋅  ⋅
+```
+If we apply mask `m = [false,true,false,true,true]`, the masked `x` (denoted as `y` will look like 
+```julia
+julia> prunemask(mk.mask)[[1,3]] .= false;
+
+julia> y = sparse(ds[mk].data)
+4×5 SparseMatrixCSC{Bool, Int64} with 5 stored entries:
+ ⋅  ⋅  ⋅  1  ⋅
+ ⋅  1  ⋅  ⋅  1
+ ⋅  ⋅  ⋅  ⋅  ⋅
+ 1  ⋅  1  ⋅  ⋅
+```
+
+Therefore to make the output of function `f` differentiable with respect to the mask `m` indicating if the item is present or absent,
+```julia
+f(@. m * x + (1 - m) .* y′)
+```
+where `y′` is a canonical representation of a missing vector.This is very different from the usual "setting that to zero". Crucially, the gradient with respect to `m` needs to depend on a difference between `x` and `y`. Needless to say, if `y′` would be set to zero, it would be simple as the second term disappears to  `f(@. m * x)′` and everything boils down to a fundamental question if `zero` is the right value for missing feature.

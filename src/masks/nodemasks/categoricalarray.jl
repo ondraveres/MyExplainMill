@@ -1,3 +1,5 @@
+using SparseArrays
+
 struct CategoricalMask{M} <: AbstractListMask
 	mask::M
 end
@@ -29,8 +31,12 @@ function invalidate!(mk::CategoricalMask, observations::Vector{Int})
 	participate(mk.mask)[observations] .= false
 end
 
+# This might be actually simplified if we define gradient with respect to ds[mk]
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::CategoricalMask)
-    ArrayNode(m.m(ds.data) .* transpose(diffmask(mk.mask)))
+	x = Zygote.@ignore sparse(ds.data)
+	y = Zygote.@ignore sparse(fill(size(x)...), collect(1:size(x,2)), 1)
+	dm = reshape(diffmask(mk.mask), 1, :)
+    m(ArrayNode(@. dm * x + (1 - dm) * y))
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Flux.OneHotMatrix, M} = nobs(ds.data)

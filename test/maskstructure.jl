@@ -3,30 +3,107 @@ using Mill
 using Test
 using Flux
 using ExplainMill: SimpleMask, create_mask_structure
+using ExplainMill: CategoricalMask, MatrixMask
+using FiniteDifferences
 
-ExplainMill.Mask(m::Vector{Bool}) = ExplainMill.Mask(m, fill(true, length(m)), fill(0, length(m)), ones(length(m)), nothing)
-ExplainMill.MatrixMask(m::Vector{Bool}, d) = ExplainMill.MatrixMask(ExplainMill.Mask(m), length(m), d)
-ExplainMill.CategoricalMask(m::Vector{Bool}) = ExplainMill.CategoricalMask(ExplainMill.Mask(m))
-ExplainMill.BagMask(child, bags, m::Vector{Bool}) = ExplainMill.BagMask(child, bags, ExplainMill.Mask(m))
-ExplainMill.NGramMatrixMask(m::Vector{Bool}) = ExplainMill.NGramMatrixMask(ExplainMill.Mask(m))
-ExplainMill.SparseArrayMask(m::Vector{Bool}, columns::Array{Int64,1}) = ExplainMill.SparseArrayMask(ExplainMill.Mask(m), columns)
+function testmaskgrad(f, ps::Flux.Params; detailed = false, ϵ = 1e-6)
+    gs = gradient(f, ps)
+    o = map(p -> graddifference(fdmgradient(f, p), gs[p]), ps)
+    detailed ? o : all(o .< ϵ)
+end
+
+graddifference(x::AbstractArray, y::AbstractArray) = maximum(abs.(x .- y))
+graddifference(x::AbstractArray, y::Nothing) = maximum(abs.(x))
+
+function fdmgradient(f, p)
+    op = deepcopy(p)
+    function fp(x)
+        p .= x 
+        f()
+    end
+    fval = grad(central_fdm(5, 1), fp, p)[1]
+    p .= op 
+    fval
+end
 
 @testset "Testing prunning and multiplication" begin
 	@testset "MatrixMask" begin
 		an = ArrayNode(randn(4,5))
 		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
+		@test mk isa MatrixMask
 		@test an[mk] == an
 
 		#this is not really a nice syntax
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true]
 
-		# testing that subsetting works as it should
+		# subsetting
 		@test an[mk].data ≈ an.data .* [false, true, false, true]	
 
-		# testing that multiplication is equicalent to subsetting
-		model = reflectinmodel(an, d -> Dense(d, 10))
+		# multiplication is equicalent to subsetting
+		model = f64(reflectinmodel(an, d -> Dense(d, 10)))
 		@test model(an[mk]).data ≈ model(an, mk).data
+
+		# calculation of gradient with respect to boolean mask
+		gs = gradient(() -> sum(model(an, mk).data),  Flux.Params([mk.mask.x]))
+		@test all(abs.(gs[mk.mask.x]) .> 0)
+
+		# Verify that calculation of the gradient for real mask is correct 
+		mk = create_mask_structure(an, d -> SimpleMask(rand(d)))
+		ps = Flux.Params([mk.mask.x])
+		testmaskgrad(() -> sum(model(an, mk).data),  ps)
+	end
+
+	@testset "Categorical Mask" begin
+		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test mk isa CategoricalMask
+		@test on[mk] == on
+
+		# subsetting
+		prunemask(mk.mask)[[1,3]] .= false
+		@test prunemask(mk.mask) == [false, true, false, true, true]
+
+		# multiplication is equicalent to subsetting
+		@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+
+		# calculation of gradient with respect to boolean mask
+		model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
+		@test model(on[mk]).data ≈ model(on, mk).data
+
+		# Verify that calculation of the gradient for real mask is correct 
+		gs = gradient(() -> sum(model(on, mk).data),  Flux.Params([mk.mask.x]))
+		@test all(abs.(gs[mk.mask.x]) .> 0)
+
+		mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
+		ps = Flux.Params([mk.mask.x])
+		testmaskgrad(() -> sum(model(on, mk).data),  ps)
+	end
+
+	@testset "String Mask" begin
+		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
+		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
+		@test mk isa CategoricalMask
+		@test sn[mk] == sn
+
+		# subsetting
+		prunemask(mk.mask)[[1,3]] .= false
+		@test prunemask(mk.mask) == [false, true, false, true, true]
+
+		# multiplication is equicalent to subsetting
+		@test sn[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+
+		# calculation of gradient with respect to boolean mask
+		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+		@test model(sn[mk]).data ≈ model(sn, mk).data
+
+		# Verify that calculation of the gradient for real mask is correct 
+		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
+		@test all(abs.(gs[mk.mask.x]) .> 0)
+
+		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
+		ps = Flux.Params([mk.mask.x])
+		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
 	end
 end
 
