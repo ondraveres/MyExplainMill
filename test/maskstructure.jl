@@ -4,7 +4,7 @@ using Test
 using Flux
 using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure
-using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask
+using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask
 using FiniteDifferences
 
 function testmaskgrad(f, ps::Flux.Params; detailed = false, ϵ = 1e-6)
@@ -135,29 +135,43 @@ end
 
 	@testset "Bag Mask --- single nesting" begin
 		an = ArrayNode(randn(4,5))
-		ds = BagNode(an, AlignedBags([1:2,3:3,4:5]))
-		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
-		@test mk isa NGramMatrixMask
-		@test sn[mk] == sn
+		ds = BagNode(an, AlignedBags([1:2,3:3,0:-1,4:5]))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		@test mk isa BagMask
+		@test ds[mk] == ds
 
 		# subsetting
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true, true]
 
-		# multiplication is equicalent to subsetting
-		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
+		# multiplication is equivalent to subsetting
+		@test ds[mk].data == ds.data[[false, true, false, true, true]]
+		@test ds[mk].bags.bags ==  UnitRange{Int64}[1:1, 0:-1, 0:-1, 2:3]
 
-		# calculation of gradient with respect to boolean mask
-		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
-		@test model(sn[mk]).data ≈ model(sn, mk).data
+		# prepare there models for the test
+		model₁ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMax))
+		model₁.a.C .= minimum(model₁.im(ds.data).data, dims = 2)[:]
 
-		# Verify that calculation of the gradient for real mask is correct 
-		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
-		@test sum(abs.(gs[mk.mask.x])) > 0
+		model₂ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMean))
+		model₂.a.C .= 0
 
-		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
-		ps = Flux.Params([mk.mask.x])
-		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+		model₃ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMeanMax))
+		model₃.a[1].C .= 0
+		model₃.a[2].C .= minimum(model₃.im(ds.data).data, dims = 2)[:]
+
+		for model in [model₁, model₂, model₃]
+			mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+			prunemask(mk.mask)[[1,3]] .= false
+			@test model(ds[mk]).data ≈ model(ds, mk).data
+
+			# Verify that calculation of the gradient for real mask is correct 
+			gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk.mask.x]))
+			@test sum(abs.(gs[mk.mask.x])) > 0
+
+			mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
+			ps = Flux.Params([mk.mask.x])
+			testmaskgrad(() -> sum(model(ds, mk).data),  ps)
+		end
 	end
 end
 

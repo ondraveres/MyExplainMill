@@ -55,11 +55,27 @@ function Base.getindex(ds::BagNode, mk::BagMask, presentobs=fill(true, nobs(ds))
 	BagNode(x, bags[presentobs])
 end
 
-function (m::Mill.BagModel)(x::BagNode, mk::BagMask)
-	ismissing(x.data) && return(m.bm(ArrayNode(m.a(x.data, x.bags))))
-	xx = ArrayNode(transpose(diffmask(mk.mask)) .* m.im(x.data, mk.child).data)
-    m.bm(m.a(xx, x.bags))
+function (model::Mill.BagModel)(x::BagNode, mk::BagMask)
+	ismissing(x.data) && return(model.bm(ArrayNode(model.a(x.data, x.bags))))
+	xx = model.im(x.data, mk.child)
+    model.bm(model.a(xx, x.bags, mk.mask))
 end
+
+#TODO: SimpleMask for now, but we should add a proper abstract
+function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::SimpleMask)
+	m = transpose(diffmask(mk))
+	xx = m .* x .+ (1 .- m) .* a.C 
+	a(xx, bags)
+end	
+
+# TODO: This might be done better
+function (a::Mill.SegmentedMean)(x::Matrix, bags::Mill.AbstractBags, mk::SimpleMask)
+	m = transpose(diffmask(mk))
+	xx = m .* x
+	o = a(xx, bags)
+	n = max.(a(eltype(x).(m), bags), 1f-6)
+	o ./ n
+end	
 
 function (m::Mill.BagModel)(x::BagNode, mk::EmptyMask)
 	m(x)
