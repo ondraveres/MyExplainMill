@@ -77,13 +77,7 @@ function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
     end
 end
 
-# function addor(m::Mask{I, D}, x, active) where {I<:Vector{Int}, D}
-# 	xi = m.cluster_membership[active]
-# 	map(1:length(x)) do i
-# 		isabsent(x[i]) ? absent : OR(x[xi .== xi[i]])
-# 	end
-# end
-
+addor(m::AbstractVectorMask, x, active) = x
 
 addor(m::Mask{<:Vector{Int}}, x::Absent, active) = absent
 addor(m::Mask{<:Nothing}, x, active) = x
@@ -106,7 +100,7 @@ _reversedict(d) = Dict([v => k for (k,v) in d]...)
 
 	returns a mask of items contributing to the explanation
 """
-contributing(m::AbstractStructureMask, l) = participate(m) .& prunemask(m)
+contributing(m::AbstractStructureMask, l) = prunemask(m.mask)
 contributing(m::EmptyMask, l) = Fill(true, l)
 
 function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M

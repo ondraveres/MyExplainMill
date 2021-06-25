@@ -62,14 +62,14 @@ function (model::Mill.BagModel)(x::BagNode, mk::BagMask)
 end
 
 #TODO: SimpleMask for now, but we should add a proper abstract
-function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::SimpleMask)
+function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::AbstractVectorMask)
 	m = transpose(diffmask(mk))
 	xx = m .* x .+ (1 .- m) .* a.C 
 	a(xx, bags)
 end	
 
 # TODO: This might be done better
-function (a::Mill.SegmentedMean)(x::Matrix, bags::Mill.AbstractBags, mk::SimpleMask)
+function (a::Mill.SegmentedMean)(x::Matrix, bags::Mill.AbstractBags, mk::AbstractVectorMask)
 	m = transpose(diffmask(mk))
 	xx = m .* x
 	o = a(xx, bags)

@@ -27,7 +27,7 @@ function fdmgradient(f, p)
     fval
 end
 
-@testset "Testing prunning and multiplication" begin
+@testset "Alignment between prunning and masking" begin
 	@testset "MatrixMask" begin
 		an = ArrayNode(randn(4,5))
 		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
@@ -175,7 +175,9 @@ end
 	end
 end
 
-
+####
+#	Revision of unit test ends here
+####
 @testset "Testing prunning of samples " begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))

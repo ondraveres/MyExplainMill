@@ -1,4 +1,5 @@
 abstract type AbstractStructureMask end;
+abstract type AbstractVectorMask end;
 abstract type AbstractListMask <: AbstractStructureMask end;
 abstract type AbstractNoMask <: AbstractStructureMask end;
 

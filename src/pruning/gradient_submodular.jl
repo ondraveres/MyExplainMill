@@ -1,6 +1,6 @@
 # This will be a PoC of the AbstractMask behavior
 
-struct GradientMask{T<:Number}
+struct GradientMask{T<:Number} <: AbstractVectorMask
 	x::Vector{T}
 end
 

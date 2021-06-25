@@ -61,7 +61,7 @@ I would like to abstract the structure (or its part) such that it will behave as
 
 So the current idea would be to have:
 * structural Mask elements, that are specialized for corresponding Node Elements. So `BagNode` has a `BagMask`, `ProductNode` has a `ProductMask`, `ArrayNode` has `ArrayMask`, etc.
-* Each structural mask will contain a `SomeMask` which will behave like a vector. It will implement
+* Each structural mask will contain a `SomeMask<:AbstractVectorMask` which will behave like a vector. It will implement
 	- `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`
 	- `diffmask(m)` used differentiable simulation of subsetting `model(ds, diffmask(m))`
 	- `setindex!(m, i, ::Bool)` for pruning

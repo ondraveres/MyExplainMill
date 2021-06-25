@@ -1,4 +1,4 @@
-struct SimpleMask{T}
+struct SimpleMask{T} <: AbstractVectorMask
 	x::Vector{T}
 end
 
