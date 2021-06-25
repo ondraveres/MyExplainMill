@@ -82,17 +82,17 @@ end
 	end
 
 	@testset "Sparse Mask" begin
-		cn = ArrayNode(sparse([1 2 3 0 5; 0 2 0 4 0]))
+		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
 		mk = create_mask_structure(cn, d -> SimpleMask(fill(true, d)))
 		@test mk isa SparseArrayMask
 		@test cn[mk] == cn
 
 		# subsetting
 		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true, true]
+		@test prunemask(mk.mask) == [false, true, false, true, true, true]
 
 		# multiplication is equicalent to subsetting
-		@test cn[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+		@test cn[mk].data.nzval == [0, 2, 0, 3, 4, 5]
 
 		# calculation of gradient with respect to boolean mask
 		model = f64(reflectinmodel(cn, d -> Chain(Dense(d, 10), Dense(10,10))))
@@ -109,6 +109,33 @@ end
 
 	@testset "String Mask" begin
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
+		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
+		@test mk isa NGramMatrixMask
+		@test sn[mk] == sn
+
+		# subsetting
+		prunemask(mk.mask)[[1,3]] .= false
+		@test prunemask(mk.mask) == [false, true, false, true, true]
+
+		# multiplication is equicalent to subsetting
+		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
+
+		# calculation of gradient with respect to boolean mask
+		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+		@test model(sn[mk]).data ≈ model(sn, mk).data
+
+		# Verify that calculation of the gradient for real mask is correct 
+		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
+		@test sum(abs.(gs[mk.mask.x])) > 0
+
+		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
+		ps = Flux.Params([mk.mask.x])
+		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+	end
+
+	@testset "Bag Mask --- single nesting" begin
+		an = ArrayNode(randn(4,5))
+		ds = BagNode(an, AlignedBags([1:2,3:3,4:5]))
 		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
 		@test mk isa NGramMatrixMask
 		@test sn[mk] == sn
