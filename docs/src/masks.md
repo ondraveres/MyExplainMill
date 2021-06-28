@@ -122,7 +122,7 @@ The goal is to put as much test related to a single `Type` in one block, such th
 	@test all(abs.(gs[mk.mask.x]) .> 0)
 ```
 
-#### Differentiable mask is not trivial
+#### Differentiable mask is not trivial --- simple arrays
 Recall the need for differentiable mask is that some heuristic methods likes to calculate gradient with respect to the mask. Therefore we need 
 to calculate gradient with respect to the mask (correctly), which might not be tricky.
 
@@ -151,3 +151,9 @@ Therefore to make the output of function `f` differentiable with respect to the 
 f(@. m * x + (1 - m) .* y′)
 ```
 where `y′` is a canonical representation of a missing vector.This is very different from the usual "setting that to zero". Crucially, the gradient with respect to `m` needs to depend on a difference between `x` and `y`. Needless to say, if `y′` would be set to zero, it would be simple as the second term disappears to  `f(@. m * x)′` and everything boils down to a fundamental question if `zero` is the right value for missing feature.
+
+#### Differentiable mask is not trivial --- aggregation functions
+
+How shall the mask works on bags? Let's assume the bag consists of n instances `(x_1,...,x_n).` and assume a mask `(m_1,...,m_n).` If items of mask are from `{0,1}`, then `0` indicates that item is absent and `1` indicates it is present. If `A` is an aggregation function, then we want that the output on masked `(x_1,...,x_n)` to be equal to output on items where mask is equal to one `A ({x_i}_{m_i == 1}).` Imagine now that items of mask can have any values from `[0,1].` We would like to have continuitity, i.e. ` A((x_1 * m_1,...,x_n * m_n)) ⟶ A(∅)` as `\|m\| ⟶ 0`. Similarly, we want `A((x_1 * m_1,...,x_{j-1} * m_{j-1},x_j * m_{j},x_j+1 * m_{j+1}, ..., x_n * m_n)) ⟶ A((x_1 * m_1,...,x_{j-1} * m_{j-1},x_j+1 * m_{j+1}, ..., x_n * m_n))` as `|m_j| ⟶ 0. ` This implies that 
+* for `A` being ` ∑` or `mean` `A(∅) = 0`.
+* for `A` being `maximum` `A(∅) = minimum({x})` where the minimum goes over the all items in the training set.

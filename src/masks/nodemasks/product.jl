@@ -25,12 +25,12 @@ end
 
 function mapmask(f, mk::ProductMask{T}) where {T<:NamedTuple}
 	ks = keys(mk.childs)
-	s = (;[k => mapmask(f, mask.childs[k]) for k in ks]...)
+	s = (;[k => mapmask(f, mk.childs[k]) for k in ks]...)
 	(;s...)
 end
 
 function mapmask(f, mk::ProductMask{T}) where {T<:Tuple}
-	map(i -> mapmask(f, i), mask.childs)
+	map(i -> mapmask(f, i), mk.childs)
 end
 
 function invalidate!(mk::ProductMask, observations::Vector{Int})

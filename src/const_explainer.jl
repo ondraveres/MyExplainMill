@@ -7,7 +7,7 @@ end
 ConstExplainer() = ConstExplainer(1f0)
 
 function stats(e::ConstExplainer, ds, model, i, n, clustering = ExplainMill._nocluster)
-	ExplainMill.Mask(ds, model, d -> e.α .* ones(Float32, d), clustering)
+	create_mask_structure(ds, d -> SimpleMask(e.α .* ones(Float32, d)))
 end
 
-scorefun(e::ConstExplainer, x::AbstractStructureMask) = x.mask.stats
+scorefun(e::ConstExplainer, x::AbstractStructureMask) = x.mask.x
