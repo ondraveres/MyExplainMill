@@ -52,7 +52,6 @@ Problems ?
 * Methods requiring gradients (GNNExplainer, Grad methods) uses two masks, as in `stats` they store the differentiable mask and in `mask` they store the pruning mask. Pruning mask is accessed by `prunemask` used in subsetting the sample `ds` as `ds[m]`, while differentiable mask is accessed by `diffmask` used in differential evaluation of a sample by a `model` as `model(ds, m)`.
 * 
 * `diffmask` has to output the correctly masked item, therefore for GNNExplainer the `diffmask(m) = σ(m.stats)` but for `GradExaplainer` it should be `diffmask(m) = m.stats` (this problem is currently caused by insufficient dispatch). Moreover, `model(ds, m) ≠ model(ds[m])`, which causes discrepancy between the view on the sample of gradient based beuristics and that of the sub-sampling based heuristics. 
-* Is participation really needed? Can we get away with it? It is used mainly in Shapley, where it makes a difference between Banzhaf and Shapley. It is also used in pruning, where it helps to identify parts of masks, which does not have to be optimized over?
 * `outputid` is used only by Shapley values.
 
 
@@ -77,7 +76,6 @@ So the current idea would be to have:
 #### Discussion
 
 It is not clear to me, if the above is not over-engineered and / or sufficiently general, as there are many open questions. 
-* Can get rid of `participation` everywhere except the Shapley / Bazhaffs.
 * Can we support multi banzhaf values?
 * I do not know, if the FlatView should contain `StructureMask` or `Mask`. The latter has the advantage that it has a clearly defined 
 
@@ -157,3 +155,22 @@ where `y′` is a canonical representation of a missing vector.This is very diff
 How shall the mask works on bags? Let's assume the bag consists of n instances `(x_1,...,x_n).` and assume a mask `(m_1,...,m_n).` If items of mask are from `{0,1}`, then `0` indicates that item is absent and `1` indicates it is present. If `A` is an aggregation function, then we want that the output on masked `(x_1,...,x_n)` to be equal to output on items where mask is equal to one `A ({x_i}_{m_i == 1}).` Imagine now that items of mask can have any values from `[0,1].` We would like to have continuitity, i.e. ` A((x_1 * m_1,...,x_n * m_n)) ⟶ A(∅)` as `\|m\| ⟶ 0`. Similarly, we want `A((x_1 * m_1,...,x_{j-1} * m_{j-1},x_j * m_{j},x_j+1 * m_{j+1}, ..., x_n * m_n)) ⟶ A((x_1 * m_1,...,x_{j-1} * m_{j-1},x_j+1 * m_{j+1}, ..., x_n * m_n))` as `|m_j| ⟶ 0. ` This implies that 
 * for `A` being ` ∑` or `mean` `A(∅) = 0`.
 * for `A` being `maximum` `A(∅) = minimum({x})` where the minimum goes over the all items in the training set.
+
+### Is participation needed? 
+
+The `participation` allows to track, if a part of a mask has an effect of the output of a classifier on a given sample. For example imagine that we have a following sample 
+```
+ds = BagNode(
+	ArrayNode(
+		NGramMatrix(["a","b","c","d","e"])
+		)
+	[1:5]
+	)
+```
+
+`BagMask` is masking individual observations and so does `NGramMatrix`. This means that if `BagMask` has mask `[true,false,true,false,true]`, then explanation of `NGramMatrix` can consider only `["a","c","e"]` instead of all items, because `["b","d"]` are removed by the `BagMask` of above. The `participation(mk::NGramMatrixMask)` should therefore return `[true,false,true,false,true]`.
+
+An interesting question is how to implement participation. So far, I have considered three options.
+* Each structural mask will have `participation` field, which can be updated. The idea behind this is that to update `participation`, the structure and type of data is important. This would make it independent to how `<:AbstractVectorMask` is implemented, but it would not fly, because the `participation` might be influenced by *Clustering* of masks.
+* The other approach is to make a `participation` field a mandatory part of `<:AbstractVectorMask`, but that seems to me unnecessary burden, since it `<:AbstractVectorMask` should not care about it. At least, at the moment, I do not see a reason why it should.
+* The third approach, which I kind of like it to implement `participation` as a decorator of `<:AbstractVectorMask`. It would reexport api of the `<:AbstractVectorMask`, therefore it would be invisible to it and also it would allow to override it for the clustering.  
