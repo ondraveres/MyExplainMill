@@ -26,10 +26,12 @@
 	it would allow to override it for the clustering.  
 """
 
-struct ParticipationTracker{T,M<:AbstractVectorMask} <: AbstractVectorMask
+struct ParticipationTracker{M<:AbstractVectorMask} <: AbstractVectorMask
 	m::M
-	x::Vector{T}
+	p::Vector{Bool}
 end
+
+ParticipationTracker(m::AbstractVectorMask) = ParticipationTracker(m, fill(true,length(m)))
 
 prunemask(m::ParticipationTracker) = prunemask(m.m)
 diffmask(m::ParticipationTracker) = diffmask(m.m)
@@ -37,3 +39,8 @@ Base.length(m::ParticipationTracker) = length(m.m)
 Base.getindex(m::ParticipationTracker, args...) = getindex(m.m, args...)
 Base.setindex!(m::ParticipationTracker, args...) = setindex!(m.m, args...)
 Base.materialize!(m::ParticipationTracker, args...) = materialize!(m.m, args...)
+
+invalidate!(m::ParticipationTracker, i) = m.p[i] .= false
+participate(m::ParticipationTracker) = m.p
+invalidate!(m::ParticipationTracker, i::Int) = m.p[i] = false
+invalidate!(m::ParticipationTracker, i) = m.p[i] .= false

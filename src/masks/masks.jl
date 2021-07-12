@@ -4,7 +4,6 @@ abstract type AbstractListMask <: AbstractStructureMask end;
 abstract type AbstractNoMask <: AbstractStructureMask end;
 
 RealArray = Union{Vector{T}, Matrix{T}} where {T<:Real}
-participate(m::AbstractStructureMask) = participate(m.mask)
 
 function mapmask(f, m::AbstractListMask)
 	(mask = f(m.mask),)
@@ -12,6 +11,7 @@ end
 
 invalidate!(m::AbstractStructureMask) = invalidate!(m, Vector{Int}())
 
+include("participation.jl")
 include("simplemask.jl")
 include("mask.jl")
 include("parentstructure.jl")

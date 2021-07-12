@@ -27,7 +27,7 @@ end
 function invalidate!(mk::SparseArrayMask, observations::Vector{Int})
 	for (i,c) in enumerate(mk.columns)
 		if c ∈ observations
-			mk.mask.participate[i] = false
+			invalidate!(mk.mask, i)
 		end
 	end
 end

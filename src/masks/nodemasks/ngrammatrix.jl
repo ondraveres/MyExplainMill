@@ -13,8 +13,8 @@ function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Mill.N
 	NGramMatrixMask(create_mask(nobs(ds.data)))
 end
 
-function invalidate!(mask::NGramMatrixMask, observations::Vector{Int})
-	participate(mask)[observations] .= false
+function invalidate!(mk::NGramMatrixMask, invalid_observations::AbstractVector{Int})
+	invalidate!(mk.mask, invalid_observations)
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}

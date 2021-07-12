@@ -28,7 +28,7 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::CategoricalMask, presentobs=fill(
 end
 
 function invalidate!(mk::CategoricalMask, observations::Vector{Int})
-	participate(mk.mask)[observations] .= false
+	invalidate!(mk.mask, observations)
 end
 
 # This might be actually simplified if we define gradient with respect to ds[mk]

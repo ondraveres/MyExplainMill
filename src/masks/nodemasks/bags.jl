@@ -31,10 +31,10 @@ function mapmask(f, m::BagMask)
 end
 
 
-function invalidate!(mk::BagMask, observations::Vector{Int})
-	invalid_instances = isempty(observations) ? observations : reduce(vcat, [collect(mk.bags[i]) for i in observations])
-	participate(mk)[invalid_instances] .= false
-	invalid_instances = unique(vcat(invalid_instances, findall(.!(prunemask(mk.mask) .& participate(mk)))))
+function invalidate!(mk::BagMask, invalid_observations::AbstractVector{Int})
+	invalid_instances = isempty(invalid_observations) ? invalid_observations : reduce(vcat, [collect(mk.bags[i]) for i in invalid_observations])
+	invalidate!(mk.mask, invalid_instances)
+	invalid_instances = unique(vcat(invalid_instances, findall(.!(prunemask(mk.mask) .& participate(mk.mask)))))
 	invalidate!(mk.child, invalid_instances)
 end
 

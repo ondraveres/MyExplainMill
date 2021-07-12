@@ -5,6 +5,7 @@ using Flux
 using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure
 using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask
+using ExplainMill: ParticipationTracker, participate, invalidate!
 using FiniteDifferences
 
 function testmaskgrad(f, ps::Flux.Params; detailed = false, ϵ = 1e-6)
@@ -27,7 +28,7 @@ function fdmgradient(f, p)
     fval
 end
 
-@testset "Alignment between prunning and masking" begin
+@testset "Structural masks" begin
 	@testset "MatrixMask" begin
 		an = ArrayNode(randn(4,5))
 		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
@@ -53,6 +54,8 @@ end
 		mk = create_mask_structure(an, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(an, mk).data),  ps)
+
+		# update of the participation (does not apply now)
 	end
 
 	@testset "Categorical Mask" begin
@@ -65,20 +68,33 @@ end
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true, true]
 
-		# multiplication is equicalent to subsetting
+		# test pruning of samples 
 		@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
 
-		# calculation of gradient with respect to boolean mask
+		# output of a model on pruned sample is equal to output multiplicative weights
 		model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
 		@test model(on[mk]).data ≈ model(on, mk).data
 
-		# Verify that calculation of the gradient for real mask is correct 
+		# calculation of gradient with respect to boolean mask
 		gs = gradient(() -> sum(model(on, mk).data),  Flux.Params([mk.mask.x]))
 		@test all(abs.(gs[mk.mask.x]) .> 0)
 
+		# Verify that calculation of the gradient for real mask is correct 
 		mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(on, mk).data),  ps)
+
+		# update of the participation
+		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+		mk = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		
+		@test all(participate(mk.mask))
+		invalidate!(mk, [1])
+		@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
+		invalidate!(mk, [1, 3])
+		@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk.mask))
 	end
 
 	@testset "Sparse Mask" begin
@@ -105,6 +121,18 @@ end
 		mk = create_mask_structure(cn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(cn, mk).data),  ps)
+
+		# update of the participation
+		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
+		mk = create_mask_structure(cn, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		
+		@test all(participate(mk.mask))
+		invalidate!(mk, [1])
+		@test participate(mk.mask) == Bool[0, 1, 1, 1, 1, 1]
+		invalidate!(mk, [1, 2])
+		@test participate(mk.mask) == Bool[0, 0, 0, 1, 1, 1]
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk.mask))
 	end
 
 	@testset "String Mask" begin
@@ -131,6 +159,18 @@ end
 		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+
+		# update of the participation (does not apply now)
+		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
+		mk = create_mask_structure(sn, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		
+		@test all(participate(mk.mask))
+		invalidate!(mk, [1])
+		@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
+		invalidate!(mk, [1, 3])
+		@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk.mask))
 	end
 
 	@testset "Bag Mask --- single nesting" begin
@@ -172,6 +212,31 @@ end
 			ps = Flux.Params([mk.mask.x])
 			testmaskgrad(() -> sum(model(ds, mk).data),  ps)
 		end
+
+		# update of the participation (does not apply now)
+		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
+		ds = BagNode(cn, AlignedBags([1:2,3:3,0:-1,4:5]))
+		mk = create_mask_structure(ds, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		
+		@test all(participate(mk.mask))
+		@test all(participate(mk.child.mask))
+		ExplainMill.updateparticipation!(mk)
+		invalidate!(mk, [1])
+		@test participate(mk.mask) == Bool[0, 0, 1, 1, 1]
+		@test participate(mk.child.mask) == Bool[0, 0, 0, 1, 1, 1]
+		invalidate!(mk, [1, 3])
+		@test participate(mk.mask) == Bool[0, 0, 1, 1, 1]
+		@test participate(mk.child.mask) == Bool[0, 0, 0, 1, 1, 1]
+
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk.mask))
+		@test all(participate(mk.child.mask))
+
+		# test the update of participation correctly propagates to childs
+		mk.mask[1] = false
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk.mask))
+		@test participate(mk.child.mask) == Bool[0, 1, 1, 1, 1, 1]
 	end
 end
 
