@@ -19,7 +19,7 @@ using HierarchicalUtils
 # TODO call e2boolean with full and sampled masks
 
 @testset "ExplainMill.jl" begin
-    include("maskstructure.jl")
+    include("structuralmasks.jl")
     include("flatmasks.jl")
     include("gnn.jl")
     include("explain.jl")

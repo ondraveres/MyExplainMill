@@ -4,9 +4,10 @@ using Test
 using Flux
 using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure
-using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask
+using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
 using ExplainMill: ParticipationTracker, participate, invalidate!
 using FiniteDifferences
+using StatsBase: nobs
 
 function testmaskgrad(f, ps::Flux.Params; detailed = false, ϵ = 1e-6)
     gs = gradient(f, ps)
@@ -39,8 +40,11 @@ end
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true]
 
-		# subsetting
+		# testing basic subsetting of data 
 		@test an[mk].data ≈ an.data .* [false, true, false, true]	
+
+		# testing subsetting while exporting only subset of observations
+		@test an[mk, [true, false, true, false, true]].data ≈ an.data[:,[true, false, true, false, true]] .* [false, true, false, true]	
 
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(an, d -> Dense(d, 10)))
@@ -70,6 +74,9 @@ end
 
 		# test pruning of samples 
 		@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+
+		# testing subsetting while exporting only subset of observations
+		@test on[mk, [true, false, true, false, true]].data ≈ Flux.onehotbatch([4, 4, 2], 1:4)
 
 		# output of a model on pruned sample is equal to output multiplicative weights
 		model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
@@ -106,6 +113,9 @@ end
 		# subsetting
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true, true, true]
+
+		# testing subsetting while exporting only subset of observations
+		@test cn[mk, [true, false, true, false, true]].data ≈ sparse(Float64.([0 3 5; 0 0 0]))
 
 		# multiplication is equicalent to subsetting
 		@test cn[mk].data.nzval == [0, 2, 0, 3, 4, 5]
@@ -144,11 +154,12 @@ end
 		# subsetting
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true, true]
-
-		# multiplication is equicalent to subsetting
 		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
 
-		# calculation of gradient with respect to boolean mask
+		# testing subsetting while exporting only subset of observations
+		@test sn[mk, [true, false, true, false, true]].data == NGramMatrix(["", "", "5"], 3, 256, 2053)
+
+		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
 		@test model(sn[mk]).data ≈ model(sn, mk).data
 
@@ -184,9 +195,12 @@ end
 		prunemask(mk.mask)[[1,3]] .= false
 		@test prunemask(mk.mask) == [false, true, false, true, true]
 
-		# multiplication is equivalent to subsetting
 		@test ds[mk].data == ds.data[[false, true, false, true, true]]
 		@test ds[mk].bags.bags ==  UnitRange{Int64}[1:1, 0:-1, 0:-1, 2:3]
+
+		# testing subsetting while exporting only subset of observations
+		@test ds[mk, [true, true, false, false]].data == ds.data[[false, true, false, false, false]]
+		@test ds[mk, [true, true, false, false]].bags.bags ==  UnitRange{Int64}[1:1, 0:-1]
 
 		# prepare there models for the test
 		model₁ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMax))
@@ -200,6 +214,7 @@ end
 		model₃.a[2].C .= minimum(model₃.im(ds.data).data, dims = 2)[:]
 
 		for model in [model₁, model₂, model₃]
+			# multiplication is equivalent to subsetting
 			mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 			prunemask(mk.mask)[[1,3]] .= false
 			@test model(ds[mk]).data ≈ model(ds, mk).data
@@ -238,27 +253,70 @@ end
 		@test all(participate(mk.mask))
 		@test participate(mk.child.mask) == Bool[0, 1, 1, 1, 1, 1]
 	end
+
+	@testset "ProductMask" begin
+		ds = ProductNode(
+			(a = ArrayNode(randn(4,5)),
+			b = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0]))),
+			))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		@test mk isa ProductMask
+		@test ds[mk] == ds
+
+		#this is not really a nice syntax
+		prunemask(mk[:a].mask)[[1,2]] .= false
+		prunemask(mk[:b].mask)[[1,2]] .= false
+
+		@test ds[mk][:a].data ≈ ds[:a].data .* [false, false, true, true]	
+		@test ds[mk][:b].data ≈ sparse(Float64[0 0 3 0 5; 0 2 0 4 0])
+
+		@test ds[mk, [true, false, true, false, true]][:a].data ≈ ds[:a].data[:,[true, false, true, false, true]] .* [false, false, true, true]	
+		@test ds[mk, [true, false, true, false, true]][:b].data ≈ sparse(Float64[0 3 5; 0 0 0])
+
+		# multiplication is equicalent to subsetting
+		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
+		@test model(ds[mk]).data ≈ model(ds, mk).data
+
+		# calculation of gradient with respect to boolean mask
+		gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk[:a].mask.x]))
+		@test all(abs.(gs[mk[:a].mask.x]) .> 0)
+		gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk[:b].mask.x]))
+		@test all(abs.(gs[mk[:b].mask.x]) .> 0)
+
+		# Verify that calculation of the gradient for real mask is correct 
+		mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
+		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:a].mask.x]))
+		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:b].mask.x]))
+
+		# update of the participation
+		mk = create_mask_structure(ds, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		@test all(participate(mk[:a].mask))
+		@test all(participate(mk[:b].mask))
+		invalidate!(mk, [1])
+		@test participate(mk[:a].mask) == Bool[1, 1, 1, 1]
+		@test participate(mk[:b].mask) == Bool[0, 1, 1, 1, 1, 1]
+		invalidate!(mk, [1, 2])
+		@test participate(mk[:a].mask) == Bool[1, 1, 1, 1]
+		@test participate(mk[:b].mask) == Bool[0, 0, 0, 1, 1, 1]
+
+		ExplainMill.updateparticipation!(mk)
+		@test all(participate(mk[:a].mask))
+		@test all(participate(mk[:b].mask))
+	end
 end
 
-####
-#	Revision of unit test ends here
-####
-@testset "Testing prunning of samples " begin
+@testset "An integration test of nested samples" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
 	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
 	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
-	m = BagMask(
-			BagMask(
-				ProductMask((a = MatrixMask([true,false], 5),
-				c = SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),
-				o = CategoricalMask([true, true, true, false, false]),)
-				), ds.bags.bags,
-			[true,false,true,false,true]),
-			ds.bags,
-			[true,true,true])
-	dss = ds[m]
+	mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+	mk.child.child[:a].mask.x[2] = false
+	mk.child.child[:c].mask.x .= [true, true, true, false, true]
+	mk.child.child[:o].mask.x .= [true, true, true, false, false]
+	mk.child.mask.x .= [true,false,true,false,true]
+	dss = ds[mk]
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
@@ -267,16 +325,11 @@ end
 	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([1,3,4], 1:4)
 
-	m = BagMask(
-		BagMask(
-			ProductMask((a = MatrixMask([false,true], 5),
-			c = SparseArrayMask([false, true, false, true, false], [1, 2, 3, 4, 5]),
-			o = CategoricalMask([false, true, false, true, false]),)
-			), ds.bags.bags,
-		[true,false,true,false,true]),
-		ds.bags,
-		[true,true,true])
-	dss = ds[m]
+	mk.child.child[:a].mask.x .= [false, true]
+	mk.child.child[:c].mask.x .= [false, true, false, true, false]
+	mk.child.child[:o].mask.x .= [false, true, false, true, false]
+	mk.child.mask.x .= [true,false,true,false,true]
+	dss = ds[mk]
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
@@ -285,16 +338,11 @@ end
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
 
-	m = BagMask(
-		BagMask(
-			ProductMask((a = MatrixMask([false,true], 5),
-			c = SparseArrayMask([true, true, true, true, true], [1, 2, 3, 4, 5]),
-			o = CategoricalMask([false, true, false, true, false]),)
-			), ds.bags.bags,
-		[true,false,false,false,true]),
-		ds.bags,
-		[true,true,true])
-	dss = ds[m]
+	mk.child.child[:a].mask.x .= [false, true]
+	mk.child.child[:c].mask.x .= [true, true, true, true, true]
+	mk.child.child[:o].mask.x .= [false, true, false, true, false]
+	mk.child.mask.x .= [true, false, false, false, true]
+	dss = ds[mk]
 
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
@@ -304,101 +352,12 @@ end
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4], 1:4)
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
 
-
 	@test ds[ExplainMill.EmptyMask()] == ds
-
-	a = ArrayNode(NGramMatrix(["a","b","c","d","e"],3,256,2053))
-	an = Mask(a, d -> rand(d))
-	prunemask(an) .= [true, false, true, false, true]
-	@test a[an].data.s == ["a", "", "c", "", "e"]
-	@test a[an,[true,false,true,true,false]].data.s == ["a", "c", ""]
-
-	bs = BagNode(a, AlignedBags([1:2,3:3,4:5]))
-	ms = Mask(bs, d -> rand(d))
-	@test nobs(bs[ms, fill(false, 3)]) == 0
-	@test nobs(bs[ms, [true,false,true]]) == 2
-	@test nobs(bs[ExplainMill.EmptyMask(), [true,false,true]]) == 2
 end
 
-@testset "testing multiplication masks" begin 
-	#for now I will test that they just pass
-	x = ProductNode((a = ArrayNode(randn(Float32, 2,4)), b = ArrayNode(randn(Float32, 2, 4))))
-	m = reflectinmodel(x, d -> Dense(d, 4), d -> SegmentedMeanMax(d))
-	mk = ExplainMill.Mask(x, m, d -> fill(1f0, d, 1), ExplainMill._nocluster)
-	ps = Flux.Params([mk[:a].mask.stats, mk[:b].mask.stats])
-	gradient(() -> sum(m(x, mk).data), ps)
-end
-
-
-
-@testset "Testing correctness of detecting samples that should not be considered in the calculation of daf values" begin
-	an = ArrayNode(reshape(collect(1:10), 2, 5))
-	cn = ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0]))
-
-	m = Mask(cn, d -> rand(d))
-	invalidate!(m, [1,2])
-	@test participate(m) ≈ [false, false, false, true, true, true]
-	participate(m) .= true
-	invalidate!(m, [2,4])
-	@test participate(m) ≈ [true, true, false, true, false, true]
-
-	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
-	m = Mask(sn, d -> rand(d))
-	invalidate!(m, [2,4])
-	@test participate(m) ≈ [true, false, true, false, true]
-
-	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
-	m = Mask(on, d -> rand(d))
-	@test length(prunemask(m.mask)) == 5
-	invalidate!(m, [2,4])
-	@test participate(m) ≈ [true, false, true, false, true]
-
-	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
-	m = Mask(ds, d -> rand(d))
-	invalidate!(m, [1,3])
-	@test participate(m) ≈ participate(m.child) ≈ [false, false, true, false, false]
-	m = Mask(ds, d-> rand(d))
-	prunemask(m)[[1,2,4,5]] .= false
-	invalidate!(m)
-	@test prunemask(m) ≈ [false, false, true, false, false]
-	@test all(participate(m) .== true)
-	@test participate(m.child) ≈ [false, false, true, false, false]
-
-
-	ds = BagNode(BagNode(sn, AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
-	m = Mask(ds, d -> rand(d))
-	invalidate!(m, [1])
-	@test all(prunemask(m) .== true)
-	@test all(participate(m) .== false)
-	@test all(prunemask(m.child) .== true)
-	@test all(participate(m.child) .== false)
-	@test all(prunemask(m.child.child) .== true)
-	@test all(participate(m.child.child) .== false)
-	m = Mask(ds, d -> rand(d))
-	prunemask(m)[[1,3]] .= false
-	invalidate!(m)
-	@test prunemask(m) ≈ [false, true, false]
-	@test all(participate(m) .== true)
-	@test participate(m.child) ≈ [false, false, true, false, false]
-	@test participate(m.child.child) ≈ participate(m.child) ≈ [false, false, true, false, false]
-
-	ds = BagNode(ProductNode((a = cn, b = sn)), AlignedBags([1:2,3:3,4:5]))
-	m = Mask(ds, d -> rand(d))
-	prunemask(m)[[1,3]] .= false
-	invalidate!(m)
-	@test prunemask(m) ≈ [false, true, false, true, true]
-	@test all(participate(m) .== true)
-	@test participate(m.child.childs[:a]) ≈ [false, false, true, false, true, true]
-	@test participate(m.child.childs[:b]) ≈ [false, true, false, true, true]
-	m = Mask(ds, d -> rand(d))
-	invalidate!(m,[1,3])
-	@test all(prunemask(m) .== true)
-	@test participate(m) ≈ [false, false, true, false, false]
-	@test participate(m.child.childs[:a]) ≈ [false, false, false, true, false, false]
-	@test participate(m.child.childs[:b]) ≈ [false, false, true, false, false]
-end
-
-
+#######
+#   A rework of the mask structure ands here
+#######
 @testset "mapmask" begin
 	an = Mask(ArrayNode(reshape(collect(1:10), 2, 5)), d -> rand(d))
 	mapmask(an) do m
@@ -459,48 +418,7 @@ end
 	@test participate(an.child) ≈ [false, true]
 end
 
-
-@testset "testing infering of sample membership" begin
-	sn = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
-	ds = BagNode(sn, AlignedBags([1:2,3:3,4:5]))
-	pm = Mask(ds, d -> rand(d))
-	ExplainMill.updatesamplemembership!(pm, nobs(ds))
-	@test pm.mask.outputid ≈ [1, 1, 2, 3, 3]
-end
-
 @testset "remapping the cluster" begin
 	@test ExplainMill.normalize_clusterids([2,3,2,3,4]) ≈ [1,2,1,2,3]
 	@test ExplainMill.normalize_clusterids([1,2,2,1]) ≈ [1,2,2,1]
-end
-
-@testset "print masks" begin
-	an = ArrayNode(reshape(collect(1:10), 2, 5))
-	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
-	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
-
-	m = ExplainMill.BagMask(
-			ExplainMill.BagMask(
-				ExplainMill.ProductMask((a = ExplainMill.MatrixMask([true, false], 5),
-				c = ExplainMill.SparseArrayMask([true, true, true, false, true], [1, 2, 3, 4, 5]),
-				o = ExplainMill.CategoricalMask([true, true, true, false, false]),)
-				), ds.bags.bags,
-			[true,false,true,false,true]),
-			ds.bags,
-			[true,true,true])
-
-    # @test_broken begin
-    #     # buf = IOBuffer()
-    #     # printtree(buf, m, trav=true)
-    #     # str_repr = String(take!(buf))
-    #     str_repr = ""
-    #     str_repr ==
-    #     """
-    #     BagMask [""]
-    #     └── BagMask ["U"]
-    #     └── ProductMask ["k"]
-    #     ├── a: MatrixMask ["o"]
-    #     ├── c: SparseArrayMask ["s"]
-    #     └── o: CategoricalMask ["w"]"""
-    # end
 end
