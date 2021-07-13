@@ -3,7 +3,7 @@ using Mill
 using Test
 using Flux
 using SparseArrays
-using ExplainMill: SimpleMask, create_mask_structure
+using ExplainMill: SimpleMask, create_mask_structure, mapmask
 using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
 using ExplainMill: ParticipationTracker, participate, invalidate!
 using FiniteDifferences
@@ -27,6 +27,12 @@ function fdmgradient(f, p)
     fval = grad(central_fdm(5, 1), fp, p)[1]
     p .= op 
     fval
+end
+
+function collectmasks(mk, level = 1)
+	collected_masks = []
+	mapmask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
+	collected_masks
 end
 
 @testset "Structural masks" begin
@@ -59,6 +65,12 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(an, mk).data),  ps)
 
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 1
+		@test cmk[1].first == mk.mask
+		@test cmk[1].second == 2
+
 		# update of the participation (does not apply now)
 	end
 
@@ -90,6 +102,13 @@ end
 		mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(on, mk).data),  ps)
+
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 1
+		@test cmk[1].first == mk.mask
+		@test cmk[1].second == 2
+
 
 		# update of the participation
 		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
@@ -132,6 +151,13 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(cn, mk).data),  ps)
 
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 1
+		@test cmk[1].first == mk.mask
+		@test cmk[1].second == 2
+
+
 		# update of the participation
 		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
 		mk = create_mask_structure(cn, d -> ParticipationTracker(SimpleMask(fill(true, d))))
@@ -170,6 +196,12 @@ end
 		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 1
+		@test cmk[1].first == mk.mask
+		@test cmk[1].second == 2
 
 		# update of the participation (does not apply now)
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
@@ -227,6 +259,14 @@ end
 			ps = Flux.Params([mk.mask.x])
 			testmaskgrad(() -> sum(model(ds, mk).data),  ps)
 		end
+
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 2
+		@test cmk[1].first == mk.mask
+		@test cmk[1].second == 2
+		@test cmk[2].first == mk.child.mask
+		@test cmk[2].second == 3
 
 		# update of the participation (does not apply now)
 		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
@@ -287,6 +327,15 @@ end
 		mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
 		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:a].mask.x]))
 		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:b].mask.x]))
+
+		# testing mapmask
+		cmk = collectmasks(mk, 2)
+		@test length(cmk) == 2
+		@test cmk[1].first == mk[:a].mask
+		@test cmk[1].second == 2
+		@test cmk[2].first == mk[:b].mask
+		@test cmk[2].second == 2
+
 
 		# update of the participation
 		mk = create_mask_structure(ds, d -> ParticipationTracker(SimpleMask(fill(true, d))))
@@ -353,72 +402,4 @@ end
 	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
 
 	@test ds[ExplainMill.EmptyMask()] == ds
-end
-
-#######
-#   A rework of the mask structure ands here
-#######
-@testset "mapmask" begin
-	an = Mask(ArrayNode(reshape(collect(1:10), 2, 5)), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an) ≈ [true, false]
-	@test participate(an) ≈ [false, true]
-
-
-	an = Mask(ArrayNode(sparse([1 0 3 0 5; 1 2 0 4 0])), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an) ≈ [true, false, true, true, true, true]
-	@test participate(an) ≈ [false, true, true, true, true, true]
-
-	an = Mask(ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4)), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an) ≈ [true, false, true, true, true]
-	@test participate(an) ≈ [false, true, true, true, true]
-
-
-	an = Mask(ArrayNode(NGramMatrix(["a","b","c"],3,256,2053)), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an) ≈ [true, false, true]
-	@test participate(an) ≈ [false, true, true]
-
-	an = Mask(ProductNode((a = ArrayNode(NGramMatrix(["a","b","c","d","e"],3,256,2053)), 
-		b = ArrayNode(reshape(collect(1:10), 2, 5)))), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an[:a]) ≈ [true, false, true, true, true]
-	@test participate(an[:a]) ≈ [false, true, true, true, true]
-	@test prunemask(an[:b]) ≈ [true, false]
-	@test participate(an[:b]) ≈ [false, true]
-	@test participate(an) == nothing
-	@test prunemask(an) == nothing
-
-
-	an = Mask(BagNode(ArrayNode(reshape(collect(1:10), 2, 5)), AlignedBags([1:2,3:3,4:5])), d -> rand(d))
-	mapmask(an) do m
-		participate(m)[1] = false
-		prunemask(m)[2] = false
-	end
-	@test prunemask(an) ≈ [true, false, true, true, true,]
-	@test participate(an) ≈ [false, true, true, true, true]
-	@test prunemask(an.child) ≈ [true, false]
-	@test participate(an.child) ≈ [false, true]
-end
-
-@testset "remapping the cluster" begin
-	@test ExplainMill.normalize_clusterids([2,3,2,3,4]) ≈ [1,2,1,2,3]
-	@test ExplainMill.normalize_clusterids([1,2,2,1]) ≈ [1,2,2,1]
 end

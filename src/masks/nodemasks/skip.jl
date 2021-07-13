@@ -22,7 +22,7 @@ function Base.getindex(ds, mk::EmptyMask, presentobs = fill(true, nobs(ds)))
 	ds[presentobs]
 end
 
-mapmask(f, mk::EmptyMask) = nothing
+mapmask(f, mk::EmptyMask, level = 1) = nothing
 
 invalidate!(mk::EmptyMask, observations::Vector{Int}) = nothing
 

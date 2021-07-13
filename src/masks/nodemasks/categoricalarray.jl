@@ -31,6 +31,10 @@ function invalidate!(mk::CategoricalMask, observations::Vector{Int})
 	invalidate!(mk.mask, observations)
 end
 
+function mapmask(f, m::CategoricalMask, level = 1)
+	f(m.mask, level)
+end
+
 # This might be actually simplified if we define gradient with respect to ds[mk]
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::CategoricalMask)
 	x = Zygote.@ignore sparse(ds.data)

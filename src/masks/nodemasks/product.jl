@@ -23,14 +23,8 @@ function create_mask_structure(ds::ProductNode{T,M}, create_mask) where {T<:Name
 	ProductMask(s)
 end
 
-function mapmask(f, mk::ProductMask{T}) where {T<:NamedTuple}
-	ks = keys(mk.childs)
-	s = (;[k => mapmask(f, mk.childs[k]) for k in ks]...)
-	(;s...)
-end
-
-function mapmask(f, mk::ProductMask{T}) where {T<:Tuple}
-	map(i -> mapmask(f, i), mk.childs)
+function mapmask(f, mk::ProductMask, level = 1)
+	foreach(m -> mapmask(f, m, level), mk.childs)
 end
 
 function invalidate!(mk::ProductMask, observations::Vector{Int})

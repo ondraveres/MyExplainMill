@@ -38,6 +38,11 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::SparseArrayMask, presentobs=fill(
 	ArrayNode(x[:,presentobs], ds.metadata)
 end
 
+
+function mapmask(f, m::SparseArrayMask, level = 1)
+	f(m.mask, level)
+end
+
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::SparseArrayMask)
 	x = ds.data
 	nzval = x.nzval .* diffmask(mk.mask)

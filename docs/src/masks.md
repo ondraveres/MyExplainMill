@@ -59,7 +59,13 @@ Problems ?
 I would like to abstract the structure (or its part) such that it will behave as a vector. That means that I can access it and modify it using `setindex!`, `getindex`, `length`, and `empty`. Moreover, for a given set of masks, I would like to get a heuristic values. At the same time, whole sample should be indexable by a a structural mask.
 
 So the current idea would be to have:
-* structural Mask elements, that are specialized for corresponding Node Elements. So `BagNode` has a `BagMask`, `ProductNode` has a `ProductMask`, `ArrayNode` has `ArrayMask`, etc.
+* structural Mask elements, that are specialized for corresponding Node Elements. So `BagNode` has a `BagMask`, `ProductNode` has a `ProductMask`, `ArrayNode` has `ArrayMask`, etc. Structural mask will have a following interface:
+	- `Base.getindex(sample, mask)` returns a subset of a sample as specified by the mask. This uses `prunemask` to obtain pruning mask from the `<:AbstractVectorMask`
+	- `invalidate!(mask, invalid_observations)` marks `invalid_observation` and their descendants as not participating in the explanation / pruning search (see belows on problematics of `participation`)
+	- `(m::Mill.AbstractModel)(sample, mask)` output of a model `m` on a `sample[mask]`. This implementation should be differentiable and the `mask` can be between zero and one. Note that it should be the case that `m(ds, mask) == m(ds[mask])` if items of `mask` are `{true,false}`. 
+	- `mapmask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child. The argument of `f` is a tuple `(<:AbstractVectorMask, depth::Int)`, where `depth` is the distance of a current `mask::AbstractVectorMask` from the top node. It is responsibility of the implementation to increase the depth accordingly. This allows to apply `f` on on masks at some level. The overloading allows not to count some `AbstractStructureMask` if they do not play active role (e.g. `ProductMask`) and to impose structure if some `<:AbstractStructureMask` contain more then one `<:AbstractVectorMask`. Contrary, `BagMask` should increase the level, since it contains a mask which directly influences masks of its child.
+
+
 * Each structural mask will contain a `SomeMask<:AbstractVectorMask` which will behave like a vector. It will implement
 	- `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`
 	- `diffmask(m)` used differentiable simulation of subsetting `model(ds, diffmask(m))`

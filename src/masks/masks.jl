@@ -26,9 +26,9 @@ include("nodemasks/bags.jl")
 include("nodemasks/product.jl")
 include("nodemasks/lazymask.jl")
 
-function updateparticipation!(ms)
-	mapmask(m -> participate(m) .= true, ms)
-	invalidate!(ms)
+function updateparticipation!(mk)
+	mapmask((m, level) -> participate(m) .= true, mk)
+	invalidate!(mk)
 end
 
 Base.length(m::AbstractStructureMask) = length(m.mask)

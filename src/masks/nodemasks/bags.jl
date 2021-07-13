@@ -25,9 +25,9 @@ function Base.getindex(m::BagMask, i::Mill.VecOrRange)
     BagNode(m.child[i], nb, m.mask[ii])
 end
 
-function mapmask(f, m::BagMask)
-	mapmask(f, m.child)
-	f(m.mask)
+function mapmask(f, m::BagMask, level = 1)
+	f(m.mask, level)
+	mapmask(f, m.child, level + 1)
 end
 
 

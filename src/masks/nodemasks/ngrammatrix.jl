@@ -26,7 +26,9 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
 
-
+function mapmask(f, m::NGramMatrixMask, level = 1)
+	f(m.mask, level)
+end
 
 # TODO: We should make this one faster by writing a custom gradient for interpolation
 # since we do not need gradients with respect to `x` and `y`
