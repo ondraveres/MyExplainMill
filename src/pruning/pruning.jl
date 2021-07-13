@@ -1,14 +1,7 @@
 include("utils.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
-
-# include("pareto.jl")
 include("gradient_submodular.jl")
-
-# two below is a attempt for branch and bound
-include("branchandbound.jl")
-include("hackedsearch.jl")
-
 
 # :sfsrr => "LbyL-GArr",
 # :oscilatingsfs => "LbyL-GAos",
@@ -22,8 +15,6 @@ include("hackedsearch.jl")
 # :breadthfirst2 => "LbyL-HArr",
 # :greedybreadthfirst => "LbyL-HAdd",
 # :oscilatingbreadthfirst => "LbyL_HAos",
-# :abstemious => "ab",
-# :importantlast => "il",
 function prune!(f, ms, scorefun, method)
 	if method == :Flat_HAdd
 		ExplainMill.flatsearch!(f, ms, scorefun, random_removal = false, fine_tuning = false)

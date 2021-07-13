@@ -18,11 +18,9 @@ end
 Parents = Array{Pair{k,Int64} where k,1}
 
 function FlatView(mk::AbstractStructureMask)
-	FlatView(map(first, parent_structure(mk)))
-end
-
-function FlatView(masks::Vector{<:Pair})
-	FlatView(map(first, masks))
+	collected_masks = []
+	mapmask((mk, depth) -> push!(collected_masks, mk), mk, 1)
+	FlatView(collected_masks)
 end
 
 function FlatView(masks::Vector)
@@ -35,7 +33,7 @@ function FlatView(masks::Vector)
 	end
 	itemmap = reduce(vcat, itemmap)
 	starts = vcat(0, accumulate(+,map(m -> length(m), masks))[1:end-1])
-	FlatView(tuple(masks...), itemmap,starts)
+	FlatView(tuple(masks...), itemmap, starts)
 end
 
 function Base.setindex!(m::FlatView, v, i::Int) 

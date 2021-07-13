@@ -5,7 +5,7 @@ using Flux
 using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure, mapmask
 using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
-using ExplainMill: ParticipationTracker, participate, invalidate!
+using ExplainMill: ParticipationTracker, participate, invalidate!, collectmasks
 using FiniteDifferences
 using StatsBase: nobs
 
