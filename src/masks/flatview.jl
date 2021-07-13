@@ -19,7 +19,7 @@ Parents = Array{Pair{k,Int64} where k,1}
 
 function FlatView(mk::AbstractStructureMask)
 	collected_masks = []
-	mapmask((mk, depth) -> push!(collected_masks, mk), mk, 1)
+	foreach_mask((mk, depth) -> push!(collected_masks, mk), mk, 1)
 	FlatView(collected_masks)
 end
 

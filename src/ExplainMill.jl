@@ -37,11 +37,15 @@ Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 include("masks/masks.jl")
 export prunemask, diffmask
 include("output/logic_output.jl")
-include("dafstats.jl")
-include("gnn_explainer.jl")
-include("const_explainer.jl")
-include("grad_explainer.jl")
-include("stochastic_explainer.jl")
+
+include("heuristics/const_explainer.jl")
+include("heuristics/daf_explainer.jl")
+include("heuristics/gnn_explainer.jl")
+include("heuristics/grad_explainer.jl")
+include("heuristics/stochastic_explainer.jl")
+export GnnExplainer, GradExplainer, ConstExplainer, StochasticExplainer
+export stats, heuristic
+
 include("prunemissing.jl")
 include("sigmoid.jl")
 include("predict.jl")

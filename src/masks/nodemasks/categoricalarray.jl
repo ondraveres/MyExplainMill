@@ -31,8 +31,12 @@ function invalidate!(mk::CategoricalMask, observations::Vector{Int})
 	invalidate!(mk.mask, observations)
 end
 
-function mapmask(f, m::CategoricalMask, level = 1)
+function foreach_mask(f, m::CategoricalMask, level = 1)
 	f(m.mask, level)
+end
+
+function mapmask(f, m::CategoricalMask, level = 1)
+	CategoricalMask(f(m.mask, level))
 end
 
 # This might be actually simplified if we define gradient with respect to ds[mk]

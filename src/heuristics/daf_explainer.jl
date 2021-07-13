@@ -12,6 +12,22 @@ DafExplainer() = DafExplainer(200)
 BanzExplainer(n::Int) = DafExplainer(n, true, true)
 BanzExplainer() = BanzExplainer(200)
 
+struct DafMask{T} <: AbstractVectorMask
+	x::Vector{Bool}
+	stats::Duff.Daf
+	outputid::Vector{Int}
+end
+
+prunemask(m::DafMask{Bool}) = m.x
+prunemask(m::DafMask{<:Number}) = m.x .> 0
+diffmask(m::DafMask) = m.x
+Base.length(m::DafMask) = length(m.x)
+Base.getindex(m::DafMask, i) = m.x[i]
+Base.setindex!(m::DafMask, v, i) = m.x[i] = v
+Base.materialize!(m::DafMask, v) = m.x .= v
+
+
+
 function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster)
 	soft_model = (ds...) -> softmax(model(ds...));
 	# f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
@@ -27,7 +43,7 @@ end
 
 function dafstats(e::DafExplainer, pruning_mask::AbstractStructureMask, f)
 	dafs = []
-	mapmask(pruning_mask) do m
+	foreach_mask(pruning_mask) do m
 		m != nothing && push!(dafs, m)
 	end
 	for _j in 1:e.n
@@ -59,8 +75,10 @@ end
 scorefun(e::DafExplainer, x::AbstractStructureMask) = Duff.meanscore(x.mask.stats)
 scorefun(e::DafExplainer, x::Mask) = Duff.meanscore(x.stats)
 
-function StatsBase.sample!(pruning_mask::AbstractStructureMask)
-	mapmask(sample!, pruning_mask)
+function StatsBase.sample!(mk::AbstractStructureMask)
+	foreach_mask(mk) do m, l
+		m .= sample([true,false], length(m))
+	end
 end
 
 """
@@ -71,11 +89,11 @@ end
 """
 function updatesamplemembership!(pruning_mask, n)
 	for i in 1:n
-		mapmask(pruning_mask) do m
+		foreach_mask(pruning_mask) do m
 			participate(m) .= true
 		end
 		invalidate!(pruning_mask,setdiff(1:n, i))
-		mapmask(pruning_mask) do m
+		foreach_mask(pruning_mask) do m
 			m.outputid[participate(m)] .= i
 		end
 	end

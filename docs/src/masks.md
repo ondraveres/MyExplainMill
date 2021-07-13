@@ -63,7 +63,14 @@ So the current idea would be to have:
 	- `Base.getindex(sample, mask)` returns a subset of a sample as specified by the mask. This uses `prunemask` to obtain pruning mask from the `<:AbstractVectorMask`
 	- `invalidate!(mask, invalid_observations)` marks `invalid_observation` and their descendants as not participating in the explanation / pruning search (see belows on problematics of `participation`)
 	- `(m::Mill.AbstractModel)(sample, mask)` output of a model `m` on a `sample[mask]`. This implementation should be differentiable and the `mask` can be between zero and one. Note that it should be the case that `m(ds, mask) == m(ds[mask])` if items of `mask` are `{true,false}`. 
-	- `mapmask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child. The argument of `f` is a tuple `(<:AbstractVectorMask, depth::Int)`, where `depth` is the distance of a current `mask::AbstractVectorMask` from the top node. It is responsibility of the implementation to increase the depth accordingly. This allows to apply `f` on on masks at some level. The overloading allows not to count some `AbstractStructureMask` if they do not play active role (e.g. `ProductMask`) and to impose structure if some `<:AbstractStructureMask` contain more then one `<:AbstractVectorMask`. Contrary, `BagMask` should increase the level, since it contains a mask which directly influences masks of its child.
+	- `foreach_mask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child. The argument of `f` is a tuple `(<:AbstractVectorMask, depth::Int)`, where `depth` is the distance of a current `mask::AbstractVectorMask` from the top node. It is responsibility of the implementation to increase the depth accordingly. This allows to apply `f` on on masks at some level. The overloading allows not to count some `AbstractStructureMask` if they do not play active role (e.g. `ProductMask`) and to impose structure if some `<:AbstractStructureMask` contain more then one `<:AbstractVectorMask`. Contrary, `BagMask` should increase the level, since it contains a mask which directly influences masks of its child.
+	- `mapmask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child and return modified structural mask `AbstractStructureMask`. For example for `Matrix`, it would look like this 
+	```
+	function mapmask(f, m::MatrixMask, level = 1)
+		MatrixMask(f(m.mask, level))
+	end
+	```
+	This function is more of a convenience and nice to have things, as it allows to separate mask used to calculate heuristic values from mask used in the pruning process, where it might be sufficient just to provide heuristic values. If differentiable mask undergoes some complicated transformation, e.g. `σ`, it is not clear, what to use for a heuristic values.
 
 
 * Each structural mask will contain a `SomeMask<:AbstractVectorMask` which will behave like a vector. It will implement
@@ -73,6 +80,7 @@ So the current idea would be to have:
 	- `getindex(m, i)` to get current values
 	- `length(m)` to get number of items
 	- `isempty(m)` to get number of items
+	- `rawmask` would be the inderlying vector. In simplest case, it can be just the `prunemask`, but in case there is a decorator which remaps `prunemask` as is the case for example of clusters, there would be a mismatch and one more level of indirection is needed. It should be the parameter that can `Zygote` accepts and we can take gradient over.
 	- `heuristic(m)` which would provide heuristic at a given state, but it can be for example state-independent (e.g. Banzhaf, etc...)
 
 * The heuristic can specialize on `SomeMask`, which can be special for a  combination of Heuristic and `Mask`. This would allow to solve issue of GnnExplainer requiring a different transformation then GradExplainer and / or sub-modular grad method. 

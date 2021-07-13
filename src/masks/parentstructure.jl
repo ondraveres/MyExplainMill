@@ -1,6 +1,5 @@
-const ParentStructure = Vector{Pair{AbstractStructureMask, Int}}
 """
-	collectmasks(mk::AbstractStructureMask, level = 1)
+	collect_masks_with_levels(mk::AbstractStructureMask, level = 1)
 
 	recursively traverse the hierarchical mask structure and 
 	collect mask that have explainable content together with their level.
@@ -18,15 +17,21 @@ julia> mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 typename(BagMask)
   └── typename(MatrixMask)
 
-julia> collectmasks(mk)
+julia> collect_masks_with_levels(mk)
 2-element Vector{Any}:
  SimpleMask{Bool}(Bool[1, 1, 1, 1, 1]) => 1
     SimpleMask{Bool}(Bool[1, 1, 1, 1]) => 2
 
 ```
 """
-function collectmasks(mk, level = 1)
+function collect_masks_with_levels(mk; level = 1)
 	collected_masks = []
-	mapmask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
+	foreach_mask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
+	collected_masks
+end
+
+function collectmasks(mk)
+	collected_masks = []
+	foreach_mask((mk, depth) -> push!(collected_masks, mk), mk, 1)
 	collected_masks
 end

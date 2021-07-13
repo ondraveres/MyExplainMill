@@ -3,9 +3,9 @@ using Mill
 using Test
 using Flux
 using SparseArrays
-using ExplainMill: SimpleMask, create_mask_structure, mapmask
+using ExplainMill: SimpleMask, create_mask_structure, foreach_mask, collect_masks_with_levels, mapmask
 using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
-using ExplainMill: ParticipationTracker, participate, invalidate!, collectmasks
+using ExplainMill: ParticipationTracker, participate, invalidate!
 using FiniteDifferences
 using StatsBase: nobs
 
@@ -27,12 +27,6 @@ function fdmgradient(f, p)
     fval = grad(central_fdm(5, 1), fp, p)[1]
     p .= op 
     fval
-end
-
-function collectmasks(mk, level = 1)
-	collected_masks = []
-	mapmask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
-	collected_masks
 end
 
 @testset "Structural masks" begin
@@ -65,12 +59,17 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(an, mk).data),  ps)
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 1
 		@test cmk[1].first == mk.mask
 		@test cmk[1].second == 2
 
+		# testing mapmask
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
 		# update of the participation (does not apply now)
 	end
 
@@ -103,11 +102,17 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(on, mk).data),  ps)
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 1
 		@test cmk[1].first == mk.mask
 		@test cmk[1].second == 2
+
+		# testing mapmask
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
 
 
 		# update of the participation
@@ -151,11 +156,17 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(cn, mk).data),  ps)
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 1
 		@test cmk[1].first == mk.mask
 		@test cmk[1].second == 2
+
+		# testing mapmask
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
 
 
 		# update of the participation
@@ -197,11 +208,18 @@ end
 		ps = Flux.Params([mk.mask.x])
 		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 1
 		@test cmk[1].first == mk.mask
 		@test cmk[1].second == 2
+
+		# testing mapmask
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
+
 
 		# update of the participation (does not apply now)
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
@@ -260,13 +278,30 @@ end
 			testmaskgrad(() -> sum(model(ds, mk).data),  ps)
 		end
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 2
 		@test cmk[1].first == mk.mask
 		@test cmk[1].second == 2
 		@test cmk[2].first == mk.child.mask
 		@test cmk[2].second == 3
+
+		# testing mapmask
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
+		@test cmk.child.mask.x ≈ mk.child.mask.x .+ 1
+
+		cmk = mapmask(mk) do m, l
+			if l == 1
+				SimpleMask(m.x .+ 1)
+			else 
+				m
+			end
+		end
+		@test cmk.mask.x ≈ mk.mask.x .+ 1
+		@test cmk.child.mask.x ≈ mk.child.mask.x
 
 		# update of the participation (does not apply now)
 		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
@@ -328,14 +363,19 @@ end
 		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:a].mask.x]))
 		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:b].mask.x]))
 
-		# testing mapmask
-		cmk = collectmasks(mk, 2)
+		# testing foreach_mask
+		cmk = collect_masks_with_levels(mk; level = 2)
 		@test length(cmk) == 2
 		@test cmk[1].first == mk[:a].mask
 		@test cmk[1].second == 2
 		@test cmk[2].first == mk[:b].mask
 		@test cmk[2].second == 2
 
+		cmk = mapmask(mk) do m, l
+			SimpleMask(m.x .+ 1)
+		end
+		@test cmk[:a].mask.x ≈ mk[:a].mask.x .+ 1
+		@test cmk[:b].mask.x ≈ mk[:b].mask.x .+ 1
 
 		# update of the participation
 		mk = create_mask_structure(ds, d -> ParticipationTracker(SimpleMask(fill(true, d))))

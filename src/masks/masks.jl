@@ -23,7 +23,7 @@ include("nodemasks/product.jl")
 include("nodemasks/lazymask.jl")
 
 function updateparticipation!(mk)
-	mapmask((m, level) -> participate(m) .= true, mk)
+	foreach_mask((m, level) -> participate(m) .= true, mk)
 	invalidate!(mk)
 end
 

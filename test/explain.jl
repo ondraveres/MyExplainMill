@@ -16,7 +16,7 @@ end
     # DafStats is not existing now, not sure how to replace it
     #pruning_mask = Mask(ds, d -> DafStats(d))
     #dafs = []
-    #mapmask(pruning_mask) do m
+    #foreach_mask(pruning_mask) do m
     #    m != nothing && push!(dafs, m)
     #end
     #
@@ -37,7 +37,7 @@ end
     # pruning does not work for some reason
     #pruning_mask = Mask(ds, model)
     #dafs = []
-    #mapmask(pruning_mask) do m
+    #foreach_mask(pruning_mask) do m
     #    m != nothing && push!(dafs, m)
     #end
     #

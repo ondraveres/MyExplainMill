@@ -32,8 +32,12 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::MatrixMask, presentobs=fill(true,
 	ArrayNode(x, ds.metadata)
 end
 
-function mapmask(f, m::MatrixMask, level = 1)
+function foreach_mask(f, m::MatrixMask, level = 1)
 	f(m.mask, level)
+end
+
+function mapmask(f, m::MatrixMask, level = 1)
+	MatrixMask(f(m.mask, level), m.rows, m.cols)
 end
 
 function invalidate!(mk::MatrixMask, observations::Vector{Int})

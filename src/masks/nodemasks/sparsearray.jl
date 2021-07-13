@@ -39,8 +39,12 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::SparseArrayMask, presentobs=fill(
 end
 
 
-function mapmask(f, m::SparseArrayMask, level = 1)
+function foreach_mask(f, m::SparseArrayMask, level = 1)
 	f(m.mask, level)
+end
+
+function mapmask(f, m::SparseArrayMask, level = 1)
+	SparseArrayMask(f(m.mask, level), m.columns)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::SparseArrayMask)
