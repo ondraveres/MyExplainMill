@@ -35,11 +35,12 @@ ParticipationTracker(m::AbstractVectorMask) = ParticipationTracker(m, fill(true,
 
 prunemask(m::ParticipationTracker) = prunemask(m.m)
 diffmask(m::ParticipationTracker) = diffmask(m.m)
-rawmask(m::ParticipationTracker) = rawmask(m.m)
+simplemask(m::ParticipationTracker) = simplemask(m.m)
+heuristic(m::ParticipationTracker) = heuristic(m.m)
 Base.length(m::ParticipationTracker) = length(m.m)
 Base.getindex(m::ParticipationTracker, args...) = getindex(m.m, args...)
 Base.setindex!(m::ParticipationTracker, args...) = setindex!(m.m, args...)
-Base.materialize!(m::ParticipationTracker, args...) = materialize!(m.m, args...)
+Base.materialize!(m::ParticipationTracker, b::Base.Broadcast.Broadcasted) = Base.materialize!(m.m, b)
 
 participate(m::ParticipationTracker) = m.p
 invalidate!(m::ParticipationTracker, i::Int) = m.p[i] = false

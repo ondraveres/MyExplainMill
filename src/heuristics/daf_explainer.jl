@@ -1,5 +1,9 @@
 """
-Fatima, Shaheen S., Michael Wooldridge, and Nicholas R. Jennings. "A linear approximation method for the Shapley value." Artificial Intelligence 172.14 (2008): 1673-1699.
+	Fatima, Shaheen S., Michael Wooldridge, and Nicholas R. Jennings. "A linear approximation method for the Shapley value." Artificial Intelligence 172.14 (2008): 1673-1699.
+
+	The current implementation is simplified, as it does not track to which 
+	output item of the output of the model an given item in mask belongs to. 
+	This has a negative effect on simultaneous explanation of sets of samples. 
 """
 struct DafExplainer
 	n::Int
@@ -9,92 +13,57 @@ end
 
 DafExplainer(n::Int) = DafExplainer(n, true, false)
 DafExplainer() = DafExplainer(200)
+ShapExplainer(n::Int) = DafExplainer(n, true, false)
+ShapExplainer() = DafExplainer(200)
 BanzExplainer(n::Int) = DafExplainer(n, true, true)
 BanzExplainer() = BanzExplainer(200)
 
-struct DafMask{T} <: AbstractVectorMask
+struct DafMask <: AbstractVectorMask
 	x::Vector{Bool}
 	stats::Duff.Daf
-	outputid::Vector{Int}
 end
 
-prunemask(m::DafMask{Bool}) = m.x
-prunemask(m::DafMask{<:Number}) = m.x .> 0
+DafMask(d::Int) = DafMask(fill(true, d), Duff.Daf(d))
+prunemask(m::DafMask) = m.x
 diffmask(m::DafMask) = m.x
+simplemask(m::DafMask) = m
 Base.length(m::DafMask) = length(m.x)
 Base.getindex(m::DafMask, i) = m.x[i]
 Base.setindex!(m::DafMask, v, i) = m.x[i] = v
-Base.materialize!(m::DafMask, v) = m.x .= v
+Base.materialize!(m::DafMask, v::Base.Broadcast.Broadcasted) = m.x .= v
+heuristic(m::DafMask) = Duff.meanscore(m.stats)
 
+function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel)
+	mk = create_mask_structure(ds, d -> ParticipationTracker(DafMask(d)))
+	y = gnntarget(model, ds)
 
-
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, i::Int, clustering = ExplainMill._nocluster)
-	soft_model = (ds...) -> softmax(model(ds...));
-	# f = e.hard ? (ds, ms) -> output(soft_model(ds[ms]))[i,:] : (ds, ms) -> output(soft_model(ds, ms))[i,:]
-    f = (ds, ms) -> ExplainMill.confidencegap(soft_model, ds[ms], i)
-	stats(e, ds, model, f, clustering)
-end
-
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, clustering = ExplainMill._nocluster)
-	ms = ExplainMill.Mask(ds, model, Duff.Daf, clustering)
-	updatesamplemembership!(ms, nobs(ds))
-	dafstats(e, ms, () -> f(ds, ms))
-end
-
-function dafstats(e::DafExplainer, pruning_mask::AbstractStructureMask, f)
-	dafs = []
-	foreach_mask(pruning_mask) do m
-		m != nothing && push!(dafs, m)
+	dafstats!(e, mk) do 
+		sum(softmax(model(ds[mk]).data) .* y)
 	end
-	for _j in 1:e.n
-		sample!(pruning_mask)
-		updateparticipation!(pruning_mask)
+	mk
+end
+
+function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask)
+	for _ in 1:e.n
+		sample!(mk)
+		updateparticipation!(mk)
 		o = f()
-		Duff.update!(e, dafs, o, pruning_mask)
-	end
-	return(pruning_mask)
-end
-
-function Duff.update!(e::DafExplainer, dafs::Vector, v::AbstractArray{T}, pruning_mask) where{T<:Real}
-	for d in dafs
-		Duff.update!(e, d, v)
+		foreach_mask(mk) do m, _
+			Duff.update!(e, m, o)
+		end
 	end
 end
 
-function Duff.update!(e::DafExplainer, d::Mask, v::AbstractArray)
-	s = d.stats
-	m = prunemask(d)
-	for i in 1:length(m)
-		!e.banzhaf && !d.participate[i] && continue
-		f = v[d.outputid[i]]
-		j = _cluster_membership(d.cluster_membership, i)
-		Duff.update!(s, f, m[i] & d.participate[i], j)
+function Duff.update!(e::DafExplainer, mk::AbstractVectorMask, o)
+	d = simplemask(mk)
+	for i in 1:length(d.x)
+		!e.banzhaf && !participate(mk)[i] && continue
+		Duff.update!(d.stats, o, d.x[i] & participate(mk)[i], i)
 	end
 end
-
-scorefun(e::DafExplainer, x::AbstractStructureMask) = Duff.meanscore(x.mask.stats)
-scorefun(e::DafExplainer, x::Mask) = Duff.meanscore(x.stats)
 
 function StatsBase.sample!(mk::AbstractStructureMask)
 	foreach_mask(mk) do m, l
 		m .= sample([true,false], length(m))
-	end
-end
-
-"""
-	updatesamplemembership!(pruning_mask, n)
-
-	this updates the mapping of mask bit to corresponding item in the output,
-	which is important for minibatch processing
-"""
-function updatesamplemembership!(pruning_mask, n)
-	for i in 1:n
-		foreach_mask(pruning_mask) do m
-			participate(m) .= true
-		end
-		invalidate!(pruning_mask,setdiff(1:n, i))
-		foreach_mask(pruning_mask) do m
-			m.outputid[participate(m)] .= i
-		end
 	end
 end

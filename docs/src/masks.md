@@ -80,7 +80,7 @@ So the current idea would be to have:
 	- `getindex(m, i)` to get current values
 	- `length(m)` to get number of items
 	- `isempty(m)` to get number of items
-	- `rawmask` would be the inderlying vector. In simplest case, it can be just the `prunemask`, but in case there is a decorator which remaps `prunemask` as is the case for example of clusters, there would be a mismatch and one more level of indirection is needed. It should be the parameter that can `Zygote` accepts and we can take gradient over.
+	- `simplemask` would be the `AbstractVectorMask` stripped of all decorators. In simplest case, it can be just `simplemask(m) = m`. It should be the parameter that can `Zygote` accepts and we can take gradient over.
 	- `heuristic(m)` which would provide heuristic at a given state, but it can be for example state-independent (e.g. Banzhaf, etc...)
 
 * The heuristic can specialize on `SomeMask`, which can be special for a  combination of Heuristic and `Mask`. This would allow to solve issue of GnnExplainer requiring a different transformation then GradExplainer and / or sub-modular grad method. 

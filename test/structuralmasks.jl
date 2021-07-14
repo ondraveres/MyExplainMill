@@ -202,7 +202,7 @@ end
 
 		# Verify that calculation of the gradient for real mask is correct 
 		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
-		@test sum(abs.(gs[mk.mask.x])) > 0
+		@test all(abs.(gs[mk.mask.x]) > 0)
 
 		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])

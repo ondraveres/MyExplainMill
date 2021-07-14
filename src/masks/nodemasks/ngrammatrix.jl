@@ -33,12 +33,14 @@ end
 function mapmask(f, m::NGramMatrixMask, level = 1)
 	NGramMatrixMask(f(m.mask, level))
 end
-
+	
 # TODO: We should make this one faster by writing a custom gradient for interpolation
 # since we do not need gradients with respect to `x` and `y`
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
-	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ds.data))
-	y = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ds[mk].data))
+	ng = ds.data
+	eg = NGramMatrix(fill("", length(ng.s)), ng.n, ng.b, ng.m)
+	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ng))
+	y = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(eg))
 	dm = reshape(diffmask(mk.mask), 1, :)
 	x′ = @. dm * x + (1 - dm) * y
     m(ArrayNode(x′))

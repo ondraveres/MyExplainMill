@@ -21,7 +21,7 @@ end
 function stats(e::GradExplainer, ds, model)
 	mk = create_mask_structure(ds, SimpleMask)
 	y = gnntarget(model, ds)
-	ps = Flux.Params(map(rawmask, collectmasks(mk)))
+	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
 	gs = gradient(() -> Flux.logitcrossentropy(model(ds, mk).data, y), ps)
 	mkₕ = mapmask(mk) do m, l
 		d = length(m)

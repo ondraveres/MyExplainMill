@@ -26,13 +26,13 @@ end
 
 GnnMask(d::Int) = GnnMask(ones(Float32, d))
 diffmask(m::GnnMask) = σ.(m.x)
-rawmask(m::GnnMask) = m.x
+simplemask(m::GnnMask) = m
 
 # function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluster)
 function stats(e::GnnExplainer, ds, model)
 	mk = create_mask_structure(ds, GnnMask)
 	y = gnntarget(model, ds)
-	ps = Flux.Params(map(rawmask, collectmasks(mk)))
+	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
 	reinit!(ps)
 	opt = ADAM(0.01, (0.5, 0.999))
 	loss() = Flux.logitcrossentropy(model(ds, mk).data, y)
