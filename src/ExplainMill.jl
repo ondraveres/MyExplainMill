@@ -47,15 +47,11 @@ export GnnExplainer, GradExplainer, ConstExplainer, StochasticExplainer
 export stats, heuristic
 
 include("prunemissing.jl")
-include("sigmoid.jl")
 include("predict.jl")
-include("sampler.jl")
 include("stats.jl")
 include("matching.jl")
 include("ensemble.jl")
 include("pruning/pruning.jl")
-include("utils/entropy.jl")
-include("utils/setops.jl")
 include("utils/partialeval.jl")
 include("utils/lensutils.jl")
 include("explain.jl")

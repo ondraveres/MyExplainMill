@@ -24,15 +24,6 @@ function Mill.partialeval(model::BagModel, ds::BagNode, ms::EmptyMask, masks)
 	return(ArrayModel(identity), model(ds), EmptyMask(), false)
 end
 
-# function Mill.partialeval(m::BagModel, ds::WeightedBagNode, skipnode)
-# 	ds === skipnode && return(m, skipnode, true)
-# 	im, ids, keep = Mill.partialeval(m.im, ds.data, skipnode)
-# 	if keep
-# 		return(BagModel(im, m.a,  m.bm), WeightedBagNode(ids, ds.bags, ds.weights, ds.metadata),  true)
-# 	end
-# 	return(ArrayModel(identity), m.bm(m.a(ids, ds.bags, ds.weights)), false)
-# end
-
 function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, ms::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
 	ks = keys(model.ms)
 	mods = map(ks) do k

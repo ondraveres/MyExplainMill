@@ -4,7 +4,6 @@ using ExplainMill: prune, Mask, invalidate!, foreach_mask, participate, mask, pr
 using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
 using ExplainMill: NGramMatrixMask, EmptyMask
 using ExplainMill: FlatView, identifycolumns
-using ExplainMill: sigmoid, scale201, fuseaffine!, minimax, rescale
 using Random, StatsBase
 using Test
 using Mill
@@ -23,5 +22,4 @@ using HierarchicalUtils
     include("structuralmasks.jl")
     include("flatmasks.jl")
     include("explain.jl")
-    include("sigmoid.jl")
 end

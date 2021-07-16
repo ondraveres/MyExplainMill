@@ -147,11 +147,17 @@ include("specimen.jl")
 			fill!(fv, true)
 			@test all(fv[i] == true for i in 1:length(fv))
 		end
-	
-		@testset "Parental structure" begin
-			ds = specimen_sample()
-			
-		end
+
 	end	
 end
 
+@testset "Parental structure" begin
+	ds = specimen_sample()
+	mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+	all_mk = IdDict(ExplainMill.collect_masks_with_levels(mk))
+	@test all_mk[mk.mask] == 1
+	@test all_mk[mk.child.mask] == 2
+	for s in keys(mk.child.child)
+		@test all_mk[mk.child.child[s].mask] == 3
+	end
+end
