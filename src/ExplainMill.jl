@@ -35,7 +35,7 @@ end
 Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
 include("masks/masks.jl")
-export prunemask, diffmask
+export prunemask, diffmask, HeuristicMask, SimpleMask
 include("output/logic_output.jl")
 
 include("heuristics/const_explainer.jl")

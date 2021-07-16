@@ -13,16 +13,10 @@ function flatsearch!(f, fv::FlatView, significance::Vector{T}; rev::Bool = true,
 	fine_tuning && finetune!(f, fv, max_n)
 end
 
-function flatsearch!(f, ms::AbstractStructureMask, scorefun; rev::Bool = true, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
+function flatsearch!(f, ms::AbstractStructureMask; rev::Bool = true, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
 	fv = FlatView(ms)
-	significance = map(scorefun, fv)
+	significance = map(heuristic, fv)
 	flatsearch!(f, fv, significance, rev = rev, max_n = max_n, random_removal = random_removal, fine_tuning = fine_tuning)
-end
-
-
-function flatsfs!(f, ms::AbstractStructureMask, scorefun; participateonly::Bool = false, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
-	fv = FlatView(ms)
-	flatsfs!(f, fv, max_n = max_n, random_removal = random_removal, fine_tuning = fine_tuning)
 end
 
 function flatsfs!(f, ms::AbstractStructureMask; participateonly::Bool = false, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)

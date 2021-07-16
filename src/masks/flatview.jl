@@ -43,21 +43,23 @@ end
 
 
 """
-	copyto!(fv::FlatView, bitmask::Vector{Bool})
+	copyto!(fv::FlatView, bc)
 
-	sets masks in `fv` to bitmask ignoring all dependencies
+	sets masks in `fv` to bc ignoring all dependencies
 """
-function Base.copyto!(fv::FlatView, bitmask::Vector{Bool})
-	for i in 1:length(fv.masks)
-		rg = fv.starts[i]+1:fv.starts[i]+length(m)
-		copyto!(fv.masks[i], bitmask[rg])
+function Base.copyto!(fv::FlatView, bc)
+	for (i, m) in enumerate(fv.masks)
+		offset = fv.starts[i]
+		for j in 1:length(m)
+			m[j] = bc[j + offset]
+		end
 	end
 end
 
-# this is a syntactic sugar such that I can write fv .= x
-function Base.materialize!(fv::FlatView, a::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Nothing,typeof(identity),Tuple{Array{Bool,1}}} )
-	copyto!(fv, a.args[1])
-end
+# # this is a syntactic sugar such that I can write fv .= x
+# function Base.materialize!(fv::FlatView, a::Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Nothing,typeof(identity),Tuple{Array{Bool,1}}} )
+# 	copyto!(fv, a.args[1])
+# end
 
 function Base.getindex(m::FlatView, i::Int) 
 	_, k, l = m.itemmap[i]
@@ -68,14 +70,12 @@ function Base.getindex(m::FlatView, ii::Vector{Int})
 	map(i -> m[i], ii)
 end
 
-Base.length(m::FlatView) = length(m.itemmap)
-
-function Base.map(f, m::FlatView)
-	vcat(map(x -> f(x), m.masks)...)
-end
 
 Base.fill!(fv::FlatView, v) = foreach(i -> fv[i] = v, 1:length(fv))
+Base.ndims(::Type{<:FlatView}) = 1
+Base.length(m::FlatView) = length(m.itemmap)
+Base.size(fv::FlatView) = (length(fv),)
 
 useditems(m::FlatView) = findall(usedmask(m))
 usedmask(m::FlatView) = map(i -> m[i], 1:length(m)) #this is really ineffective but that is life
-participate(m::FlatView) = reduce(vcat, map(i -> participate_item(i.mask), m.masks))
+participate(m::FlatView) = reduce(vcat, map(participate, m.masks))

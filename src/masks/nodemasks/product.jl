@@ -6,6 +6,7 @@ Flux.@functor(ProductMask)
 
 Base.getindex(m::ProductMask, i::Symbol) = m.childs[i]
 Base.getindex(m::ProductMask, i::Int) = m.childs[i]
+Base.keys(m::ProductMask) = keys(m.childs)
 
 mask(::ProductMask) = nothing
 participate(::ProductMask) = nothing
