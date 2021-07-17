@@ -1,39 +1,36 @@
-function prepare_level!(m, ms, parents, scorefun)
-	fv = FlatView(m)
-	updateparticipation!(ms)
-	significance = map(scorefun, fv)
-	fv, significance
+function add_participation(mk)
+	mapmask(mk) do m, _ 
+		(m isa AbstractNoMask) && return(m)
+		(m isa ParticipationTracker) ? m : ParticipationTracker(m)
+	end
 end
 
-function levelbylevelsearch!(f, ms::AbstractStructureMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = true)
-	# sort all explainable masks by depth and types
-	parents = parent_structure(ms)
-	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
-	masks = map(x -> x.first, parents)
-
-	#get rid of masks, which does not have any explainable item
-
-	if isempty(masks) 
+function levelbylevelsearch!(f, mk::AbstractStructureMask, levelsearch! = flatsearch!; fine_tuning::Bool = false, random_removal::Bool = true)
+	mk = add_participation(mk)
+	all_masks = collect_masks_with_levels(mk)
+	if isempty(all_masks) 
 		@warn "Cannot explain empty samples"
 		return()
 	end
 
-	dp = map(x -> x.second, parents)
-	max_depth = maximum(dp)
-	fullmask = FlatView(masks)
-	fill!(fullmask, true)
-	for j in 1:max_depth
-		m = masks[dp .== j]
-		isempty(m) && continue
-		fv, significance = prepare_level!(m, ms, parents, scorefun)
+	full_flat = FlatView(map(first, all_masks))
+	full_flat .= true
+	for level in 1:maximum(map(x -> x.second, all_masks))
+		level_masks = filter(m -> m.second == level, all_masks)
+		isempty(level_masks) && continue
+		level_flat = FlatView(map(first, level_masks))
+		updateparticipation!(mk)
 		@debug "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
-		flatsearch!(f, fv, significance; participateonly = true, random_removal = random_removal, fine_tuning = fine_tuning)
+		levelsearch!(f, level_flat; participateonly = true, random_removal = random_removal, fine_tuning = fine_tuning)
 	end
 
-	random_removal && randomremoval!(f, fullmask)
-	# fine_tuning && finetune!(f, fullmask, 5)
-	used = useditems(fullmask)
-	@debug "Explanation uses $(length(used)) features out of $(length(fullmask))"
+	random_removal && randomremoval!(f, full_flat)
+	fine_tuning && finetune!(f, full_flat, 5)
+	used = useditems(full_flat)
+
+	# ensure that non-participating are set to false
+
+	@debug "Explanation uses $(length(used)) features out of $(length(full_flat))"
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
@@ -71,31 +68,8 @@ function levelbylevelsearch!(ms::AbstractStructureMask, model::AbstractMillModel
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function levelbylevelsfs!(f, ms::AbstractStructureMask, scorefun; fine_tuning::Bool = false, random_removal::Bool = false)
-	# sort all explainable masks by depth and types
-	parents = parent_structure(ms)
-	parents = filter(x -> !isa(x.first, AbstractNoMask), parents)
-	masks = map(x -> x.first, parents)
-
-	#get rid of masks, which does not have any explainable item
-	masks = filter(x -> !isa(x, AbstractNoMask), masks)
-	dp = map(x -> x.second, parents)
-
-	max_depth = maximum(dp)
-	fullmask = FlatView(masks)
-	fill!(fullmask, true)
-	for j in 1:max_depth
-		m = masks[dp .== j]
-		isempty(m) && continue
-		fv, significance = prepare_level!(m, ms, parents, scorefun)
-		@debug "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
-		flatsfs!(f, fv, random_removal = random_removal, fine_tuning = fine_tuning)
-		@debug "$(f()) uses $(length(useditems(fv))) with output $(f())"
-	end
-
-	used = useditems(fullmask)
-	@debug "Explanation uses $(length(used)) features out of $(length(fullmask))"
-	f() < 0 && @error "output of explaination is $(f()) and should be zero"
+function levelbylevelsfs!(f, ms::AbstractStructureMask; fine_tuning::Bool = false, random_removal::Bool = false)
+	levelbylevelsearch!(f, fv, flatsfs!; random_removal, fine_tuning)
 end
 
 
