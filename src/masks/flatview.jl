@@ -79,4 +79,5 @@ Base.size(fv::FlatView) = (length(fv),)
 useditems(m::FlatView) = findall(usedmask(m))
 usedmask(m::FlatView) = map(i -> m[i], 1:length(m)) #this is really ineffective but that is life
 participate(m::FlatView) = reduce(vcat, map(participate, m.masks))
+support_participation(m::FlatView) = all(support_participation(i) for i in m.masks)
 heuristic(m::FlatView) = reduce(vcat, map(heuristic, m.masks))

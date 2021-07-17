@@ -28,10 +28,14 @@ GnnMask(d::Int) = GnnMask(ones(Float32, d))
 diffmask(m::GnnMask) = σ.(m.x)
 simplemask(m::GnnMask) = m
 
-# function stats(e::GnnExplainer, ds, model, i, clustering = ExplainMill._nocluster)
 function stats(e::GnnExplainer, ds, model)
+	classes = Flux.onecold(softmax(model(ds).data))
+	stats(e, ds, model, classes, _nocluster)
+end
+
+function stats(e::GnnExplainer, ds, model, classes, clustering::typeof(_nocluster))
 	mk = create_mask_structure(ds, GnnMask)
-	y = gnntarget(model, ds)
+	y = gnntarget(model, ds, classes)
 	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
 	reinit!(ps)
 	opt = ADAM(0.01, (0.5, 0.999))
@@ -60,9 +64,9 @@ function regularization(p::AbstractArray{T}, α, β) where {T<:Real}
 	α * entropy(x) + β * sum(x)
 end
 
-function gnntarget(model, ds, i)
-	d, l = size(model(ds).data)
-	y = Flux.onehotbatch(fill(i, l), 1:d)
+function gnntarget(model, ds, classes::Vector{Int})
+	d = size(model(ds).data, 1)
+	y = Flux.onehotbatch(classes, 1:d)
 end
 
 function gnntarget(model, ds)

@@ -19,10 +19,10 @@ end
 function stats(e::GradExplainer, ds, model)
 	o = softmax(model(ds).data)
 	classes = Flux.onecold(o)
-	stats(e, ds, model, classes, ExplainMill._nocluster)
+	stats(e, ds, model, classes, _nocluster)
 end
 
-function stats(e::GradExplainer, ds, model, classes, ::typeof(ExplainMill._nocluster))
+function stats(e::GradExplainer, ds, model, classes, ::typeof(_nocluster))
 	o = softmax(model(ds).data)
 	y = Flux.onehotbatch(classes, 1:size(o,1))
 

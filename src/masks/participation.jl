@@ -43,5 +43,6 @@ Base.setindex!(m::ParticipationTracker, args...) = setindex!(m.m, args...)
 Base.materialize!(m::ParticipationTracker, b::Base.Broadcast.Broadcasted) = Base.materialize!(m.m, b)
 
 participate(m::ParticipationTracker) = m.p
+support_participation(m::ParticipationTracker) = true
 invalidate!(m::ParticipationTracker, i::Int) = m.p[i] = false
 invalidate!(m::ParticipationTracker, i) = m.p[i] .= false

@@ -1,11 +1,28 @@
+"""
+	add_participation(mk::AbstractStructureMask)
+
+	decorate masks with `ParticipationTracker` if they do not 
+	support participation off the shelf. If they do, do nothing.
+"""
 function add_participation(mk)
+	s = true 
+	foreach_mask(mk) do m, _
+		s = s & support_participation(m)
+	end
+	s && return(mk)
+
 	mapmask(mk) do m, _ 
 		(m isa AbstractNoMask) && return(m)
-		(m isa ParticipationTracker) ? m : ParticipationTracker(m)
+		support_participation(m) ? m : ParticipationTracker(m)
 	end
 end
 
-function levelbylevelsearch!(f, mk::AbstractStructureMask, levelsearch! = flatsearch!; fine_tuning::Bool = false, random_removal::Bool = true)
+
+function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+	_levelbylevelsearch!(f, add_participation(mk), levelsearch!, fine_tuning, random_removal)
+end
+
+function _levelbylevelsearch!(f, mk::AbstractStructureMask, levelsearch!, fine_tuning, random_removal)
 	mk = add_participation(mk)
 	all_masks = collect_masks_with_levels(mk)
 	if isempty(all_masks) 
@@ -69,7 +86,7 @@ function levelbylevelsearch!(ms::AbstractStructureMask, model::AbstractMillModel
 end
 
 function levelbylevelsfs!(f, mk::AbstractStructureMask; kwargs...)
-	levelbylevelsearch!(f, mk, flatsfs!; kwargs...)
+	levelbylevelsearch!(f, mk; levelsearch! = flatsfs!, kwargs...)
 end
 
 

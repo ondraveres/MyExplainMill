@@ -1,8 +1,8 @@
 struct StochasticExplainer
 end
 
-function stats(e::StochasticExplainer, ds, model, i, n, clustering = ExplainMill._nocluster)
-	create_mask_structure(ds, d -> HeuristicMask(rand(Float32, d)))
+function stats(e::StochasticExplainer, ds, model, classes, clustering::typeof(_nocluster))
+	stats(e, ds, model)
 end
 
 function stats(e::StochasticExplainer, ds, model)
