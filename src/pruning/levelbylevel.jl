@@ -23,9 +23,21 @@ end
 
 """
 	levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+	levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 
 	removes excess of items from `mk` such that `f` is above zero. 
-	`f` is a function without parameters closing over `model`, `sample`, and `mask`. 
+	`f` is a function without parameters closing over `model`, `sample`, 
+	and `mask`. 
+
+	The second version is a more optimal, as it partially evaluates samples. 
+	For example if we are explaining `BagNode`, we do not need to constantly 
+	reevaluate its childs, as they are not influenced by the `BagMask` 
+	corresponding to the `BagNode` in question. I expect this to speed up 
+	the pruning of large samples, but it is a bit fragile. In this case,
+	function `f` has to accept `f(model, sample, mask)`, since all three 
+	are instantiated per level.
+
+
 
 Example:
 ```julia
@@ -35,6 +47,12 @@ o = softmax(model(ds).data)[:]
 class = argmax(softmax(model(ds).data)[:])
 f = () -> softmax(model(ds[mk]).data)[class] - τ
 ExplainMill.levelbylevelsearch!(f, mk)
+```
+
+Alternatively for the partial evaluation
+```
+f = (model, ds, mk) -> softmax(model(ds[mk]).data)[class] - τ
+ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true)
 ```
 """	
 function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
@@ -69,7 +87,7 @@ function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatse
 end
 
 
-function levelbylevelsearch!(f, mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode; fine_tuning::Bool = false, random_removal::Bool = true)
+function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 	all_masks = collect_masks_with_levels(mk)
 	if isempty(all_masks) 
 		@warn "Cannot explain empty samples"
@@ -78,24 +96,26 @@ function levelbylevelsearch!(f, mk::AbstractStructureMask, model::AbstractMillMo
 
 	full_flat = FlatView(map(first, all_masks))
 	full_flat .= true
+	_f = () -> f(model, ds, mk)
 	for level in 1:maximum(map(x -> x.second, all_masks))
 		updateparticipation!(mk)
-		full_flat .= vec(full_flat) .& participate(full_flat)
-		level_masks = filter(m -> m.second == level, all_masks)
+		full_flat .= copy2vec(full_flat) .& participate(full_flat)
+		level_masks = map(first, filter(m -> m.second == level, all_masks))
 		isempty(level_masks) && continue
 
 		modelₗ, dsₗ, mkₗ = partialeval(model, ds, mk, level_masks)
 		@debug "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
-		levelsearch!(() -> f(modelₗ, dsₗ, mkₗ), level_flat; participateonly = true, random_removal , fine_tuning )
+		levelsearch!(() -> f(modelₗ, dsₗ, mkₗ), FlatView(level_masks); participateonly = true, random_removal, fine_tuning)
+		@assert f(modelₗ, dsₗ, mkₗ) ≈ _f()
 	end
 
-	random_removal && randomremoval!(f, full_flat)
-	fine_tuning && finetune!(f, full_flat, 5)
+	random_removal && randomremoval!(_f, full_flat)
+	fine_tuning && finetune!(_f, full_flat, 5)
 	used = useditems(full_flat)
 	# ensure that non-participating are set to false
-	full_flat .= vec(full_flat) .& participate(full_flat)
+	full_flat .= copy2vec(full_flat) .& participate(full_flat)
 	@debug "Explanation uses $(length(used)) features out of $(length(full_flat))"
-	f() < 0 && @error "output of explaination is $(f()) and should be zero"
+	_f() < 0 && @error "output of explaination is $(_f()) and should be zero"
 end
 
 function levelbylevelsfs!(f, mk::AbstractStructureMask; kwargs...)

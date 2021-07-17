@@ -52,4 +52,17 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
             end
         end
     end
+
+    @testset "level-by-level seearch with partial evaluation" begin
+        for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
+            mk = ExplainMill.add_participation(stats(e, ds, model))
+
+            o = softmax(model(ds).data)[:]
+            τ = 0.9 * maximum(o) 
+            class = argmax(softmax(model(ds).data)[:])
+            f = (model, ds, mk) -> softmax(model(ds[mk]).data)[class] - τ
+
+            @test !ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true)
+        end
+    end
 end
