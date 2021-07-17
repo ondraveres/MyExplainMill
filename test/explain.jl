@@ -6,6 +6,7 @@ using SparseArrays
 using StatsBase: nobs
 using ExplainMill: collectmasks
 
+all_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Flat_Garr, :Flat_Garrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
 @testset "Checking integration with pruner" begin
     ds = specimen_sample()
     model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
@@ -22,5 +23,10 @@ using ExplainMill: collectmasks
 
         @test !ExplainMill.flatsearch!(f, mk, random_removal = true)
         @test !ExplainMill.levelbylevelsearch!(f, mkrandom_removal = true)
+
+        # this test is more like a test that it passes
+        for pruning_method in all_pruning_methods
+            @test explain(e, ds, model, rel_tol=0.9, pruning_method) isa ExplainMill.AbstractStructureMask
+        end
     end
 end

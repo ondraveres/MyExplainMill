@@ -12,9 +12,9 @@ function flatsearch!(f, fv::FlatView; rev::Bool = true, participateonly::Bool = 
 	@debug "flatsearch: output = $(f()) keeping $(length(used)) features"
 	fine_tuning && finetune!(f, fv, max_n)
 end
-flatsearch!(f, mk::AbstractStructureMask; kwargs...) = flatsearch!(f, FlatView(mk);kwargs...)
+flatsearch!(f, mk::AbstractStructureMask; kwargs...) = flatsearch!(f, FlatView(mk); participateonly = false, kwargs...)
 
-function flatsfs!(f, fv::FlatView; fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
+function flatsfs!(f, fv::FlatView; fine_tuning::Bool = false, participateonly::Bool = false, max_n = 5, random_removal::Bool = true)
 	@debug "sfs: length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
 	sfs!(f, fv)
 	used = useditems(fv)

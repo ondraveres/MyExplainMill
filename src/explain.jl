@@ -20,15 +20,15 @@ end
 	i is the index of the class which we are explaining and `n` is the number of repetitions / gradient
 	iterations in the calculation of stats.
 """
-function explain(e, ds::AbstractNode, model::AbstractMillModel, class;clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+function explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
-    cg = ExplainMill.confidencegap(x -> softmax(model(x)), ds, i)
+    cg = confidencegap(x -> softmax(model(x)), ds, class)
     @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
-    ms = ExplainMill.stats(e, ds, model, i, clustering)
-    ms = adjust_mask(ms)
+    mk = stats(e, ds, model, class, clustering)
+    mk = adjust_mask(mk)
     thresholds = get_thresholds(cg, abs_tol, rel_tol)
-    ExplainMill.prune!(ms, model, ds, i, x -> ExplainMill.scorefun(e, x), thresholds, pruning_method)
-    ms
+    prune!(mk, model, ds, class, thresholds, pruning_method)
+    mk
 end
 
 function explain(e, ds::AbstractNode, model::AbstractMillModel; kwargs...)

@@ -16,11 +16,15 @@ struct GradExplainer
 
 end
 
-# function stats(e::GradExplainer, ds, model, i, clustering = ExplainMill._nocluster)
-
 function stats(e::GradExplainer, ds, model)
 	o = softmax(model(ds).data)
-	y = Flux.onehotbatch(Flux.onecold(o), 1:size(o,1))
+	classes = Flux.onecold(o)
+	stats(e, ds, model, classes, ExplainMill._nocluster)
+end
+
+function stats(e::GradExplainer, ds, model, classes, ::typeof(ExplainMill._nocluster))
+	o = softmax(model(ds).data)
+	y = Flux.onehotbatch(classes, 1:size(o,1))
 
 	mk = create_mask_structure(ds, d -> SimpleMask(ones(eltype(o), d)))
 	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))

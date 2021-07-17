@@ -20,4 +20,15 @@ function confidencegap(o, i::Int)
     end
     o[i:i,:] .- mx
 end
-confidencegap(model, ds, i::Int) = confidencegap(model(ds).data, i)
+
+function confidencegap(o, classes::Vector{Int})
+    @assert size(o, 2) == length(classes)
+    map(1:length(classes)) do i
+        x = @view o[:,i]
+        ii = sortperm(x, rev = true)
+        j = (ii[1] == classes[i]) ? ii[2] : ii[1]
+        x[classes[i]] - x[j]
+    end
+end
+
+confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)

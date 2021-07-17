@@ -68,8 +68,8 @@ function levelbylevelsearch!(ms::AbstractStructureMask, model::AbstractMillModel
 	f() < 0 && @error "output of explaination is $(f()) and should be zero"
 end
 
-function levelbylevelsfs!(f, ms::AbstractStructureMask; fine_tuning::Bool = false, random_removal::Bool = false)
-	levelbylevelsearch!(f, fv, flatsfs!; random_removal, fine_tuning)
+function levelbylevelsfs!(f, mk::AbstractStructureMask; kwargs...)
+	levelbylevelsearch!(f, mk, flatsfs!; kwargs...)
 end
 
 

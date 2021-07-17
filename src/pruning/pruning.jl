@@ -15,7 +15,7 @@ include("gradient_submodular.jl")
 # :breadthfirst2 => "LbyL-HArr",
 # :greedybreadthfirst => "LbyL-HAdd",
 # :oscilatingbreadthfirst => "LbyL_HAos",
-function prune!(f, mk, method)
+function prune!(f, mk::AbstractStructureMask, method::Symbol)
 	if method == :Flat_HAdd
 		ExplainMill.flatsearch!(f, mk, random_removal = false, fine_tuning = false)
 	elseif method == :Flat_HArr
@@ -45,16 +45,18 @@ function prune!(f, mk, method)
 	end
 end
 
-function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, i, thresholds, method)
+function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, class, thresholds, method)
     soft_model(x) = softmax(model(x))
+    mkp = add_participation(mk)
 
     if nobs(ds) == 1 ||
         method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
-        f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[mk], i) .- thresholds, 0))
-        return prune!(f, mk, method)
+        f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[mkp], class) .- thresholds, 0))
+        return prune!(f, mkp, method)
     end
 
     fine_tuning = method == :LbyL_HArrft
     random_removal = method ∈ [:LbyL_HArr, :LbyL_HArrft]
-    levelbylevelsearch!(mk, model, ds, thresholds, i; fine_tuning = fine_tuning, random_removal = random_removal)
+    levelbylevelsearch!(mkp, model, ds, thresholds, class; fine_tuning = fine_tuning, random_removal = random_removal)
+    mk
 end
