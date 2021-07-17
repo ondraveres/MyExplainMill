@@ -8,14 +8,14 @@ using ExplainMill: collectmasks
 
 # heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft]
 heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :LbyL_HAdd, :LbyL_HArr]
-greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :Flat_Garrft, :LbyL_Gadd, :LbyL_Garr]
+greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
 @testset "Checking integration with pruner" begin
     ds = specimen_sample()
     model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
 
     @testset "heuristic methods" begin
         for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
-            mk = stats(e, ds, model)
+            mk = ExplainMill.add_participation(stats(e, ds, model))
 
             o = softmax(model(ds).data)[:]
             τ = 0.9 * maximum(o) 
@@ -36,7 +36,7 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :Flat_Garrft, :LbyL_Gadd, :Lby
 
     @testset "non-heuristic methods" begin
         for e in [ConstExplainer()]
-            mk = stats(e, ds, model)
+            mk = ExplainMill.add_participation(stats(e, ds, model))
 
             o = softmax(model(ds).data)[:]
             τ = 0.9 * maximum(o) 

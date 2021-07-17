@@ -81,3 +81,4 @@ usedmask(m::FlatView) = map(i -> m[i], 1:length(m)) #this is really ineffective 
 participate(m::FlatView) = reduce(vcat, map(participate, m.masks))
 support_participation(m::FlatView) = all(support_participation(i) for i in m.masks)
 heuristic(m::FlatView) = reduce(vcat, map(heuristic, m.masks))
+copy2vec(m::FlatView) = reduce(vcat, map(prunemask, m.masks))

@@ -1,6 +1,4 @@
-####
-#	We really need partial evaluation !!!
-####
+import Mill: partialeval
 
 function Mill.partialeval(model::M, ds::ArrayNode, ms, masks) where {M<:Union{IdentityModel, ArrayModel}}
 	ms ∈ masks && return(model, ds, ms, true)
