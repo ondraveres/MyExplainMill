@@ -8,7 +8,7 @@ using ExplainMill: collectmasks
 
 # heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft]
 heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :LbyL_HAdd, :LbyL_HArr]
-greedy_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Flat_Garr, :Flat_Garrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
+greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :Flat_Garrft, :LbyL_Gadd, :LbyL_Garr]
 @testset "Checking integration with pruner" begin
     ds = specimen_sample()
     model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
@@ -34,7 +34,7 @@ greedy_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Fla
         end
     end
 
-    @testset "greedy methods" begin
+    @testset "non-heuristic methods" begin
         for e in [ConstExplainer()]
             mk = stats(e, ds, model)
 
@@ -42,11 +42,9 @@ greedy_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Fla
             τ = 0.9 * maximum(o) 
             class = argmax(softmax(model(ds).data)[:])
             f = () -> softmax(model(ds[mk]).data)[class] - τ
-            @test !ExplainMill.flatsearch!(f, mk)
-            @test !ExplainMill.levelbylevelsearch!(f, mk)
 
-            @test !ExplainMill.flatsearch!(f, mk, random_removal = true)
-            @test !ExplainMill.levelbylevelsearch!(f, mk, random_removal = true)
+            @test !ExplainMill.flatsfs!(f, mk, random_removal = true)
+            @test !ExplainMill.levelbylevelsfs!(f, mk, random_removal = true)
 
             # this test is more like a test that it passes
             for pruning_method in greedy_pruning_methods

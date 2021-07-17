@@ -18,6 +18,12 @@ function add_participation(mk)
 end
 
 
+"""
+	levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+
+	removes excess of items from `mk` such that `f` is above zero. 
+	`f` is a function without parameters closing over 
+"""	
 function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 	_levelbylevelsearch!(f, add_participation(mk), levelsearch!, fine_tuning, random_removal)
 end

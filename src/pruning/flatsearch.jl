@@ -24,7 +24,11 @@ function flatsfs!(f, fv::FlatView; fine_tuning::Bool = false, participateonly::B
 	@debug "flatsearch: output = $(f()) keeping $(length(used)) features"
 	fine_tuning && finetune!(f, fv, max_n)
 end
-flatsfs!(f, mk::AbstractStructureMask; kwargs...) = flatsfs!(f, FlatView(mk);kwargs...)
+
+
+function flatsfs!(f, mk::AbstractStructureMask; kwargs...) 
+	flatsfs!(f, FlatView(add_participation(mk));kwargs...)
+end
 
 function sortindices(ii::Vector{Int}, significance::Vector{T}; rev = true) where {T<:Number}
 	is = sort(ii, rev = rev, lt = (i,j) -> significance[i] < significance[j]);
