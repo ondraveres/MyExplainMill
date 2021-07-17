@@ -266,7 +266,7 @@ end
 		for model in [model₁, model₂, model₃]
 			# multiplication is equivalent to subsetting
 			mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
-			prunemask(mk.mask)[[1,3]] .= false
+			mk.mask.x[[1,3]] .= false
 			@test model(ds[mk]).data ≈ model(ds, mk).data
 
 			# Verify that calculation of the gradient for real mask is correct 

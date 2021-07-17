@@ -1,67 +1,36 @@
-@testset "test that sampling with clusters as expected" begin
-    m = Mask(fill(true, 4), fill(true, 4), fill(1, 4), Daf(2), [1,2,1,2])
-    for i in 1:10
-        sample!(m)
-        @test mask(m)[1] == mask(m)[3] && mask(m)[2] == mask(m)[4]
+using ExplainMill
+using Mill
+using Test
+using Flux
+using SparseArrays
+using StatsBase: nobs
+using ExplainMill: collectmasks
+
+using ExplainMill: DafMask, create_mask_structure, ParticipationTracker, updateparticipation!
+
+@testset "Check that heuristic values are non-zeros" begin
+    ds = specimen_sample()
+    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
+
+    for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
+        t = @elapsed mk = stats(e, ds, model)
+        # println(typeof(e), " ", t)    # this is for debugging purposes
+        @test all(sum(abs.(heuristic(m))) > 0 for m in collectmasks(mk))
     end
 end
 
-@testset "workflow --- independent instances" begin
-    an = ArrayNode(reshape(collect(1:10), 2, 5))
-    cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-    ds = BagNode(BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+@testset "Checking integration with pruner" begin
+    ds = specimen_sample()
+    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
 
-    model = reflectinmodel(ds, d -> Dense(d, 1))
+    for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
+        mk = stats(e, ds, model)
 
-    # DafStats is not existing now, not sure how to replace it
-    #pruning_mask = Mask(ds, d -> DafStats(d))
-    #dafs = []
-    #foreach_mask(pruning_mask) do m
-    #    m != nothing && push!(dafs, m)
-    #end
-    #
-    #sample!(pruning_mask)
-    #pruned_ds = ds[pruning_mask]
-    #o = model(pruned_ds)
-    #Duff.update!(dafs, o, pruning_mask)
-    #@test true
-end
-
-@testset "workflow --- clustered instances" begin
-    an = ArrayNode(reshape(collect(1:10), 2, 5))
-    cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
-    ds = BagNode(BagNode(ProductNode((a = an, c = cn)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
-
-    model = reflectinmodel(ds, d -> Dense(d, 1))
-
-    # pruning does not work for some reason
-    #pruning_mask = Mask(ds, model)
-    #dafs = []
-    #foreach_mask(pruning_mask) do m
-    #    m != nothing && push!(dafs, m)
-    #end
-    #
-    #sample!(pruning_mask)
-    #pruned_ds = ds[pruning_mask]
-    #o = model(pruned_ds).data
-    #Duff.update!(dafs, o, pruning_mask)
-    @test true
-end
-
-@testset "getindex / setindex for Mask" begin
-    m = Mask(fill(true, 4), fill(true, 4), fill(1, 4), Daf(2), [1,2,1,2])
-    m[2] = false
-    @test_broken m.mask ≈ [true, false, true, false]
-    @test all(m[1] .== true)
-    @test all(m[2] .== false)
-    m[1] = false
-    @test_broken m.mask ≈ [false, false, false, false]
-
-    m = Mask(fill(true, 4), fill(true, 4), fill(1, 4), Daf(2), nothing)
-    m[2] = false
-    @test m.mask ≈ [true, false, true, true]
-    @test m[1] == true
-    @test m[2] == false
-    m[4] = false
-    @test m.mask ≈ [true, false, true, false]
+        o = softmax(model(ds).data)[:]
+        τ = 0.9 * maximum(o) 
+        class = argmax(softmax(model(ds).data)[:])
+        f = () -> softmax(model(ds[mk]).data)[class] - τ
+        ExplainMill.flatsearch!(f, mk, random_removal = false, fine_tuning = false)
+        ExplainMill.levelbylevelsearch!(mk, model, ds, τ, class)
+    end
 end

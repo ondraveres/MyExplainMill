@@ -15,7 +15,7 @@ end
 
 function flatsearch!(f, ms::AbstractStructureMask; rev::Bool = true, fine_tuning::Bool = false, max_n = 5, random_removal::Bool = true)
 	fv = FlatView(ms)
-	significance = map(heuristic, fv)
+	significance = heuristic(fv)
 	flatsearch!(f, fv, significance, rev = rev, max_n = max_n, random_removal = random_removal, fine_tuning = fine_tuning)
 end
 

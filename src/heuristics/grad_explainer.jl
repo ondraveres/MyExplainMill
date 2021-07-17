@@ -19,16 +19,18 @@ end
 # function stats(e::GradExplainer, ds, model, i, clustering = ExplainMill._nocluster)
 
 function stats(e::GradExplainer, ds, model)
-	mk = create_mask_structure(ds, SimpleMask)
-	y = gnntarget(model, ds)
+	o = softmax(model(ds).data)
+	y = Flux.onehotbatch(Flux.onecold(o), 1:size(o,1))
+
+	mk = create_mask_structure(ds, d -> SimpleMask(ones(eltype(o), d)))
 	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
-	gs = gradient(() -> Flux.logitcrossentropy(model(ds, mk).data, y), ps)
+	gs = gradient(() -> sum(softmax(model(ds, mk).data) .* y), ps)
 	mkₕ = mapmask(mk) do m, l
 		d = length(m)
 		if haskey(gs, m.x)
 			HeuristicMask(abs.(gs[m.x])[:])
 		else
-			HeuristicMask(zeros(Float32, d))
+			HeuristicMask(zeros(eltype(m.x), d))
 		end
 	end
 	mkₕ

@@ -76,11 +76,11 @@ function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::Abstract
 end	
 
 # TODO: This might be done better
-function (a::Mill.SegmentedMean)(x::Matrix, bags::Mill.AbstractBags, mk::AbstractVectorMask)
-	m = transpose(diffmask(mk))
+function (a::Mill.SegmentedMean)(x::Matrix{T}, bags::Mill.AbstractBags, mk::AbstractVectorMask) where {T}
+	m = T.(transpose(diffmask(mk)))
 	xx = m .* x
 	o = a(xx, bags)
-	n = max.(a(eltype(x).(m), bags), 1f-6)
+	n = max.(a(m, bags), eps(T))
 	o ./ n
 end	
 

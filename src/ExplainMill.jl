@@ -43,21 +43,16 @@ include("heuristics/daf_explainer.jl")
 include("heuristics/gnn_explainer.jl")
 include("heuristics/grad_explainer.jl")
 include("heuristics/stochastic_explainer.jl")
-export GnnExplainer, GradExplainer, ConstExplainer, StochasticExplainer
+export GnnExplainer, GradExplainer, ConstExplainer, StochasticExplainer, DafExplainer
 export stats, heuristic
 
 include("prunemissing.jl")
 include("predict.jl")
-include("stats.jl")
 include("matching.jl")
-include("ensemble.jl")
 include("pruning/pruning.jl")
 include("utils/partialeval.jl")
 include("utils/lensutils.jl")
 include("explain.jl")
-include("distances/fisher.jl")
-include("distances/clusterings.jl")
-include("distances/manual.jl")
 
 include("hierarchical_utils.jl")
 
