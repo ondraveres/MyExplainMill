@@ -7,9 +7,9 @@ using Setfield
 using FiniteDifferences
 using Random
 using Duff
-using ExplainMill: create_mask_structure
+using ExplainMill: create_mask_structure, updateparticipation!
 
-@testset "Implementation correctness of heuristic functions" begin 
+@testset "correctness of heuristic functions" begin 
 	ds = specimen_sample()
 	model = f64(reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean))
 
@@ -22,7 +22,7 @@ using ExplainMill: create_mask_structure
 	@testset "StochasticExplainer" begin
 		mk = stats(StochasticExplainer(), ds, model)
 		h₁ = heuristic(FlatView(mk))
-		@test length(unique(h₁)) == length(h)
+		@test length(unique(h₁)) == length(FlatView(mk))
 
 		mk = stats(StochasticExplainer(), ds, model)
 		h₂ = heuristic(FlatView(mk))

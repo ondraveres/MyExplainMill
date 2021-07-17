@@ -21,5 +21,15 @@ using HierarchicalUtils
 	include("specimen.jl")
     include("structuralmasks.jl")
     include("flatmasks.jl")
+    include("heuristics.jl")
+    include("partialeval.jl")
     include("explain.jl")
+
+    @testset "Logic output" begin 
+    	@test_broken false
+    end
+
+    @testset "search / pruning methods" begin 
+    	@test_broken false
+    end
 end
