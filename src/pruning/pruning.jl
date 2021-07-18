@@ -3,6 +3,13 @@ include("flatsearch.jl")
 include("levelbylevel.jl")
 include("gradient_submodular.jl")
 
+function pruning_methods() 
+	[:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Flat_Garr, 
+	:Flat_Garrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft, :LbyL_Gadd, 
+	:LbyL_Garr, :LbyL_Garrft, :LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, 
+	:LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]
+end
+
 # :sfsrr => "LbyL-GArr",
 # :oscilatingsfs => "LbyL-GAos",
 # :sfs => "LbyL-GAdd",
@@ -65,14 +72,12 @@ end
 function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, class, thresholds, method)
     mkp = add_participation(mk)
 
-    if method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
-        f = () -> sum(min.(logitconfgap(model, ds[mkp], class) .- thresholds, 0))
-        return prune!(f, mkp, method)
-    end
-
     if method ∈ [:LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, :LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]
         f = (model, ds, mk) -> sum(min.(logitconfgap(model, ds[mk], class) .- thresholds, 0))
         return prune!(f, model, ds, mkp, method)
     end
-    mk
+
+    # this is a fallback
+    f = () -> sum(min.(logitconfgap(model, ds[mkp], class) .- thresholds, 0))
+    return prune!(f, mkp, method)
 end

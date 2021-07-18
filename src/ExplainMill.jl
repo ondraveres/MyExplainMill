@@ -37,6 +37,7 @@ include("matching.jl")
 include("pruning/pruning.jl")
 include("utils/lensutils.jl")
 include("explain.jl")
+export pruning_methods
 
 include("hierarchical_utils.jl")
 

@@ -122,5 +122,9 @@ function levelbylevelsfs!(f, mk::AbstractStructureMask; kwargs...)
 	levelbylevelsearch!(f, mk; levelsearch! = flatsfs!, kwargs...)
 end
 
+function levelbylevelsfs!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; kwargs...)
+	levelbylevelsearch!(f, model, ds, mk; levelsearch! = flatsfs!, kwargs...)
+end
+
 
 
