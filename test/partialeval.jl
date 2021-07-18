@@ -7,6 +7,10 @@ using ExplainMill: collectmasks
 using Mill: partialeval
 
 
+# In partial evaluation we test that masks that are not 
+# needed for inspecting changes of a particular mask 
+# are evaluated to `ArrayNode` and that outputs 
+# provides the same outputs
 @testset "Partial Evaluation" begin 
     ds = specimen_sample()
     model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
@@ -24,6 +28,7 @@ using Mill: partialeval
 			    @test mₚ.im.m == identity
 			    @test dsₚ.data isa ArrayNode
 			    @test mkₚ.child isa EmptyMask
+			    @test mkₚ.mask === mk.mask
 			    @test keep
 		    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
 			    for i in 1:length(mkₚ.mask)
@@ -41,6 +46,7 @@ using Mill: partialeval
 			    @test mₚ.im.im.m == identity
 			    @test dsₚ.data.data isa ArrayNode
 			    @test mkₚ.child.child isa EmptyMask
+			    @test mkₚ.child.mask == mk.child.mask
 			    @test keep
 		    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
 		    	fv = FlatView(mkₚ)
@@ -62,6 +68,7 @@ using Mill: partialeval
 					    @test dsₚ.data.data[l] isa ArrayNode
 					    @test mkₚ.child.child[l] isa EmptyMask
 					end
+					@test mk.child.child[k].mask == mkₚ.child.child[k].mask
 				    @test keep
 			    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
 			    	fv = FlatView(mkₚ)
