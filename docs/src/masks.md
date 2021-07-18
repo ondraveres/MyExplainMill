@@ -71,6 +71,8 @@ So the current idea would be to have:
 	end
 	```
 	This function is more of a convenience and nice to have things, as it allows to separate mask used to calculate heuristic values from mask used in the pruning process, where it might be sufficient just to provide heuristic values. If differentiable mask undergoes some complicated transformation, e.g. `σ`, it is not clear, what to use for a heuristic values.
+	- `partialeval` 	identify subset of `model`, sample `ds`, and structural mask `mk` that are sensitive to `masks` and evaluate and replace the rest of the model, sample, and masks by `identity`, `ArrayNode`, and `EmptyMask`. Partial evaluation is useful when we are explaining only subset of full mask (e.g. level-by-level) 
+	explanation.
 
 
 * Each structural mask will contain a `SomeMask<:AbstractVectorMask` which will behave like a vector. It will implement

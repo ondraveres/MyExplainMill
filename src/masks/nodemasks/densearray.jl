@@ -48,6 +48,15 @@ function (m::Mill.ArrayModel)(ds::ArrayNode, mk::MatrixMask)
     ArrayNode(m.m(diffmask(mk.mask) .* ds.data))
 end
 
+"""
+	Mill.partialeval(model::AbstracModel, ds::AbstractNode, mk::StructureMask, masks)
+
+	identify subset of `model`, sample `ds`, and structural mask `mk` that are 
+	sensitive to `masks` and evaluate and replace the rest of the model, sample, 
+	and masks by `identity`, `ArrayNode`, and `EmptyMask`. Partial evaluation 
+	is useful when we are explaining only subset of full mask (e.g. level-by-level) 
+	explanation.
+"""
 function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:Union{IdentityModel, ArrayModel}}
 	mk ∈ masks && return(model, ds, mk, true)
 	mk.mask ∈ masks && return(model, ds, mk, true)
