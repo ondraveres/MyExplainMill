@@ -8,6 +8,7 @@ using ExplainMill: collectmasks
 
 # heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft]
 heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :LbyL_HAdd, :LbyL_HArr]
+partial_pruning_methods = [:LbyLo_HAdd, :LbyLo_HArr]
 greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
 @testset "Checking integration with pruner" begin
     ds = specimen_sample()
@@ -29,6 +30,10 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
 
             # this test is more like a test that it passes
             for pruning_method in heuristic_pruning_methods
+                @test explain(e, ds, model; rel_tol=0.9, pruning_method) isa ExplainMill.AbstractStructureMask
+            end
+
+            for pruning_method in partial_pruning_methods
                 @test explain(e, ds, model; rel_tol=0.9, pruning_method) isa ExplainMill.AbstractStructureMask
             end
         end
@@ -63,6 +68,8 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
             f = (model, ds, mk) -> softmax(model(ds[mk]).data)[class] - τ
 
             @test !ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true)
+            @test !ExplainMill.prune!(mk, model, ds, class, 0.9 * ExplainMill.logitconfgap(model, ds, class), :LbyLo_HAdd)
+            @test !ExplainMill.prune!(mk, model, ds, class, 0.9 * ExplainMill.logitconfgap(model, ds, class), :LbyLo_HArr)
         end
     end
 end

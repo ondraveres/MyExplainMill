@@ -44,6 +44,6 @@ Base.show(io::IO, ::T) where T <: AbstractStructureMask = print(io, Base.nameof(
 Base.show(io::IO, ::MIME"text/plain", n::AbstractStructureMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractStructureMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
-export explain, e2boolean, predict, confidence, prunemissing, prune, e2boolean
+export explain, e2boolean, confidence, prunemissing, prune, e2boolean
 export removeabsent, removemissing
 end # module

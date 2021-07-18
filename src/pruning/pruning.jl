@@ -44,19 +44,35 @@ function prune!(f, mk::AbstractStructureMask, method::Symbol)
 		error("Uknown pruning method $(method). Possible values (Flat_HArr, Flat_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft, LbyL_HAdd, LbyL_HArr, LbyL_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft)")
 	end
 end
+function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::AbstractStructureMask, method::Symbol)
+	if method == :LbyLo_HAdd
+		ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = false, fine_tuning = false)
+	elseif method == :LbyLo_HArr
+		ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true, fine_tuning = false)
+	elseif method == :LbyLo_HArrft
+		ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true, fine_tuning = true)
+	elseif method == :LbyLo_Gadd
+		ExplainMill.levelbylevelsfs!(f, model, ds, mk)
+	elseif method == :LbyLo_Garr
+		ExplainMill.levelbylevelsfs!(f, model, ds, mk, random_removal = true)
+	elseif method == :LbyLo_Garrft
+		ExplainMill.levelbylevelsfs!(f, model, ds, mk, random_removal = true, fine_tuning = true)
+	else
+		error("Uknown pruning method $(method). Possible values (Flat_HArr, Flat_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft, LbyL_HAdd, LbyL_HArr, LbyL_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft)")
+	end
+end
 
 function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, class, thresholds, method)
-    soft_model(x) = softmax(model(x))
     mkp = add_participation(mk)
 
-    if nobs(ds) == 1 ||
-        method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
-        f = () -> sum(min.(ExplainMill.confidencegap(soft_model, ds[mkp], class) .- thresholds, 0))
+    if method ∈ [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_GAdd, :Flat_GArr, :Flat_GArrft, :LbyL_Gadd, :LbyL_Garr, :LbyL_Garrft]
+        f = () -> sum(min.(logitconfgap(model, ds[mkp], class) .- thresholds, 0))
         return prune!(f, mkp, method)
     end
 
-    fine_tuning = method == :LbyL_HArrft
-    random_removal = method ∈ [:LbyL_HArr, :LbyL_HArrft]
-    levelbylevelsearch!(mkp, model, ds, thresholds, class; fine_tuning = fine_tuning, random_removal = random_removal)
+    if method ∈ [:LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, :LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]
+        f = (model, ds, mk) -> sum(min.(logitconfgap(model, ds[mk], class) .- thresholds, 0))
+        return prune!(f, model, ds, mkp, method)
+    end
     mk
 end

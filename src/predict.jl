@@ -1,13 +1,3 @@
-function StatsBase.predict(model::Mill.AbstractMillModel, ds::Mill.AbstractNode, ikeyvalmap)
-	o = mapslices(x -> ikeyvalmap[argmax(x)], model(ds).data, dims = 1)
-    nobs(ds) == 1 ? o[1] : o
-end
-
-function StatsBase.predict(model::Mill.AbstractMillModel, ds::Mill.AbstractNode)
-	o = mapslices(x -> argmax(x), model(ds).data, dims = 1)
-    nobs(ds) == 1 ? o[1] : o
-end
-
 function confidence(model, ds)
 	o = mapslices(x -> maximum(x), model(ds).data, dims = 1)
     nobs(ds) == 1 ? o[1] : o
@@ -32,3 +22,11 @@ function confidencegap(o, classes::Vector{Int})
 end
 
 confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)
+
+"""
+    logitconfgap(model, ds, classes)
+
+    confidence gap assuming the output of the model 
+    are log of probabilities (i.e. no softmax)
+"""
+logitconfgap(model, ds, classes) = confidencegap(softmax(model(ds).data), classes)

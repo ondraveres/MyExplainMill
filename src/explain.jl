@@ -22,7 +22,7 @@ end
 """
 function explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
-    cg = confidencegap(x -> softmax(model(x)), ds, class)
+    cg = logitconfgap(model, ds, class)
     @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
     mk = stats(e, ds, model, class, clustering)
     mk = adjust_mask(mk)
