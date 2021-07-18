@@ -6,6 +6,7 @@ end
 
 prunemask(m::GradientMask) = m.x .> 0.5
 diffmask(m::GradientMask) = m.x
+simplemask(m::GradientMask) = m
 Base.length(m::GradientMask) = length(m.x)
 Base.getindex(m::GradientMask, i) = m.x[i] .> 0.5
 Base.setindex!(m::GradientMask, v, i) = m.x[i] = v
@@ -18,26 +19,26 @@ function explain(e::GradGreedyExplainer, ds::AbstractNode, model::AbstractMillMo
 	gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial_evaluation)
 end
 
-function gradient_submodular_flat!(f, level_fv)
-	level_mk = level_fv.masks
-	ps = Flux.Params(map(x -> x.mask.x, level_mk))
+function gradient_submodular_flat!(f, fv)
+	level_mk = fv.masks
+	ps = Flux.Params(map(diffmask ∘ simplemask, level_mk))
 	foreach(p -> fill!(p, 0), ps)
 	f₀ = f()
 	iter = 0
 	while(true)
 		gs = gradient(() -> -f(), ps)
-		scores = reduce(vcat, map(x -> gs[x.mask.x][:], level_mk))
+		scores = reduce(vcat, map(m -> gs[simplemask(m).x][:], level_mk))
 		changed = false
 		for i in sortperm(scores)
-			level_fv[i] == 1 && continue
-			level_fv[i] = 1
+			fv[i] == 1 && continue
+			fv[i] = 1
 			fᵢ = f()
 			if fᵢ > f₀
 				f₀ = fᵢ
 				changed = true
 				break;
 			end
-			level_fv[i] = 0
+			fv[i] = 0
 		end
 		iter += 1
 		f₀ > 0 && break 
@@ -46,30 +47,62 @@ function gradient_submodular_flat!(f, level_fv)
 	f₀
 end
 
+function gradient_submodular_flat(model, ds, class, clustering, rel_tol, partial_evaluation)
+	create_mask = d -> ParticipationTracker(GradientMask(ones(Float32, d)))
+	mk = create_mask_structure(ds, create_mask)
+	full_flat = FlatView(mk)
+	full_flat .= true
+	y = gnntarget(model, ds, class)
+	
+	hard_f = () -> Flux.Losses.logitcrossentropy(model(ds[mk]).data, y)
+	soft_f = () -> Flux.Losses.logitcrossentropy(model(ds, mk).data, y)
+	τ = soft_f() + log(rel_tol)
+	f₀ = exp(hard_f())
+	gradient_submodular_flat!(() -> soft_f() - τ, full_flat)
+
+	fₛ = exp(soft_f())
+	fₕ = exp(hard_f())
+	@info "soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(full_flat))) items"
+
+
+	greedyremoval!(() -> hard_f() - τ, full_flat)
+	fₛ = exp(soft_f())
+	fₕ = exp(hard_f())
+	@info "after rr soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(full_flat))) items"
+
+	used = useditems(full_flat)
+	@info "Explanation uses $(length(used)) items out of $(length(full_flat)) at $(exp(hard_f()))"
+	mk
+end
+
 function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial_evaluation)
-	create_mask = d -> GradientMask(ones(Float32, d))
-	mk = create_mask_structure(ds, model, create_mask, clustering)
-	parents = parent_structure(mk)
-	if isempty(parents) 
+	create_mask = d -> ParticipationTracker(GradientMask(ones(Float32, d)))
+	mk = create_mask_structure(ds, create_mask)
+	all_masks = collect_masks_with_levels(mk)
+	if isempty(all_masks) 
 		@warn "Cannot explain empty samples"
 		return()
 	end
-	max_depth = maximum(x.second for x in parents)
-	fullmask = FlatView(map(first, parents))
-	fill!(fullmask, true)
+	
+	full_flat = FlatView(map(first, all_masks))
+	full_flat .= true
+	y = gnntarget(model, ds, class)
+	
 
-	hard_f = () -> logsoftmax(model(ds[mk]).data)[class]
-	soft_f = () -> logsoftmax(model(ds, mk).data)[class]
+	hard_f = () -> Flux.Losses.logitcrossentropy(model(ds[mk]).data, y)
+	soft_f = () -> Flux.Losses.logitcrossentropy(model(ds, mk).data, y)
 	τ = soft_f() + log(rel_tol)
 	f₀ = exp(hard_f())
-	for j in 1:max_depth
-		level_mk = map(first, filter(i -> i.second == j, parents))
-		isempty(level_mk) && continue
-		level_fv = FlatView(level_mk)
+	for level in 1:maximum(map(x -> x.second, all_masks))
+		updateparticipation!(mk)
+		full_flat .= copy2vec(full_flat) .& participate(full_flat)
+		level_masks = map(first, filter(m -> m.second == level, all_masks))
+		level_fv = FlatView(level_masks)
+		isempty(level_masks) && continue
 
 		if partial_evaluation
-			sub_model, sub_ds, sub_mk, changed = Mill.partialeval(model, ds, mk, level_mk)
-			sub_f = () -> logsoftmax(sub_model(sub_ds, sub_mk).data)[class] - τ
+			modelₗ, dsₗ, mkₗ = partialeval(model, ds, mk, level_masks)
+			sub_f = () -> Flux.Losses.logitcrossentropy(modelₗ(dsₗ, mkₗ).data,  y) - τ
 			gradient_submodular_flat!(sub_f, level_fv)
 		else
 			gradient_submodular_flat!(() -> soft_f() - τ, level_fv)
@@ -77,15 +110,15 @@ function gradient_submodular_lbyl(model, ds, class, clustering, rel_tol, partial
 
 		fₛ = exp(soft_f())
 		fₕ = exp(hard_f())
-		@info "level: $(j)  soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
+		@info "level: $(level)  soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
 
 		greedyremoval!(() -> hard_f() - τ, level_fv)
 		fₛ = exp(soft_f())
 		fₕ = exp(hard_f())
-		@info "level: $(j) after rr soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
+		@info "level: $(level) after rr soft f:  = $(fₛ) hard f: $(fₕ) with $(length(useditems(level_fv))) items"
 	end
 
-	used = useditems(fullmask)
-	@info "Explanation uses $(length(used)) items out of $(length(fullmask)) at $(exp(hard_f()))"
+	used = useditems(full_flat)
+	@info "Explanation uses $(length(used)) items out of $(length(full_flat)) at $(exp(hard_f()))"
 	mk
 end
