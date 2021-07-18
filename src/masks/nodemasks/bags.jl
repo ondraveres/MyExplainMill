@@ -88,4 +88,17 @@ function (m::Mill.BagModel)(x::BagNode, mk::EmptyMask)
 	m(x)
 end
 
+function Mill.partialeval(model::BagModel, ds::BagNode, mk::BagMask, masks)
+	im, ids, childms, keep = Mill.partialeval(model.im, ds.data, mk.child, masks)
+	if (mk ∈ masks) | (mk.mask ∈ masks) | keep
+		return(BagModel(im, model.a,  model.bm), BagNode(ids, ds.bags, ds.metadata), BagMask(childms, mk.bags, mk.mask), true)
+	end
+	return(ArrayModel(identity), model.bm(model.a(ids, ds.bags)), EmptyMask(), false)
+end
+
+function Mill.partialeval(model::BagModel, ds::BagNode, mk::EmptyMask, masks)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
+end
+
+
 _nocluster(m::BagModel, ds::BagNode) = nobs(ds.data)

@@ -48,4 +48,10 @@ function (m::Mill.ArrayModel)(ds::ArrayNode, mk::MatrixMask)
     ArrayNode(m.m(diffmask(mk.mask) .* ds.data))
 end
 
+function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:Union{IdentityModel, ArrayModel}}
+	mk ∈ masks && return(model, ds, mk, true)
+	mk.mask ∈ masks && return(model, ds, mk, true)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
+end
+
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 2)

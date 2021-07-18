@@ -14,25 +14,10 @@ using JSON
 using JsonGrinder
 using Setfield
 using DataStructures
-
+import Mill: partialeval
 
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
-NNlib.softmax(ds::ArrayNode) = ArrayNode(softmax(ds.data))
-
-function idmap(ids::Vector{T}) where{T}
-	d = Dict{T,Vector{Int}}()
-	for (i,v) in enumerate(ids)
-		if haskey(d, v)
-			d[v] = vcat(d[v], [i])
-		else
-			d[v] = [i]
-		end
-	end
-	return(d)
-end
-
-Duff.update!(daf, mask::Nothing, v::Number, valid_columns = nothing) = nothing
 
 include("masks/masks.jl")
 export prunemask, diffmask, HeuristicMask, SimpleMask
@@ -50,7 +35,6 @@ include("prunemissing.jl")
 include("predict.jl")
 include("matching.jl")
 include("pruning/pruning.jl")
-include("utils/partialeval.jl")
 include("utils/lensutils.jl")
 include("explain.jl")
 

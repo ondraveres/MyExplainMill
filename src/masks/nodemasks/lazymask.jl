@@ -14,6 +14,12 @@ function Base.match(s::String, e, v::T; path = (), verbose = false) where {T<:La
 	printontrue(s ∈ v.data, verbose, path," ", s)
 end
 
+function Mill.partialeval(model::LazyModel{N}, ds::LazyNode{N}, mk, masks) where {N}
+	mk ∈ masks && return(model, ds, mk, true)
+	mk.mask ∈ masks && return(model, ds, mk, true)
+	return(ArrayModel(identity), model(ds), EmptyMask(), false)
+end
+
 _nocluster(m::LazyModel{N}, ds::LazyNode{N}) where {N} = nobs(ds)
 
 (m::LazyModel)(ds::LazyNode, ::ExplainMill.EmptyMask) = m(ds)

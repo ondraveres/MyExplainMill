@@ -29,7 +29,7 @@ include("specimen.jl")
     	@test_broken false
     end
 
-    @testset "search / pruning methods" begin 
+    @testset "correctness of search / pruning methods" begin 
     	@test_broken false
     end
 end

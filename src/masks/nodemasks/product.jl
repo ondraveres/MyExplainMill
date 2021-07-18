@@ -11,7 +11,6 @@ Base.keys(m::ProductMask) = keys(m.childs)
 mask(::ProductMask) = nothing
 participate(::ProductMask) = nothing
 
-
 function create_mask_structure(ds::ProductNode{T,M}, m::ProductModel, create_mask, cluster) where {T<:NamedTuple,M}
 	ks = keys(ds.data)
 	s = (;[k => create_mask_structure(ds.data[k], m.ms[k], create_mask, cluster) for k in ks]...)
@@ -58,6 +57,26 @@ end
 function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mk::ProductMask) where {P<:Tuple,T,MS<:Tuple, M} 
     xx = vcat([m.ms[k](x.data[k], mk.childs[k]) for k in 1:length(m.ms)]...)
     m.m(xx)
+end
+
+
+function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
+	ks = keys(model.ms)
+	mods = map(ks) do k
+		Mill.partialeval(model.ms[k], ds.data[k], mk[k], masks)
+	end
+	childmodels = map(f -> f[1], mods)
+	childds = map(f -> f[2], mods)
+	childms = map(f -> f[3], mods)
+	if any(f[4] for f in mods)
+		return(ProductModel((;zip(ks, childmodels)...), model.m), ProductNode((;zip(ks, childds)...), ds.metadata), ProductMask((;zip(ks, childms)...)), true)
+	end
+	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
+
+end
+
+function Mill.partialeval(model::ProductModel, ds::ProductNode, mk::EmptyMask, masks)
+	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
 end
 
 _nocluster(m::ProductModel, ds::ProductNode) = nobs(ds)
