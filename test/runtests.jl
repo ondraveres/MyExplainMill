@@ -27,13 +27,4 @@ include("specimen.jl")
     @testset "Logic output" begin 
     	@test_broken false
     end
-
-    @testset "correctness of search / pruning methods" begin 
-        # Should I do something super simple here, such that 
-        # the output is deterministic. For example
-        # f(x) = x[1]
-        # In which case I know the output should depend only on the 
-        # first item?
-    	@test_broken false
-    end
 end
