@@ -1,7 +1,7 @@
 include("utils.jl")
 include("flatsearch.jl")
 include("levelbylevel.jl")
-include("gradient_submodular.jl")
+include("greedy_gradient.jl")
 
 function pruning_methods() 
 	[:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :Flat_Gadd, :Flat_Garr, 

@@ -28,7 +28,8 @@ include("heuristics/daf_explainer.jl")
 include("heuristics/gnn_explainer.jl")
 include("heuristics/grad_explainer.jl")
 include("heuristics/stochastic_explainer.jl")
-export GnnExplainer, GradExplainer, ConstExplainer, StochasticExplainer, DafExplainer
+export GnnExplainer, GradExplainer, ConstExplainer
+export StochasticExplainer, DafExplainer, GreedyGradient
 export stats, heuristic
 
 include("prunemissing.jl")

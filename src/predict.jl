@@ -30,3 +30,4 @@ confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)
     are log of probabilities (i.e. no softmax)
 """
 logitconfgap(model, ds, classes) = confidencegap(softmax(model(ds).data), classes)
+logitconfgap(o::Matrix, classes) = confidencegap(softmax(o), classes)
