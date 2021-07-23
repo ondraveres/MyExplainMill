@@ -37,7 +37,6 @@ function mapmask(f, m::BagMask, level = 1)
 		)
 end
 
-
 function invalidate!(mk::BagMask, invalid_observations::AbstractVector{Int})
 	invalid_instances = isempty(invalid_observations) ? invalid_observations : reduce(vcat, [collect(mk.bags[i]) for i in invalid_observations])
 	invalidate!(mk.mask, invalid_instances)
@@ -45,11 +44,18 @@ function invalidate!(mk::BagMask, invalid_observations::AbstractVector{Int})
 	invalidate!(mk.child, invalid_instances)
 end
 
+function present(mk::BagMask, obs)
+	child_obs = present(mk.child, prunemask(mk.mask))
+	map(enumerate(mk.bags)) do (i, b) 
+		obs[i] & any(@view child_obs[b])
+	end
+end
+
 function Base.getindex(ds::BagNode, mk::BagMask, presentobs=fill(true, nobs(ds)))
 	if !any(presentobs)
 		return(ds[0:-1])
 	end
-	present_childs = prunemask(mk.mask)[:]
+	present_childs = present(mk.child, prunemask(mk.mask))
 	for (i,b) in enumerate(ds.bags) 
 	    presentobs[i] && continue
 	    present_childs[b] .= false
@@ -65,19 +71,21 @@ end
 function (model::Mill.BagModel)(x::BagNode, mk::BagMask)
 	ismissing(x.data) && return(model.bm(ArrayNode(model.a(x.data, x.bags))))
 	xx = model.im(x.data, mk.child)
-    model.bm(model.a(xx, x.bags, mk.mask))
+    model.bm(model.a(xx, x.bags, mk))
 end
 
 #TODO: SimpleMask for now, but we should add a proper abstract
-function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::AbstractVectorMask)
-	m = transpose(diffmask(mk))
+function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::BagMask)
+	present_childs = Zygote.@ignore present(mk.child, prunemask(mk.mask))
+	m = transpose(diffmask(mk.mask) .* present_childs)
 	xx = m .* x .+ (1 .- m) .* a.C 
 	a(xx, bags)
 end	
 
 # TODO: This might be done better
-function (a::Mill.SegmentedMean)(x::Matrix{T}, bags::Mill.AbstractBags, mk::AbstractVectorMask) where {T}
-	m = T.(transpose(diffmask(mk)))
+function (a::Mill.SegmentedMean)(x::Matrix{T}, bags::Mill.AbstractBags, mk::BagMask) where {T}
+	present_childs = Zygote.@ignore present(mk.child, prunemask(mk.mask))
+	m = T.(transpose(diffmask(mk.mask) .* present_childs))
 	xx = m .* x
 	o = a(xx, bags)
 	n = max.(a(m, bags), eps(T))

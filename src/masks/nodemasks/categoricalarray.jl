@@ -31,6 +31,10 @@ function invalidate!(mk::CategoricalMask, observations::Vector{Int})
 	invalidate!(mk.mask, observations)
 end
 
+function present(mk::CategoricalMask, obs)
+	map((&), obs, prunemask(mk.mask))
+end
+
 function foreach_mask(f, m::CategoricalMask, level = 1)
 	f(m.mask, level)
 end

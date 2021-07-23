@@ -13,12 +13,13 @@ function get_thresholds(cg, abs_tol, rel_tol)
 end
 
 """
-	explain(e, ds::AbstractNode, model::AbstractMillModel, i, n, clustering = ExplainMill._nocluster; threshold = nothing, pruning_method=:LbyL_HArr, gap = 0.9f0)
+    explain(e, ds::AbstractNode, model::AbstractMillModel; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr)
+    explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr)
 
-	explain mask of a sample(s) ds, such that the confidencegap of the explanation is either above `threshold` (if set)
-	or above the `gap*confidencegap` of the full sample(s) with `gap` being the `0.9` by default.
-	i is the index of the class which we are explaining and `n` is the number of repetitions / gradient
-	iterations in the calculation of stats.
+    explain the decision of `model` on sample `ds` using heuristic method `e`
+    determining importance of subtrees (features) of the sample and using 
+    `pruning_method`. If `class` that is wished to be explained is not provided, 
+    the most probable class is used.
 """
 function explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
@@ -27,9 +28,11 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel, class; clusterin
     mk = stats(e, ds, model, class, clustering)
     mk = adjust_mask(mk)
     thresholds = get_thresholds(cg, abs_tol, rel_tol)
-    prune!(mk, model, ds, class, thresholds, pruning_method)
+    fₚ(o) = sum(min.(logitconfgap(o, class) .- thresholds, 0))
+    prune!(mk, model, ds, fₚ, pruning_method)
     mk
 end
+
 
 function explain(e, ds::AbstractNode, model::AbstractMillModel; kwargs...)
     class = Flux.onecold(softmax(model(ds).data))
@@ -37,4 +40,20 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel; kwargs...)
     	@warn "Two or more classes predicted by the model!, wish you know what you are doing."
     end
     explain(e, ds, model, class; kwargs...)
+end
+
+"""
+    explainf(e, ds::AbstractNode, model::AbstractMillModel, fₛ, fₚ)
+    
+    A more low-level api allowing to prescribe the function used to (heuristically) 
+    calculate importance of features (`fₛ(o)`) and used during pruning (`fₚ(o)`),
+    where `o` is the output of the model on the sample. During pruning, we try to 
+    find the smallest subset of the sample such that `fₚ > 0`.
+"""
+function explainf(e, ds::AbstractNode, model::AbstractMillModel, fₛ, fₚ; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+    mk = statsf(e, ds, model, fₛ, clustering)
+    mk = adjust_mask(mk)
+    prune!(mk, model, ds, fₚ, pruning_method)
+    mk
 end

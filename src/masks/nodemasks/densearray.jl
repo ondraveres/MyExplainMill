@@ -44,6 +44,11 @@ function invalidate!(mk::MatrixMask, observations::Vector{Int})
 	
 end
 
+function present(mk::MatrixMask, obs)
+	any(prunemask(mk.mask)) && return(obs)
+	fill(false, length(obs))
+end
+
 function (m::Mill.ArrayModel)(ds::ArrayNode, mk::MatrixMask)
     ArrayNode(m.m(diffmask(mk.mask) .* ds.data))
 end

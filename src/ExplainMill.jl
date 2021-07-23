@@ -11,10 +11,12 @@ using JSON
 using HierarchicalUtils
 using DataFrames
 using JSON
+using Zygote
 using JsonGrinder
 using Setfield
 using DataStructures
 import Mill: partialeval
+import Flux: onecold
 
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x

@@ -1,10 +1,10 @@
-struct SimpleMask{T} <: AbstractVectorMask
-	x::Vector{T}
+struct SimpleMask{T,V<:AbstractVector{T}} <: AbstractVectorMask
+	x::V
 end
 
 SimpleMask(d::Int) = SimpleMask(ones(Float32, d))
-prunemask(m::SimpleMask{Bool}) = m.x
-prunemask(m::SimpleMask{<:Number}) = m.x .> 0
+prunemask(m::SimpleMask{Bool,<:Any}) = m.x
+prunemask(m::SimpleMask{<:Number,<:Any}) = m.x .> 0
 diffmask(m::SimpleMask) = m.x
 simplemask(m::SimpleMask) = m
 Base.length(m::SimpleMask) = length(m.x)

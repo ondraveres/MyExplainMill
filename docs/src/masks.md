@@ -74,6 +74,13 @@ So the current idea would be to have:
 	- `partialeval` 	identify subset of `model`, sample `ds`, and structural mask `mk` that are sensitive to `masks` and evaluate and replace the rest of the model, sample, and masks by `identity`, `ArrayNode`, and `EmptyMask`. Partial evaluation is useful when we are explaining only subset of full mask (e.g. level-by-level) 
 	explanation.
 
+	- If an inner node has an explainable mask, which at the moment is only `BagNode` which has `BagMask`, then a following situation can happen. `BagMask` indicates that some instance from some bag has to be present in the explanation. But the childs of `BagMask` all indicate an empty explanation, i.e. all items in childs of `BagMask` are not present. **As of now, this sample will have `Mill` representation as a bag containing single instance but that instance will be all empty.** The problem is that this is not representable in JSON, as the export to JSON will contain an empty array. 
+
+	How we can solve it? 
+		+ `getindex(ds::BagNode, m::BagMask)` we query childnodes about the presence of childs
+		and adjust the mask on items in `BagMask` accordingly. The drawback is that (a) we need to introduce one more api function `present(m::AbstractStructureMask, obs)`, which will return present observations in childs. If one explains a structure with many nested bags, the above call will be issued on each level, leading to unnecessary overhead. The solution to this might be to add some tracking to the BagNodes, which would be complicated I guess. Let's give the above thing a shot.
+		+ At the moment I do not know about other solution. The above might be slow, but let's do it first right and then fast.
+
 
 * Each structural mask will contain a `SomeMask<:AbstractVectorMask` which will behave like a vector. It will implement
 	- `prunemask(m)` used for subsetting of a sample `ds[prunemask(m)]`

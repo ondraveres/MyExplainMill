@@ -5,7 +5,7 @@ using Flux
 using SparseArrays
 using ExplainMill: SimpleMask, create_mask_structure, foreach_mask, collect_masks_with_levels, mapmask
 using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
-using ExplainMill: ParticipationTracker, participate, invalidate!
+using ExplainMill: ParticipationTracker, participate, invalidate!, present
 using FiniteDifferences
 using StatsBase: nobs
 
@@ -37,11 +37,18 @@ end
 		@test an[mk] == an
 
 		#this is not really a nice syntax
-		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true]
+		mk.mask.x[[1,3]] .= false
+		@test mk.mask.x == [false, true, false, true]
 
 		# testing basic subsetting of data 
 		@test an[mk].data ≈ an.data .* [false, true, false, true]	
+
+		#test indication of presence of observations
+		x = deepcopy(mk.mask.x)
+		@test present(mk, [true, false, true, false, true]) == [true, false, true, false, true]
+		mk.mask.x .= false
+		@test present(mk, [true, false, true, false, true]) == fill(false, 5)
+		mk.mask.x .= x
 
 		# testing subsetting while exporting only subset of observations
 		@test an[mk, [true, false, true, false, true]].data ≈ an.data[:,[true, false, true, false, true]] .* [false, true, false, true]	
@@ -49,6 +56,7 @@ end
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(an, d -> Dense(d, 10)))
 		@test model(an[mk]).data ≈ model(an, mk).data
+
 
 		# calculation of gradient with respect to boolean mask
 		gs = gradient(() -> sum(model(an, mk).data),  Flux.Params([mk.mask.x]))
@@ -80,11 +88,14 @@ end
 		@test on[mk] == on
 
 		# subsetting
-		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true, true]
+		mk.mask.x[[1,3]] .= false
+		@test mk.mask.x == [false, true, false, true, true]
 
 		# test pruning of samples 
 		@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+
+		#test indication of presence of observations
+		@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
 		# testing subsetting while exporting only subset of observations
 		@test on[mk, [true, false, true, false, true]].data ≈ Flux.onehotbatch([4, 4, 2], 1:4)
@@ -135,11 +146,19 @@ end
 		@test cn[mk] == cn
 
 		# subsetting
-		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true, true, true]
+		mk.mask.x[[1,3]] .= false
+		@test mk.mask.x == [false, true, false, true, true, true]
 
 		# testing subsetting while exporting only subset of observations
 		@test cn[mk, [true, false, true, false, true]].data ≈ sparse(Float64.([0 3 5; 0 0 0]))
+
+		#test indication of presence of observations
+		x = deepcopy(mk.mask.x)
+		@test present(mk, [true, true, true, false, false]) == [false, true, true, false, false]
+		mk.mask.x[2:3] .= false
+		@test present(mk, [true, true, true, false, false]) == [false, false, true, false, false]
+		@test present(mk, [true, true, true, false, true]) == [false, false, true, false, true]
+		mk.mask.x .= x
 
 		# multiplication is equicalent to subsetting
 		@test cn[mk].data.nzval == [0, 2, 0, 3, 4, 5]
@@ -189,12 +208,15 @@ end
 		@test sn[mk] == sn
 
 		# subsetting
-		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true, true]
+		mk.mask.x[[1,3]] .= false
+		@test mk.mask.x == [false, true, false, true, true]
 		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
 
 		# testing subsetting while exporting only subset of observations
 		@test sn[mk, [true, false, true, false, true]].data == NGramMatrix(["", "", "5"], 3, 256, 2053)
+
+		#test indication of presence of observations
+		@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
@@ -242,11 +264,25 @@ end
 		@test ds[mk] == ds
 
 		# subsetting
-		prunemask(mk.mask)[[1,3]] .= false
-		@test prunemask(mk.mask) == [false, true, false, true, true]
+		mk.mask.x[[1,3]] .= false
+		@test mk.mask.x == [false, true, false, true, true]
 
 		@test ds[mk].data == ds.data[[false, true, false, true, true]]
 		@test ds[mk].bags.bags ==  UnitRange{Int64}[1:1, 0:-1, 0:-1, 2:3]
+
+		#test indication of presence of observations
+		x = deepcopy(mk.child.mask.x)
+		@test present(mk, [true, false, true, true]) == [true, false, false, true]
+		mk.child.mask.x .= false
+		@test present(mk, [true, false, true, true]) == [false, false, false, false]
+		mk.child.mask.x .= x
+
+		# If child exports nothing, we return only empty bags
+		x = deepcopy(mk.child.mask.x)
+		mk.child.mask.x .= false
+		@test ds[mk].bags.bags ==  UnitRange{Int64}[0:-1, 0:-1, 0:-1, 0:-1]
+		@test isempty(ds[mk].data.data)
+		mk.child.mask.x .= x
 
 		# testing subsetting while exporting only subset of observations
 		@test ds[mk, [true, true, false, false]].data == ds.data[[false, true, false, false, false]]
@@ -268,6 +304,12 @@ end
 			mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 			mk.mask.x[[1,3]] .= false
 			@test model(ds[mk]).data ≈ model(ds, mk).data
+
+			# If child exports nothing, we return only empty bags
+			x = deepcopy(mk.child.mask.x)
+			mk.child.mask.x .= false
+			@test model(ds[mk]).data ≈ model(ds, mk).data
+			mk.child.mask.x .= x
 
 			# Verify that calculation of the gradient for real mask is correct 
 			gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk.mask.x]))
@@ -339,14 +381,25 @@ end
 		@test ds[mk] == ds
 
 		#this is not really a nice syntax
-		prunemask(mk[:a].mask)[[1,2]] .= false
-		prunemask(mk[:b].mask)[[1,2]] .= false
+		mk[:a].mask.x[1:2] .= false
+		mk[:b].mask.x[1:2] .= false
 
 		@test ds[mk][:a].data ≈ ds[:a].data .* [false, false, true, true]	
 		@test ds[mk][:b].data ≈ sparse(Float64[0 0 3 0 5; 0 2 0 4 0])
 
 		@test ds[mk, [true, false, true, false, true]][:a].data ≈ ds[:a].data[:,[true, false, true, false, true]] .* [false, false, true, true]	
 		@test ds[mk, [true, false, true, false, true]][:b].data ≈ sparse(Float64[0 3 5; 0 0 0])
+
+		#test indication of presence of observations
+		xa = deepcopy(mk[:a].mask.x)
+		xb = deepcopy(mk[:b].mask.x)
+		@test present(mk, [true, true, true, false, true]) == [true, true, true, false, true]
+		mk[:a].mask.x .= false
+		@test present(mk, [true, true, true, false, true]) == [false, true, true, false, true]
+		mk[:b].mask.x[3] = false
+		@test present(mk, [true, true, true, false, true]) == [false, false, true, false, true]
+		mk[:a].mask.x .= xa
+		mk[:b].mask.x .= xb
 
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
@@ -434,8 +487,8 @@ end
 	dss = ds[mk]
 
 	@test nobs(dss) == 1
-	@test nobs(dss.data) == 3
-	@test all(dss.data.bags.bags .== [1:1, 0:-1, 2:2])
+	@test nobs(dss.data) == 2
+	@test all(dss.data.bags.bags .== [1:1, 2:2])
 	@test nobs(dss.data.data) == 2
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
 	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4], 1:4)

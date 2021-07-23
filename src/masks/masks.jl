@@ -8,6 +8,8 @@ RealArray = Union{Vector{T}, Matrix{T}} where {T<:Real}
 invalidate!(m::AbstractStructureMask) = invalidate!(m, Vector{Int}())
 support_participation(m::AbstractVectorMask) = false
 
+create_mask_structure(f, ds::Mill.AbstractNode) = create_mask_structure(ds, f)
+
 include("participation.jl")
 include("simplemask.jl")
 include("mask.jl")

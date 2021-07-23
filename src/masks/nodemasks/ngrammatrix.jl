@@ -30,6 +30,10 @@ function foreach_mask(f, m::NGramMatrixMask, level = 1)
 	f(m.mask, level)
 end
 
+function present(mk::NGramMatrixMask, obs)
+	map((&), obs, prunemask(mk.mask))
+end
+
 function mapmask(f, m::NGramMatrixMask, level = 1)
 	NGramMatrixMask(f(m.mask, level))
 end

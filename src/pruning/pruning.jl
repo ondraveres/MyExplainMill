@@ -51,6 +51,7 @@ function prune!(f, mk::AbstractStructureMask, method::Symbol)
 		error("Uknown pruning method $(method). Possible values (Flat_HArr, Flat_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft, LbyL_HAdd, LbyL_HArr, LbyL_HArrft, Flat_Gadd, Flat_Garr, Flat_Garrft)")
 	end
 end
+
 function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::AbstractStructureMask, method::Symbol)
 	if method == :LbyLo_HAdd
 		ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = false, fine_tuning = false)
@@ -69,15 +70,12 @@ function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::Abs
 	end
 end
 
-function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, class, thresholds, method)
+function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, fₚ, method)
     mkp = add_participation(mk)
 
     if method ∈ [:LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, :LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]
-        f = (model, ds, mk) -> sum(min.(logitconfgap(model, ds[mk], class) .- thresholds, 0))
-        return prune!(f, model, ds, mkp, method)
+        return prune!((model, ds, mk) -> fₚ(model(ds[mk]).data), model, ds, mkp, method)
     end
-
-    # this is a fallback
-    f = () -> sum(min.(logitconfgap(model, ds[mkp], class) .- thresholds, 0))
-    return prune!(f, mkp, method)
+    # a fallback
+    return prune!(() -> fₚ(model(ds[mkp]).data), mkp, method)
 end

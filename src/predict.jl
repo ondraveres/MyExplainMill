@@ -31,3 +31,6 @@ confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)
 """
 logitconfgap(model, ds, classes) = confidencegap(softmax(model(ds).data), classes)
 logitconfgap(o::Matrix, classes) = confidencegap(softmax(o), classes)
+
+
+Flux.onecold(model::Mill.AbstractMillModel, ds::Mill.AbstractNode) = Flux.onecold(softmax(model(ds).data))

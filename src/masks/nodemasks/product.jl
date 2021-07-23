@@ -31,6 +31,9 @@ function mapmask(f, mk::ProductMask, level = 1)
 	ProductMask(map(m -> mapmask(f, m, level), mk.childs))
 end
 
+function present(mk::ProductMask, obs)
+	mapreduce(m -> present(m, obs), (.|), mk.childs)
+end
 
 function invalidate!(mk::ProductMask, observations::Vector{Int})
 	for c in mk.childs

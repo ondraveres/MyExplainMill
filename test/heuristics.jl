@@ -41,7 +41,10 @@ using ExplainMill: create_mask_structure, updateparticipation!
 		ps = Flux.Params(map(x -> x.x, fv.masks))
 		gs = gradient(() -> sum(softmax(model(ds, mk).data) .* y), ps)
 
-		h = stats(GradExplainer(), ds, model) |> FlatView |> heuristic
+		h = stats(GradExplainer(true), ds, model) |> FlatView |> heuristic
+		@test h ≈ abs.(hᵣ)
+
+		h = stats(GradExplainer(false), ds, model) |> FlatView |> heuristic
 		@test h ≈ abs.(hᵣ)
 	end
 

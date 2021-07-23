@@ -26,23 +26,28 @@ end
 
 GnnMask(d::Int) = GnnMask(ones(Float32, d))
 diffmask(m::GnnMask) = σ.(m.x)
+prunemask(m::GnnMask) = σ.(m.x) .> 0
 simplemask(m::GnnMask) = m
 
-function stats(e::GnnExplainer, ds, model)
-	classes = Flux.onecold(softmax(model(ds).data))
-	stats(e, ds, model, classes, _nocluster)
+function stats(e::GnnExplainer, ds, model, classes = onecold(model, ds), clustering = _nocluster)
+	y = gnntarget(model, ds, classes)
+	f(o) = Flux.logitcrossentropy(o, y)
+	statsf(e, ds, model, f, clustering)
 end
 
-function stats(e::GnnExplainer, ds, model, classes, clustering::typeof(_nocluster))
+"""
+	statsf(e::GnnExplainer, ds, model, f, clustering::typeof(_nocluster))
+
+	A functional api, where `f` is a function used to calculate the heuristic. You
+	should very well know, what you are doing here
+"""
+function statsf(e::GnnExplainer, ds, model, f, clustering::typeof(_nocluster))
 	mk = create_mask_structure(ds, GnnMask)
-	y = gnntarget(model, ds, classes)
 	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
 	reinit!(ps)
 	opt = ADAM(0.01, (0.5, 0.999))
-	loss() = Flux.logitcrossentropy(model(ds, mk).data, y)
-	# println("logitcrossentropy sample: ", Flux.logitcrossentropy(model(ds).data, y))
 	for step in 1:e.n
-		gs = gradient(loss, ps)
+		gs = gradient(() -> f(model(ds, mk).data), ps)
 		for p in ps
 			if haskey(gs, p)
 				gs[p] .+= gradient(x -> regularization(x, e.α, e.β), p)[1]
@@ -50,7 +55,6 @@ function stats(e::GnnExplainer, ds, model, classes, clustering::typeof(_nocluste
 			end
 		end
 		Flux.Optimise.update!(opt, ps, gs)
-		# iteration_stats(model, ds, mk, y, ps)
  	end
 
 	mkₕ = mapmask(mk) do m, l

@@ -38,6 +38,13 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::SparseArrayMask, presentobs=fill(
 	ArrayNode(x[:,presentobs], ds.metadata)
 end
 
+function present(mk::SparseArrayMask, obs)
+	a = fill(false, length(obs))
+	for (i, b) in enumerate(prunemask(mk.mask))
+		a[mk.columns[i]] |= b
+	end
+	map((&), a, obs)
+end
 
 function foreach_mask(f, m::SparseArrayMask, level = 1)
 	f(m.mask, level)

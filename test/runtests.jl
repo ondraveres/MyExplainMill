@@ -1,5 +1,4 @@
 using ExplainMill
-# TODO export these?
 using ExplainMill: prune, Mask, invalidate!, foreach_mask, participate, mask, prunemask
 using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
 using ExplainMill: NGramMatrixMask, EmptyMask

@@ -4,11 +4,10 @@ end
 
 ConstExplainer() = ConstExplainer(1f0)
 
-function stats(e::ConstExplainer, ds, model, classes, clustering::typeof(_nocluster))
-	stats(e, ds, model)
+function stats(e::ConstExplainer, ds, model, classes = onecold(model, ds), clustering = _nocluster)
+	statsf(e, ds, model, classes, clustering)
 end
 
-function stats(e::ConstExplainer, ds, model)
+function statsf(e::ConstExplainer, ds, model, f, ::typeof(_nocluster))
 	create_mask_structure(ds, d -> HeuristicMask(e.α .* ones(Float32, d)))
 end
-

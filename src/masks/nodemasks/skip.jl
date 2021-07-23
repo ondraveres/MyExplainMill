@@ -15,6 +15,8 @@ mask(::EmptyMask) = Vector{Bool}()
 
 participate(::EmptyMask) = Vector{Bool}()
 
+present(::EmptyMask, obs) = obs
+
 prune(ds, mk::EmptyMask) = ds
 
 function Base.getindex(ds, mk::EmptyMask, presentobs = fill(true, nobs(ds))) 

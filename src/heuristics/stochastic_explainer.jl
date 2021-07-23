@@ -1,12 +1,10 @@
 struct StochasticExplainer
 end
 
-function stats(e::StochasticExplainer, ds, model, classes, clustering::typeof(_nocluster))
-	stats(e, ds, model)
+function stats(e::StochasticExplainer, ds, model, classes = onecold(model, ds), clustering = _nocluster)
+	statsf(e, ds, model, classes, clustering)
 end
 
-function stats(e::StochasticExplainer, ds, model)
+function statsf(e::StochasticExplainer, ds, model, f, ::typeof(_nocluster))
 	create_mask_structure(ds, d -> HeuristicMask(rand(Float32, d)))
 end
-
-stats(e::StochasticExplainer, ds, model, classes) = stats(e, ds, model)
