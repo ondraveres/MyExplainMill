@@ -25,7 +25,7 @@ julia> collect_masks_with_levels(mk)
 ```
 """
 function collect_masks_with_levels(mk; level = 1)
-	collected_masks = []
+	collected_masks = Vector{Pair}()
 	foreach_mask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
 	collected_masks
 end

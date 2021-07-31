@@ -63,14 +63,14 @@ function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatse
 		return()
 	end
 
-	full_flat = FlatView(map(first, all_masks))
+	full_flat = FlatView(all_masks)
 	full_flat .= true
 	for level in 1:maximum(map(x -> x.second, all_masks))
 		updateparticipation!(mk)
 		full_flat .= copy2vec(full_flat) .& participate(full_flat)
 		level_masks = filter(m -> m.second == level, all_masks)
 		isempty(level_masks) && continue
-		level_flat = FlatView(map(first, level_masks))
+		level_flat = FlatView(level_masks)
 		@debug "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
 		levelsearch!(f, level_flat; participateonly = true, random_removal , fine_tuning)
 	end
@@ -94,16 +94,16 @@ function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::
 		return()
 	end
 
-	full_flat = FlatView(map(first, all_masks))
+	full_flat = FlatView(all_masks)
 	full_flat .= true
 	_f = () -> f(model, ds, mk)
 	for level in 1:maximum(map(x -> x.second, all_masks))
 		updateparticipation!(mk)
 		full_flat .= copy2vec(full_flat) .& participate(full_flat)
-		level_masks = map(first, filter(m -> m.second == level, all_masks))
+		level_masks = filter(m -> m.second == level, all_masks)
 		isempty(level_masks) && continue
 
-		modelₗ, dsₗ, mkₗ = partialeval(model, ds, mk, level_masks)
+		modelₗ, dsₗ, mkₗ = partialeval(model, ds, mk, map(first, level_masks))
 		@debug "depth: $(j) length of mask: $(length(fv)) participating: $(sum(participate(fv)))"
 		levelsearch!(() -> f(modelₗ, dsₗ, mkₗ), FlatView(level_masks); participateonly = true, random_removal, fine_tuning)
 		@assert f(modelₗ, dsₗ, mkₗ) ≈ _f()

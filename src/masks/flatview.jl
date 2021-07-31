@@ -1,5 +1,3 @@
-const ItemMap = Array{NamedTuple{(:itemid, :maskid, :innerid),Tuple{Int64,Int64,Int64}},1}
-
 """
 	A structure presenting masks in the PruiningMask structure
 	as a flat array of coefficients, ideally sorted according to 
@@ -9,36 +7,55 @@ const ItemMap = Array{NamedTuple{(:itemid, :maskid, :innerid),Tuple{Int64,Int64,
 	of an item in `parent`, which points to an item which can influence the given 
 	point.
 """
-struct FlatView{V}
+struct FlatView{V, I}
 	masks::V
-	itemmap::ItemMap
+	itemmap::Vector{I}
 	starts::Vector{Int}
 end
 
-Parents = Array{Pair{k,Int64} where k,1}
+"""
+	FlatView(mk::AbstractStructureMask)
+	FlatView(masks::Vector)
 
+	Create a FlatView from a vector of masks or from an `mk::AbstractStructureMask`.
+	If `FlatView` is constructed `AbstractStructureMask`, the itemmap contains 
+	indication of a level (distance from the root) of the mask. If constructed from 
+	a vector of masks, the level is all zeros. 
+"""
 function FlatView(mk::AbstractStructureMask)
-	collected_masks = []
-	foreach_mask((mk, depth) -> push!(collected_masks, mk), mk, 1)
-	FlatView(collected_masks)
+	flatview(collect_masks_with_levels(mk))
 end
 
 function FlatView(masks::Vector)
+	flatview(map(m -> m => 0, masks))
+end
+
+function FlatView(masks::Vector{<:Pair})
+	flatview(masks)
+end
+
+function flatview(mask_pairs::Vector)
 	itemno = 0
-	itemmap = map(enumerate(masks)) do (i,m)
+	itemmap = map(enumerate(mask_pairs)) do (i, smk)
+		m, l = smk
 		map(1:length(m)) do j
 			itemno += 1
-			(itemid = itemno, maskid = i, innerid = j)
+			(itemid = itemno, maskid = i, innerid = j, level = l)
 		end
 	end
+	masks = map(first, mask_pairs)
 	itemmap = reduce(vcat, itemmap)
 	starts = vcat(0, accumulate(+,map(m -> length(m), masks))[1:end-1])
 	FlatView(tuple(masks...), itemmap, starts)
 end
 
 function Base.setindex!(m::FlatView, v, i::Int) 
-	_, k, l = m.itemmap[i]
-	m.masks[k][l] = v
+	mi = m.itemmap[i] 
+	m.masks[mi.maskid][mi.innerid] = v
+end
+
+function Base.setindex!(m::FlatView, v, ii::Vector{Int}) 
+	foreach(i -> m[i] = v, ii)
 end
 
 
@@ -62,8 +79,8 @@ end
 # end
 
 function Base.getindex(m::FlatView, i::Int) 
-	_, k, l = m.itemmap[i]
-	m.masks[k][l]
+	mi = m.itemmap[i] 
+	m.masks[mi.maskid][mi.innerid]
 end
 
 function Base.getindex(m::FlatView, ii::Vector{Int}) 
@@ -75,6 +92,7 @@ Base.fill!(fv::FlatView, v) = foreach(i -> fv[i] = v, 1:length(fv))
 Base.ndims(::Type{<:FlatView}) = 1
 Base.length(m::FlatView) = length(m.itemmap)
 Base.size(fv::FlatView) = (length(fv),)
+Base.dotview(fv::FlatView, ii) = error("Dotview not overloaded for FlatView")
 
 useditems(m::FlatView) = findall(usedmask(m))
 usedmask(m::FlatView) = map(i -> m[i], 1:length(m)) #this is really ineffective but that is life

@@ -146,8 +146,18 @@ include("specimen.jl")
 
 			fill!(fv, true)
 			@test all(fv[i] == true for i in 1:length(fv))
-		end
 
+			# testing access by a vector
+			ii = [1,4,9,11,16,21]
+			δi = setdiff(1:length(fv), ii) 
+			@test_throws ErrorException fv[ii] .= false
+			fv[ii] = false
+			@test all(fv[i] == false for i in ii)
+			@test all(fv[i] == true for i in δi)
+
+			fv .= true
+			@test all(fv[i] == true for i in 1:length(fv))
+		end
 	end	
 end
 
