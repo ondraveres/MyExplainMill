@@ -13,8 +13,8 @@ function get_thresholds(cg, abs_tol, rel_tol)
 end
 
 """
-    explain(e, ds::AbstractNode, model::AbstractMillModel; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr)
-    explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr)
+    explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
 
     explain the decision of `model` on sample `ds` using heuristic method `e`
     determining importance of subtrees (features) of the sample and using 

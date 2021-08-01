@@ -74,7 +74,30 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
         end
     end
 
+    @testset "Testing shared ObservationMasks" begin
 
+        function adjust_mask(mk)
+            mx = mk.child.child.childs.on.mask
+            m = ObservationMask(mx)
+            @set! mk.child.child.childs.an = m
+            @set! mk.child.child.childs.cn = m
+            @set! mk.child.child.childs.on = m
+            @set! mk.child.child.childs.sn = m
+            mk
+        end
+
+        e = ConstExplainer()
+        # just test that the explanation passes
+        for pruning_method in heuristic_pruning_methods
+            @test explain(e, ds, model; rel_tol=0.9, pruning_method, adjust_mask) isa ExplainMill.AbstractStructureMask
+        end
+        for pruning_method in greedy_pruning_methods
+            @test explain(e, ds, model; rel_tol=0.9, pruning_method, adjust_mask) isa ExplainMill.AbstractStructureMask
+        end
+        for pruning_method in partial_pruning_methods
+            @test explain(e, ds, model; rel_tol=0.9, pruning_method, adjust_mask) isa ExplainMill.AbstractStructureMask
+        end
+    end
 end
 
 @testset "Simple end2end test with a strict equality" begin
