@@ -6,7 +6,7 @@ using SparseArrays
 using Random
 using ExplainMill: Mask, FlatView		
 using ExplainMill: ParticipationTracker, create_mask_structure, participate
-include("specimen.jl")
+
 @testset "mapping between flat structure and nodes" begin
 	ds = specimen_sample()
 	for mfun in [
@@ -170,4 +170,15 @@ end
 	for s in keys(mk.child.child)
 		@test all_mk[mk.child.child[s].mask] == 3
 	end
+
+	# test that in presence of multiple observation masks,
+	# there will be only on
+	@test length(ExplainMill.collect_masks_with_levels(mk)) == 6
+	@test length(ExplainMill.collectmasks(mk)) == 6
+	@set! mk.child.child.childs.an = ObservationMask(SimpleMask(fill(true, 5)))
+	@set! mk.child.child.childs.cn = mk.child.child.childs.an
+	@set! mk.child.child.childs.on = mk.child.child.childs.an
+	@set! mk.child.child.childs.sn = mk.child.child.childs.an
+	@test length(ExplainMill.collect_masks_with_levels(mk)) == 3
+	@test length(ExplainMill.collectmasks(mk)) == 3
 end

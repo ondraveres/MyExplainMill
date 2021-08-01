@@ -4,6 +4,7 @@ using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, Ba
 using ExplainMill: NGramMatrixMask, EmptyMask
 using ExplainMill: FlatView, identifycolumns
 using Random, StatsBase
+using Setfield
 using Test
 using Mill
 using Mill: nobs

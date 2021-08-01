@@ -27,11 +27,11 @@ julia> collect_masks_with_levels(mk)
 function collect_masks_with_levels(mk; level = 1)
 	collected_masks = Vector{Pair}()
 	foreach_mask((mk, depth) -> push!(collected_masks, mk => depth), mk, level)
-	collected_masks
+	unique(m -> m.first, collected_masks)
 end
 
 function collectmasks(mk)
 	collected_masks = []
 	foreach_mask((mk, depth) -> push!(collected_masks, mk), mk, 1)
-	collected_masks
+	unique(collected_masks)
 end
