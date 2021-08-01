@@ -13,6 +13,7 @@ using DataFrames
 using JSON
 using Zygote
 using JsonGrinder
+using SparseArrays
 using Setfield
 using DataStructures
 import Mill: partialeval
@@ -22,7 +23,7 @@ output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
 
 include("masks/masks.jl")
-export prunemask, diffmask, HeuristicMask, SimpleMask
+export prunemask, diffmask, HeuristicMask, SimpleMask, ObservationMask
 include("output/logic_output.jl")
 
 include("heuristics/const_explainer.jl")

@@ -32,6 +32,12 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::MatrixMask, presentobs=fill(true,
 	ArrayNode(x, ds.metadata)
 end
 
+function Base.getindex(ds::ArrayNode{T,M}, mk::ObservationMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
+	x = ds.data[:, presentobs .* prunemask(mk.mask)]
+	ArrayNode(x, ds.metadata)
+end
+
+
 function foreach_mask(f, m::MatrixMask, level = 1)
 	f(m.mask, level)
 end
@@ -49,8 +55,12 @@ function present(mk::MatrixMask, obs)
 	fill(false, length(obs))
 end
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mk::MatrixMask)
+function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::MatrixMask)
     ArrayNode(m.m(diffmask(mk.mask) .* ds.data))
+end
+
+function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::ObservationMask)
+    ArrayNode(m.m(transpose(diffmask(mk.mask)) .* ds.data))
 end
 
 """

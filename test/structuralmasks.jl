@@ -79,64 +79,76 @@ end
 		end
 		@test cmk.mask.x ≈ mk.mask.x .+ 1
 		# update of the participation (does not apply now)
+
+		#test sub-indexing with the structural mask 
+		mk = ObservationMask(SimpleMask(fill(true, nobs(an))))
+		@test an[mk] == an
+		mk.mask.x[1] = false
+		@test an[mk].data == an.data[:,2:end]
+		@test model(an, mk).data ≈ model(ArrayNode(an.data .* [0 1 1 1 1])).data
 	end
 
 	@testset "Categorical Mask" begin
 		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
-		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
-		@test mk isa CategoricalMask
-		@test on[mk] == on
+		mk₁ = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test mk₁ isa CategoricalMask
+		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(on))))
+		for mk in [mk₁, mk₂]
+			@test on[mk] == on
 
-		# subsetting
-		mk.mask.x[[1,3]] .= false
-		@test mk.mask.x == [false, true, false, true, true]
+			# subsetting
+			mk.mask.x[[1,3]] .= false
+			@test mk.mask.x == [false, true, false, true, true]
 
-		# test pruning of samples 
-		@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
+			# test pruning of samples 
+			@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
 
-		#test indication of presence of observations
-		@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
+			#test indication of presence of observations
+			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
-		# testing subsetting while exporting only subset of observations
-		@test on[mk, [true, false, true, false, true]].data ≈ Flux.onehotbatch([4, 4, 2], 1:4)
+			# testing subsetting while exporting only subset of observations
+			@test on[mk, [true, false, true, false, true]].data ≈ Flux.onehotbatch([4, 4, 2], 1:4)
 
-		# output of a model on pruned sample is equal to output multiplicative weights
-		model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
-		@test model(on[mk]).data ≈ model(on, mk).data
+			# output of a model on pruned sample is equal to output multiplicative weights
+			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
+			@test model(on[mk]).data ≈ model(on, mk).data
 
-		# calculation of gradient with respect to boolean mask
-		gs = gradient(() -> sum(model(on, mk).data),  Flux.Params([mk.mask.x]))
-		@test all(abs.(gs[mk.mask.x]) .> 0)
+			# calculation of gradient with respect to boolean mask
+			gs = gradient(() -> sum(model(on, mk).data),  Flux.Params([mk.mask.x]))
+			@test all(abs.(gs[mk.mask.x]) .> 0)
 
-		# Verify that calculation of the gradient for real mask is correct 
-		mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
-		ps = Flux.Params([mk.mask.x])
-		testmaskgrad(() -> sum(model(on, mk).data),  ps)
+			# Verify that calculation of the gradient for real mask is correct 
+			mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
+			ps = Flux.Params([mk.mask.x])
+			testmaskgrad(() -> sum(model(on, mk).data),  ps)
 
-		# testing foreach_mask
-		cmk = collect_masks_with_levels(mk; level = 2)
-		@test length(cmk) == 1
-		@test cmk[1].first == mk.mask
-		@test cmk[1].second == 2
+			# testing foreach_mask
+			cmk = collect_masks_with_levels(mk; level = 2)
+			@test length(cmk) == 1
+			@test cmk[1].first == mk.mask
+			@test cmk[1].second == 2
 
-		# testing mapmask
-		cmk = mapmask(mk) do m, l
-			SimpleMask(m.x .+ 1)
+			# testing mapmask
+			cmk = mapmask(mk) do m, l
+				SimpleMask(m.x .+ 1)
+			end
+			@test cmk.mask.x ≈ mk.mask.x .+ 1
 		end
-		@test cmk.mask.x ≈ mk.mask.x .+ 1
-
 
 		# update of the participation
 		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
-		mk = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
-		
-		@test all(participate(mk.mask))
-		invalidate!(mk, [1])
-		@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
-		invalidate!(mk, [1, 3])
-		@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
-		ExplainMill.updateparticipation!(mk)
-		@test all(participate(mk.mask))
+		mk₁ = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		@test mk₁ isa CategoricalMask
+		mk₂ = ObservationMask(ParticipationTracker(SimpleMask(fill(true, nobs(on)))))
+		for mk in [mk₁, mk₂]	
+			@test all(participate(mk.mask))
+			invalidate!(mk, [1])
+			@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
+			invalidate!(mk, [1, 3])
+			@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
+			ExplainMill.updateparticipation!(mk)
+			@test all(participate(mk.mask))
+		end
 	end
 
 	@testset "Sparse Mask" begin
@@ -199,49 +211,59 @@ end
 		@test participate(mk.mask) == Bool[0, 0, 0, 1, 1, 1]
 		ExplainMill.updateparticipation!(mk)
 		@test all(participate(mk.mask))
+
+		#test sub-indexing with the structural mask 
+		mk = ObservationMask(SimpleMask(fill(true, nobs(cn))))
+		@test cn[mk] == cn
+		mk.mask.x[2] = false
+		@test cn[mk].data == [1 0 3 0 5; 0 0 0 4 0]
+		@test model(cn, mk).data ≈ model(ArrayNode(cn.data .* [1 0 1 1 1])).data
 	end
 
 	@testset "String Mask" begin
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
-		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
-		@test mk isa NGramMatrixMask
-		@test sn[mk] == sn
+		mk₁ = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
+		@test mk₁ isa NGramMatrixMask
 
-		# subsetting
-		mk.mask.x[[1,3]] .= false
-		@test mk.mask.x == [false, true, false, true, true]
-		@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
+		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(sn))))
+		for mk in [mk₁, mk₂]
+			@test sn[mk] == sn
 
-		# testing subsetting while exporting only subset of observations
-		@test sn[mk, [true, false, true, false, true]].data == NGramMatrix(["", "", "5"], 3, 256, 2053)
+			# subsetting
+			mk.mask.x[[1,3]] .= false
+			@test mk.mask.x == [false, true, false, true, true]
+			@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
 
-		#test indication of presence of observations
-		@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
+			# testing subsetting while exporting only subset of observations
+			@test sn[mk, [true, false, true, false, true]].data == NGramMatrix(["", "", "5"], 3, 256, 2053)
 
-		# multiplication is equicalent to subsetting
-		model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
-		@test model(sn[mk]).data ≈ model(sn, mk).data
+			#test indication of presence of observations
+			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
-		# Verify that calculation of the gradient for real mask is correct 
-		gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
-		@test all(abs.(gs[mk.mask.x]) .> 0)
+			# multiplication is equicalent to subsetting
+			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+			@test model(sn[mk]).data ≈ model(sn, mk).data
 
-		mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
-		ps = Flux.Params([mk.mask.x])
-		testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+			# Verify that calculation of the gradient for real mask is correct 
+			gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
+			@test all(abs.(gs[mk.mask.x]) .> 0)
 
-		# testing foreach_mask
-		cmk = collect_masks_with_levels(mk; level = 2)
-		@test length(cmk) == 1
-		@test cmk[1].first == mk.mask
-		@test cmk[1].second == 2
+			mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
+			ps = Flux.Params([mk.mask.x])
+			testmaskgrad(() -> sum(model(sn, mk).data),  ps)
 
-		# testing mapmask
-		cmk = mapmask(mk) do m, l
-			SimpleMask(m.x .+ 1)
+			# testing foreach_mask
+			cmk = collect_masks_with_levels(mk; level = 2)
+			@test length(cmk) == 1
+			@test cmk[1].first == mk.mask
+			@test cmk[1].second == 2
+
+			# testing mapmask
+			cmk = mapmask(mk) do m, l
+				SimpleMask(m.x .+ 1)
+			end
+			@test cmk.mask.x ≈ mk.mask.x .+ 1
 		end
-		@test cmk.mask.x ≈ mk.mask.x .+ 1
-
 
 		# update of the participation (does not apply now)
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))

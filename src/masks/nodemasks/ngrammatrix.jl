@@ -2,14 +2,16 @@ struct NGramMatrixMask{M} <: AbstractListMask
 	mask::M
 end
 
+const NGramNode = ArrayNode{<:Mill.NGramMatrix{String},<:Any}
+
 Flux.@functor(NGramMatrixMask)
 
-function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Mill.NGramMatrix{String}, M}
+function create_mask_structure(ds::NGramNode, m::ArrayModel, create_mask, cluster)
 	cluster_assignments = cluster(m, ds)
 	NGramMatrixMask(create_mask(cluster_assignments))
 end
 
-function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Mill.NGramMatrix{String}, M}
+function create_mask_structure(ds::NGramNode, create_mask)
 	NGramMatrixMask(create_mask(nobs(ds.data)))
 end
 
@@ -17,7 +19,7 @@ function invalidate!(mk::NGramMatrixMask, invalid_observations::AbstractVector{I
 	invalidate!(mk.mask, invalid_observations)
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, mk::NGramMatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.NGramMatrix{String}, M}
+function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}, presentobs=fill(true,nobs(ds)))
 	x = ds.data
 	pm = prunemask(mk.mask) 
 	s = map(findall(presentobs)) do i 
@@ -40,7 +42,7 @@ end
 	
 # TODO: We should make this one faster by writing a custom gradient for interpolation
 # since we do not need gradients with respect to `x` and `y`
-function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
+function (m::Mill.ArrayModel)(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask})
 	ng = ds.data
 	eg = NGramMatrix(fill("", length(ng.s)), ng.n, ng.b, ng.m)
 	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ng))
@@ -50,4 +52,4 @@ function (m::Mill.ArrayModel)(ds::ArrayNode, mk::NGramMatrixMask)
     m(ArrayNode(x′))
 end
 
-_nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:Mill.NGramMatrix{String}, M} = nobs(ds.data)
+_nocluster(m::ArrayModel, ds::NGramNode)  = nobs(ds.data)

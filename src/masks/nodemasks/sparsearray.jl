@@ -3,9 +3,11 @@ struct SparseArrayMask{M} <: AbstractListMask
 	columns::Vector{Int}
 end
 
+const SparseNode = ArrayNode{<:SparseMatrixCSC, <:Any}
+
 Flux.@functor(SparseArrayMask)
 
-function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:SparseMatrixCSC, M}
+function create_mask_structure(ds::SparseNode, m::ArrayModel, create_mask, cluster)
 	nnz(ds.data) == 0 && return(EmptyMask())
 	column2cluster = cluster(m, ds)
 	columns = identifycolumns(ds.data)
@@ -13,7 +15,7 @@ function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, c
 	SparseArrayMask(create_mask(cluster_assignments), columns)
 end
 
-function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:SparseMatrixCSC, M}
+function create_mask_structure(ds::SparseNode, create_mask)
 	nnz(ds.data) == 0 && return(EmptyMask())
 	columns = identifycolumns(ds.data)
 	SparseArrayMask(create_mask(nnz(ds.data)), columns)
@@ -32,9 +34,18 @@ function invalidate!(mk::SparseArrayMask, observations::Vector{Int})
 	end
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, mk::SparseArrayMask, presentobs=fill(true,nobs(ds))) where {T<:Mill.SparseMatrixCSC, M}
+function Base.getindex(ds::SparseNode, mk::SparseArrayMask, presentobs=fill(true,nobs(ds)))
 	x = deepcopy(ds.data)
 	x.nzval[.!prunemask(mk.mask)] .= 0
+	ArrayNode(x[:,presentobs], ds.metadata)
+end
+
+function Base.getindex(ds::SparseNode, mk::ObservationMask, presentobs=fill(true,nobs(ds)))
+	x = deepcopy(ds.data)
+	for (i, m) in enumerate(prunemask(mk.mask))
+		m && continue
+		x.nzval[x.colptr[i]:x.colptr[i+1]-1] .= 0
+	end
 	ArrayNode(x[:,presentobs], ds.metadata)
 end
 
@@ -54,10 +65,15 @@ function mapmask(f, m::SparseArrayMask, level = 1)
 	SparseArrayMask(f(m.mask, level), m.columns)
 end
 
-function (m::Mill.ArrayModel)(ds::ArrayNode, mk::SparseArrayMask)
+function (m::Mill.ArrayModel)(ds::SparseNode, mk::SparseArrayMask)
 	x = ds.data
 	nzval = x.nzval .* diffmask(mk.mask)
 	xx = dense_sparse(x.m, x.n, x.colptr, x.rowval, nzval)
+    ArrayNode(m.m(xx))
+end
+
+function (m::Mill.ArrayModel)(ds::SparseNode, mk::ObservationMask)
+	xx = ds.data .* transpose(diffmask(mk.mask))
     ArrayNode(m.m(xx))
 end
 
@@ -79,4 +95,4 @@ Zygote.@adjoint function dense_sparse(m::Int, n::Int, colptr, rowval, nzval)
 	Matrix(SparseMatrixCSC(m, n, colptr, rowval, nzval)), ∂f
 end
 
-_nocluster(m::ArrayModel, ds::ArrayNode{T,M})  where {T<:SparseMatrixCSC, M} = unique(identifycolumns(ds.data))
+_nocluster(m::ArrayModel, ds::SparseNode) = unique(identifycolumns(ds.data))
