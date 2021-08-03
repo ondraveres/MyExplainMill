@@ -32,7 +32,7 @@ function mapmask(f, mk::ProductMask, level = 1)
 end
 
 function present(mk::ProductMask, obs)
-	mapreduce(m -> present(m, obs), (.|), mk.childs)
+	mapreduce(m -> present(m, obs), (a,b) -> max.(a,b), mk.childs)
 end
 
 function invalidate!(mk::ProductMask, observations::Vector{Int})

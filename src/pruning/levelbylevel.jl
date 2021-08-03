@@ -20,7 +20,6 @@ function support_participation(mk)
 	s
 end
 
-
 """
 	levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 	levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
