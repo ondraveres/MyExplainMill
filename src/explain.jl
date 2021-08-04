@@ -15,6 +15,8 @@ end
 """
     explain(e, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+    explain(e, ds::AbstractNode, model::AbstractMillModel, class; kwargs...)
+    explain(e, ds::AbstractNode, model::AbstractMillModel, extractor::AbstractExtractor; kwargs...)
 
     explain the decision of `model` on sample `ds` using heuristic method `e`
     determining importance of subtrees (features) of the sample and using 
@@ -41,6 +43,16 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel; kwargs...)
     end
     explain(e, ds, model, class; kwargs...)
 end
+
+function explain(e, ds::AbstractNode, model::AbstractMillModel, extractor::JsonGrinder.AbstractExtractor; kwargs...)
+    dssm = _remove_metadata(ds)
+    mk = explain(e, dssm, model; kwargs...)
+    e2boolean(ds, mk, extractor)
+end
+_remove_metadata(ds::Mill.ProductNode) = Mill.ProductNode(_remove_metadata(ds.data), nothing)
+_remove_metadata(ds::Mill.ArrayNode) = Mill.ArrayNode(ds.data, nothing)
+_remove_metadata(ds::Mill.BagNode) = Mill.BagNode(ds.data, ds.bags, nothing)
+
 
 """
     explainf(e, ds::AbstractNode, model::AbstractMillModel, fₛ, fₚ)

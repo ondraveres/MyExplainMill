@@ -46,6 +46,9 @@ typename(MatrixMask)
 """
 create_mask_structure(f, ds::Mill.AbstractNode) = create_mask_structure(ds, f)
 
+mapmask(f, m::AbstractStructureMask) = mapmask(f, m, 1, IdDict{Any,Any}())
+foreach_mask(f, m::AbstractStructureMask) = foreach_mask(f, m, 1, IdDict{Any,Nothing}())
+
 include("participation.jl")
 include("simplemask.jl")
 include("mask.jl")

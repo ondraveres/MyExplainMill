@@ -3,8 +3,9 @@ using Mill
 using Test
 using Flux
 using SparseArrays
+using Setfield
 using ExplainMill: SimpleMask, create_mask_structure, foreach_mask, collect_masks_with_levels, mapmask
-using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask
+using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask, FollowingMasks
 using ExplainMill: ParticipationTracker, participate, invalidate!, present
 using FiniteDifferences
 using StatsBase: nobs
@@ -466,6 +467,72 @@ end
 		ExplainMill.updateparticipation!(mk)
 		@test all(participate(mk[:a].mask))
 		@test all(participate(mk[:b].mask))
+	end
+
+	@testset "simple sharing of masks" begin 
+		ds = specimen_sample()
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+
+		# test that mapping of mask works as intended
+		mk = mapmask((m, l) -> ParticipationTracker(m), mk)
+		cmk = collect_masks_with_levels(mk)
+		@test length(cmk) == 6
+
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		shared_m = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.an = shared_m
+		@set! mk.child.child.childs.cn = shared_m
+		@set! mk.child.child.childs.on = shared_m
+		@set! mk.child.child.childs.sn = shared_m
+
+		@test ds[mk] == ds
+
+		# test synchronous subsetting
+		mk.child.child[:an].mask.x[1] = false
+		@test ds[mk].data.data[:an].data == ds.data.data[:an].data[:,2:end]
+		@test ds[mk].data.data[:cn].data == ds.data.data[:cn].data[:,2:end]
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[2:end]
+		@test ds[mk].data.data[:on].data == ds.data.data[:on].data[:,2:end]
+
+		#test that mapping work as intended and preserves the sharing
+		mk = mapmask((m, l) -> ParticipationTracker(m), mk)
+		cmk = collect_masks_with_levels(mk)
+		@test length(cmk) == 3
+		@test mk.child.child[:an].mask isa ParticipationTracker
+		@test mk.child.child[:cn].mask === mk.child.child[:an].mask
+		@test mk.child.child[:sn].mask === mk.child.child[:an].mask
+		@test mk.child.child[:on].mask === mk.child.child[:an].mask
+
+		#we should check the gradient and also if model(ds, mk) == model(ds[mk])
+	end
+
+	@testset "Leader / follower sharing of masks" begin 
+		ds = specimen_sample()
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+
+		shared_m = ObservationMask(SimpleMask(trues(5)))
+		#sn is going to be a follower, because it is easy to check
+		@set! mk.child.child.childs.an.mask = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.cn.mask = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.on.mask = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.sn = ObservationMask(FollowingMasks((
+			mk.child.child.childs.an.mask,
+			mk.child.child.childs.cn.mask,
+			mk.child.child.childs.on.mask,
+			)))
+
+		@test ds[mk] == ds
+
+		# test if everything is unset and we set one of the leaders, followers will be set as well
+
+		# check the mapmask
+
+		# check the mapmask with a different combination of leader / follower to see 
+		# that mapmask is permutation invariant
+
+		#we should check the gradient and also if model(ds, mk) == model(ds[mk])
+
+
 	end
 end
 

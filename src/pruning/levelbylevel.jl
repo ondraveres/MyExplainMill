@@ -12,6 +12,14 @@ function add_participation(mk)
 	end
 end
 
+"""
+
+	support_participation(mk)
+
+	true if all masks in `mk` supports tracking participation, which is 
+	needed for effective `levelbylevelsearch`. Note that this is very complicated 
+	with
+"""
 function support_participation(mk)
 	s = true 
 	foreach_mask(mk) do m, _
@@ -87,6 +95,7 @@ end
 
 
 function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+	!support_participation(mk) && error("Level by level can be used only with masks supporting tracking of participation")
 	all_masks = collect_masks_with_levels(mk)
 	if isempty(all_masks) 
 		@warn "Cannot explain empty samples"

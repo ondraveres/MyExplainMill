@@ -25,15 +25,19 @@ function Base.getindex(m::BagMask, i::Mill.VecOrRange)
     BagNode(m.child[i], nb, m.mask[ii])
 end
 
-function foreach_mask(f, m::BagMask, level = 1)
-	f(m.mask, level)
-	foreach_mask(f, m.child, level + 1)
+function foreach_mask(f, m::BagMask, level, visited)
+	if !haskey(visited, m.mask)
+		f(m.mask, level)
+		foreach_mask(f, m.child, level + 1, visited)
+		visited[m.mask] = nothing
+	end
 end
 
-function mapmask(f, m::BagMask, level = 1)
-	BagMask(mapmask(f, m.child, level + 1),
+function mapmask(f, m::BagMask, level, visited)
+	new_mask = get!(visited, m.mask, f(m.mask, level))
+	BagMask(mapmask(f, m.child, level + 1, visited),
 		m.bags,
-		f(m.mask, level)
+		new_mask
 		)
 end
 

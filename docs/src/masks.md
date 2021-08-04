@@ -202,4 +202,25 @@ An interesting question is how to implement participation. So far, I have consid
 
 ### Sharing Masks
 If the explainer is used to create rules, it can happen that several keys should be either all absent or all absent. To achieve this, we want to share mask in nodes, specifically, one mask object should be shared among several leaves. While the idea behind mask is easy, the realization is complicated if the leaves are of different type. For example, in 	`StringMask` and `CategoricalMask`, mask  decides if a given observation is present or absent, in `DenseMask`, the mask controls features of all observations, and in `SparseMask`, it controls individual non-zero items in the matrix. To resolve this nightmare, we will introduce additional mask, `ObservationMask`, which will remove individual observation. `ObservationMask` act the same as `StringMask` and `CategoricalMask` on strings and categorical variables, but it will act differently on Sparse and Dense Arrays, removing a particular observation completely (needless to say, we rarely use these). An interesting question is, if `StringMask` and  `CategoricalMask` should not be removed and replaced by `ObservationMask`?  Most probably no, because as it is created now, we can for example change all `StringMasks` to `SubStringMasks` without requiring the access to the original sample to identify Strings. On the other hand this setup brings additional complexity to tests.  I will do them properly for Categorical and String nodes, where they can exactly replace the `StringMask` and `CategoricalMask` and for others, I will just test 
-the subindexing.
+the subindexing. 
+
+Today, the guys requested yet another feature. Imagine if we want to have following logic. 
+If `B` is present, `A` is present. 
+If `C` is present, `A` is present.
+If `D` is present, `A` is present.
+
+That means, whenever one of `B,` `C,` and `D` is present, `A` has to be present as well. This means that the mask has to be set in kind of follower mode from the set of masks. 
+Now the fundamental question is, how to support `mapmask` on these things. Because, we cannot properly reconstruct the dependency DAG. 
+
+A proposed solution.
+* The `ObservationMask` will have a flag, if it is leader or follower. It is follower, it will not participate in `foreach` and it will throw an error if a mapmask. This `error` is a safety belt.
+
+A problem in proposed solution.
+`mapmask` is an important convenience tool, as it helps during the decoration by `ParticipationTracker` in construction of the mask for level-by-level explanation, which without participation tracker sucks. 
+A solution would be to add the `mapmask` and run the  adjustment afterwards.
+
+Or alternatively, check before level-by-level that participation is supported and if not, it would need to be added manually. This is of course major pain, but level-by-level is not exposed to public, hence it might be ok. 
+
+Another solution might be as follows. Imagine that we adopt a design contract that `mask` can be shared only within the same `Dict`, which sort of make sense. Then, the mapping might be implemented such that the dict checks for duplicated masks and do what is expected. That might work. Will think about it
+
+I will use a trick of Mike Innes and will cache results using IdDict, which will allow to check, if the mask was already `mapped` and take the result. Though needless to say, when a mask is on following more then one mask, that would still be tough. Likely there will need to be a special dispatch of `ObservationMask` on `FollowingMasks`.

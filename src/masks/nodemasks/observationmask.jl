@@ -8,18 +8,25 @@ end
 
 Flux.@functor(ObservationMask)
 
+ObservationMask(mask) = ObservationMask(mask, false)
+
 function invalidate!(mk::ObservationMask, invalid_observations::AbstractVector{Int})
 	invalidate!(mk.mask, invalid_observations)
-end
-
-function foreach_mask(f, m::ObservationMask, level = 1)
-	f(m.mask, level)
 end
 
 function present(mk::ObservationMask, obs)
 	map((&), obs, prunemask(mk.mask))
 end
 
-function mapmask(f, m::ObservationMask, level = 1)
-	ObservationMask(f(m.mask, level))
+function foreach_mask(f, m::ObservationMask, level, visited)
+	if !haskey(visited, m.mask)
+		f(m.mask, level)
+		visited[m.mask] = nothing
+	end
 end
+
+function mapmask(f, m::ObservationMask, level, visited)
+	new_mask = get!(visited, m.mask, f(m.mask, level))
+	ObservationMask(new_mask)
+end
+

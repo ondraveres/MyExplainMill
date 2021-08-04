@@ -29,3 +29,23 @@ Base.getindex(m::HeuristicMask, i) = m.x[i]
 Base.setindex!(m::HeuristicMask, v, i) = m.x[i] = v
 Base.materialize!(m::HeuristicMask, v) = m.x .= v
 heuristic(m::HeuristicMask) = m.h
+
+
+
+struct FollowingMasks{T<:Tuple} <: AbstractVectorMask
+	masks::T
+
+	#assert that all masks have the same length
+	function FollowingMasks(masks::T) where {T<:Tuple}
+		isempty(masks) && error("FollowingMasks cannot be empty")
+		l = length(masks[1])
+		!all(l == length(x) for x in masks) && error("All masks in FollowingMasks has to have same length")
+		new{T}(masks)
+	end
+end
+
+prunemask(m::FollowingMasks) =foldl((a,b) -> max.(prunemask(a),prunemask(b)), masks)
+diffmask(m::FollowingMasks) = foldl((a,b) -> max.(diffmask(a),diffmask(b)), masks)
+Base.length(m::FollowingMasks) = length(m.masks[1])
+Base.getindex(m::FollowingMasks, i) = maximum(x[i] for x in m.masks)
+

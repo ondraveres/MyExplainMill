@@ -28,17 +28,22 @@ function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
 
-function foreach_mask(f, m::NGramMatrixMask, level = 1)
-	f(m.mask, level)
-end
-
 function present(mk::NGramMatrixMask, obs)
 	map((&), obs, prunemask(mk.mask))
 end
 
-function mapmask(f, m::NGramMatrixMask, level = 1)
-	NGramMatrixMask(f(m.mask, level))
+function foreach_mask(f, m::NGramMatrixMask, level, visited)
+	if !haskey(visited, m.mask)
+		f(m.mask, level)
+		visited[m.mask] = nothing
+	end
 end
+
+function mapmask(f, m::NGramMatrixMask, level, visited)
+	new_mask = get!(visited, m.mask, f(m.mask, level))
+	NGramMatrixMask(new_mask)
+end
+
 	
 # TODO: We should make this one faster by writing a custom gradient for interpolation
 # since we do not need gradients with respect to `x` and `y`

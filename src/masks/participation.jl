@@ -31,7 +31,7 @@ struct ParticipationTracker{M<:AbstractVectorMask} <: AbstractVectorMask
 	p::Vector{Bool}
 end
 
-ParticipationTracker(m::AbstractVectorMask) = ParticipationTracker(m, fill(true,length(m)))
+ParticipationTracker(m::AbstractVectorMask) = support_participation(m) ? m : ParticipationTracker(m, fill(true,length(m)))
 
 prunemask(m::ParticipationTracker) = prunemask(m.m)
 diffmask(m::ParticipationTracker) = diffmask(m.m)

@@ -70,6 +70,7 @@ function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::Abs
 	end
 end
 
+
 function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, fₚ, method)
     mkp = add_participation(mk)
 

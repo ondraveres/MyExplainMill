@@ -27,7 +27,8 @@ end
 
 
 function flatsfs!(f, mk::AbstractStructureMask; kwargs...) 
-	flatsfs!(f, FlatView(add_participation(mk));kwargs...)
+	!support_participation(mk) && error("FlatSFS requires all masks to track participation")
+	flatsfs!(f, FlatView(mk);kwargs...)
 end
 
 function sortindices(ii::Vector{Int}, significance::Vector{T}; rev = true) where {T<:Number}

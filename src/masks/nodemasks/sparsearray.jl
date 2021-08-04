@@ -57,12 +57,16 @@ function present(mk::SparseArrayMask, obs)
 	map((&), a, obs)
 end
 
-function foreach_mask(f, m::SparseArrayMask, level = 1)
-	f(m.mask, level)
+function foreach_mask(f, m::SparseArrayMask, level, visited)
+	if !haskey(visited, m.mask)
+		f(m.mask, level)
+		visited[m.mask] = nothing
+	end
 end
 
-function mapmask(f, m::SparseArrayMask, level = 1)
-	SparseArrayMask(f(m.mask, level), m.columns)
+function mapmask(f, m::SparseArrayMask, level, visited)
+	new_mask = get!(visited, m.mask, f(m.mask, level))
+	SparseArrayMask(new_mask, m.columns)
 end
 
 function (m::Mill.ArrayModel)(ds::SparseNode, mk::SparseArrayMask)
