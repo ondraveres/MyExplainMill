@@ -33,7 +33,8 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::MatrixMask, presentobs=fill(true,
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, mk::ObservationMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
-	x = ds.data[:, presentobs .* prunemask(mk.mask)]
+	x = ds.data[:, presentobs]
+	x[:, (.!prunemask(mk.mask))[presentobs]] .= 0
 	ArrayNode(x, ds.metadata)
 end
 

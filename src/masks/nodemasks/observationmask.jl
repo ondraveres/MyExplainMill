@@ -25,8 +25,25 @@ function foreach_mask(f, m::ObservationMask, level, visited)
 	end
 end
 
+function foreach_mask(f, m::ObservationMask{<:FollowingMasks}, level, visited)
+	for x in m.mask.masks 
+		if !haskey(visited, x)
+			f(x, level)
+			visited[x] = nothing
+		end
+	end 
+end
+
 function mapmask(f, m::ObservationMask, level, visited)
 	new_mask = get!(visited, m.mask, f(m.mask, level))
 	ObservationMask(new_mask)
 end
+
+function mapmask(f, m::ObservationMask{<:FollowingMasks}, level, visited)
+	mapped = map(m.mask.masks) do x 
+		get!(visited, x, f(x, level))
+	end 
+	ObservationMask(FollowingMasks(mapped))
+end
+
 

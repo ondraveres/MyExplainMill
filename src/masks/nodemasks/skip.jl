@@ -24,8 +24,8 @@ function Base.getindex(ds, mk::EmptyMask, presentobs = fill(true, nobs(ds)))
 	ds[presentobs]
 end
 
-foreach_mask(f, mk::EmptyMask, level = 1) = nothing
-mapmask(f, mk::EmptyMask, level = 1) = mk
+foreach_mask(f, mk::EmptyMask, level, visited) = nothing
+mapmask(f, mk::EmptyMask, level, visited) = mk
 
 invalidate!(mk::EmptyMask, observations::Vector{Int}) = nothing
 

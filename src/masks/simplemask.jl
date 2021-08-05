@@ -44,8 +44,8 @@ struct FollowingMasks{T<:Tuple} <: AbstractVectorMask
 	end
 end
 
-prunemask(m::FollowingMasks) =foldl((a,b) -> max.(prunemask(a),prunemask(b)), masks)
-diffmask(m::FollowingMasks) = foldl((a,b) -> max.(diffmask(a),diffmask(b)), masks)
+prunemask(m::FollowingMasks) = mapfoldl(prunemask, (a, b) -> max.(a, b), m.masks)
+diffmask(m::FollowingMasks) = mapfoldl(diffmask, (a, b) -> max.(a, b), m.masks)
 Base.length(m::FollowingMasks) = length(m.masks[1])
 Base.getindex(m::FollowingMasks, i) = maximum(x[i] for x in m.masks)
 

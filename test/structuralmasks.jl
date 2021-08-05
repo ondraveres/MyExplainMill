@@ -85,7 +85,7 @@ end
 		mk = ObservationMask(SimpleMask(fill(true, nobs(an))))
 		@test an[mk] == an
 		mk.mask.x[1] = false
-		@test an[mk].data == an.data[:,2:end]
+		@test an[mk].data == hcat([0,0,0,0], an.data[:,2:end])
 		@test model(an, mk).data ≈ model(ArrayNode(an.data .* [0 1 1 1 1])).data
 	end
 
@@ -509,30 +509,114 @@ end
 	@testset "Leader / follower sharing of masks" begin 
 		ds = specimen_sample()
 		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
-
-		shared_m = ObservationMask(SimpleMask(trues(5)))
-		#sn is going to be a follower, because it is easy to check
-		@set! mk.child.child.childs.an.mask = ObservationMask(SimpleMask(trues(5)))
-		@set! mk.child.child.childs.cn.mask = ObservationMask(SimpleMask(trues(5)))
-		@set! mk.child.child.childs.on.mask = ObservationMask(SimpleMask(trues(5)))
+		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
+		@set! mk.child.child.childs.an = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.on = ObservationMask(SimpleMask(trues(5)))
 		@set! mk.child.child.childs.sn = ObservationMask(FollowingMasks((
 			mk.child.child.childs.an.mask,
 			mk.child.child.childs.cn.mask,
 			mk.child.child.childs.on.mask,
 			)))
 
+		#sn is going to be a follower, because it is easy to check
+
 		@test ds[mk] == ds
 
 		# test if everything is unset and we set one of the leaders, followers will be set as well
+		mk.child.child[:an].mask.x[1] = false
+		mk.child.child[:cn].mask.x[1] = false
+		mk.child.child[:on].mask.x[1] = false
+
+  		@test ds[mk].data.data[:an].data == ds.data.data[:an].data[:,2:end]
+		@test ds[mk].data.data[:cn].data == ds.data.data[:cn].data[:,2:end]
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[2:end]
+		@test ds[mk].data.data[:on].data == ds.data.data[:on].data[:,2:end]
+		@test model(ds[mk]).data ≈ model(ds, mk).data
+
+		# test of that follower is following the leader
+		mk.child.child[:an].mask.x[1] = true
+  		@test ds[mk].data.data[:an].data == ds.data.data[:an].data
+		@test ds[mk].data.data[:cn].data ≈ hcat([0,0], ds.data.data[:cn].data[:,2:end])
+		@test ds[mk].data.data[:on].data == hcat(Flux.onehotbatch([4],1:4), ds.data.data[:on].data[:,2:end])
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
+		@test model(ds[mk]).data ≈ model(ds, mk).data
+
+		#one more test of the follower is following the leader
+		mk.child.child[:an].mask.x[1] = false
+		mk.child.child[:on].mask.x[1] = true
+  		@test ds[mk].data.data[:an].data == hcat([0,0], ds.data.data[:an].data[:,2:end])
+		@test ds[mk].data.data[:cn].data ≈ hcat([0,0], ds.data.data[:cn].data[:,2:end])
+		@test ds[mk].data.data[:on].data == ds.data.data[:on].data
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
+
+		@test model(ds[mk]).data ≈ model(ds, mk).data
+
+		# calculation of gradient with respect to boolean mask
+		for k in [:an, :cn, :on]
+			x = mk.child.child[k].mask.x
+			gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([x]))
+			@test all(abs.(gs[x]) .> 0)
+		end
 
 		# check the mapmask
+		mk₂ = mapmask((m, l) -> ParticipationTracker(m), mk)
+		@test mk₂.child.child[:an].mask isa ParticipationTracker
+		@test mk₂.child.child[:cn].mask isa ParticipationTracker
+		@test mk₂.child.child[:on].mask isa ParticipationTracker
+		@test mk₂.child.child[:sn].mask isa FollowingMasks 
+
+		@test mk₂.child.child.childs.an.mask === mk₂.child.child[:sn].mask.masks[1]
+		@test mk₂.child.child.childs.cn.mask === mk₂.child.child[:sn].mask.masks[2]
+		@test mk₂.child.child.childs.on.mask === mk₂.child.child[:sn].mask.masks[3]
+
+		# check the foreach_mask
+		@test length(collect_masks_with_levels(mk)) == 5
+		@test length(collect_masks_with_levels(mk₂)) == 5
 
 		# check the mapmask with a different combination of leader / follower to see 
 		# that mapmask is permutation invariant
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		@set! mk.child.child.childs.sn = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.on = ObservationMask(SimpleMask(trues(5)))
+		@set! mk.child.child.childs.an = ObservationMask(FollowingMasks((
+			mk.child.child.childs.sn.mask,
+			mk.child.child.childs.cn.mask,
+			mk.child.child.childs.on.mask,
+			)))
+
+		mk₂ = mapmask((m, l) -> ParticipationTracker(m), mk)
+		@test mk₂.child.child[:sn].mask isa ParticipationTracker
+		@test mk₂.child.child[:cn].mask isa ParticipationTracker
+		@test mk₂.child.child[:on].mask isa ParticipationTracker
+		@test mk₂.child.child[:an].mask isa FollowingMasks 
+
+		@test mk₂.child.child.childs.sn.mask === mk₂.child.child[:an].mask.masks[1]
+		@test mk₂.child.child.childs.cn.mask === mk₂.child.child[:an].mask.masks[2]
+		@test mk₂.child.child.childs.on.mask === mk₂.child.child[:an].mask.masks[3]
+
+		# check the foreach_mask
+		@test length(collect_masks_with_levels(mk)) == 5
+		@test length(collect_masks_with_levels(mk₂)) == 5
 
 		#we should check the gradient and also if model(ds, mk) == model(ds[mk])
 
 
+		mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
+		@set! mk.child.child.childs.an = ObservationMask(SimpleMask(rand(5)))
+		@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(rand(5)))
+		@set! mk.child.child.childs.on = ObservationMask(SimpleMask(rand(5)))
+		@set! mk.child.child.childs.sn = ObservationMask(FollowingMasks((
+			mk.child.child.childs.an.mask,
+			mk.child.child.childs.cn.mask,
+			mk.child.child.childs.on.mask,
+			)))
+
+		for k in [:an, :cn, :on]
+			ps = Flux.Params([mk.child.child[k].mask.x])
+			@test testmaskgrad(() -> sum(model(ds, mk).data),  ps)
+		end
 	end
 end
 
