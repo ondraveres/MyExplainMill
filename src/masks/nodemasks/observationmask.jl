@@ -8,8 +8,6 @@ end
 
 Flux.@functor(ObservationMask)
 
-ObservationMask(mask) = ObservationMask(mask, false)
-
 function invalidate!(mk::ObservationMask, invalid_observations::AbstractVector{Int})
 	invalidate!(mk.mask, invalid_observations)
 end

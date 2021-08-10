@@ -73,6 +73,10 @@ function gnntarget(model, ds, classes::Vector{Int})
 	y = Flux.onehotbatch(classes, 1:d)
 end
 
+function gnntarget(model, ds, class::Int)
+	gnntarget(model, ds, fill(class, nobs(ds)))
+end
+
 function gnntarget(model, ds)
 	o = softmax(model(ds).data)
 	d, l = size(o)
