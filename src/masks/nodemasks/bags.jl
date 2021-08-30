@@ -92,7 +92,7 @@ function (a::Mill.SegmentedMean)(x::Matrix{T}, bags::Mill.AbstractBags, mk::BagM
 	m = T.(transpose(diffmask(mk.mask) .* present_childs))
 	xx = m .* x
 	o = a(xx, bags)
-	n = max.(a(m, bags), eps(T))
+	n = max.(Mill.segmented_mean_forw(m, [eps(T)], bags, nothing), eps(T))
 	o ./ n
 end	
 

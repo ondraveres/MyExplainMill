@@ -12,8 +12,8 @@ using Flux
 using Duff
 using SparseArrays
 using HierarchicalUtils
-include("specimen.jl")
 
+include("specimen.jl")
 # TODO test that explanations are indeed subsets of the original json
 # TODO call e2boolean with full and sampled masks
 
