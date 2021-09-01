@@ -100,7 +100,7 @@ _reversedict(d) = Dict([v => k for (k,v) in d]...)
 
 	returns a mask of items contributing to the explanation
 """
-contributing(m::AbstractStructureMask, l) = prunemask(m.mask)
+contributing(m::AbstractStructureMask, _) = prunemask(m.mask)
 contributing(m::EmptyMask, l) = Fill(true, l)
 
 function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
