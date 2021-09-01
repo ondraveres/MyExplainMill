@@ -1,6 +1,8 @@
 """
 	`ObservationMask` is a mask that can be applied 
 	to different type of nodes: Strings, Categorical Variables, Dense Arrays, etc.
+	The length of wrapped mask should correspond to the number of observations in 
+	the wrapped node
 """
 struct ObservationMask{M} <: AbstractListMask
 	mask::M
