@@ -133,9 +133,19 @@ unscale(x, e) = x
     `OR` as `OR
 """
 function yarason(ds::ArrayNode{<:Matrix, M}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M
+    rows, cols = size(ds.data)
     c = contributing(m, size(ds.data,1))
     x = map(findall(exportobs)) do j
-        [c[i] ? _retrieve_obs(ds, i, j) : absent for i in 1:length(c)]
+        [c[i] ? _retrieve_obs(ds, i, j) : absent for i in 1:rows]
+    end
+    M === Nothing ? unscale(x, e) : x
+end
+
+function yarason(ds::ArrayNode{<:Matrix, M}, m::ObservationMask, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M
+    rows, cols = size(ds.data)
+    c = contributing(m, cols)
+    x = map(findall(exportobs)) do j
+        [c[j] ? _retrieve_obs(ds, i, j) : absent for i in 1:rows]
     end
     M === Nothing ? unscale(x, e) : x
 end
@@ -224,9 +234,14 @@ function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.Matri
     map(x -> _parcel(x, e), x)
 end
 
+function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.ObservationMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
+    x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
+    map(x -> _parcel(x, e), x)
+end
+
 function _parcel(x::Vector{T}, e) where {T}
     d = Dict{Symbol,T}()
-    for (offset, (k,f)) in enumerate(e)
+    for (offset, (k, f)) in enumerate(e)
         d[k] = unscale(x[offset], f)
     end
     d
