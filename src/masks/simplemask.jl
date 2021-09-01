@@ -49,4 +49,5 @@ prunemask(m::FollowingMasks) = mapfoldl(prunemask, (a, b) -> max.(a, b), m.masks
 diffmask(m::FollowingMasks) = mapfoldl(diffmask, (a, b) -> max.(a, b), m.masks)
 Base.length(m::FollowingMasks) = length(m.masks[1])
 Base.getindex(m::FollowingMasks, i) = maximum(x[i] for x in m.masks)
-
+support_participation(m::FollowingMasks) = true
+invalidate!(m::FollowingMasks, i) = nothing
