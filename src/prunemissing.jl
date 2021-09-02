@@ -21,3 +21,10 @@ function removemissing(ds::ProductNode)
 end
 
 @deprecate prunemissing removemissing
+
+
+
+dropmetadata(ds::ArrayNode)   = ArrayNode(ds.data, nothing)
+dropmetadata(ds::BagNode)     = BagNode(dropmetadata(ds.data), ds.bags, nothing)
+dropmetadata(ds::ProductNode) = ProductNode(map(dropmetadata, ds.data), nothing)
+

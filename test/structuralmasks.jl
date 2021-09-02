@@ -87,6 +87,11 @@ end
 		mk.mask.x[1] = false
 		@test an[mk].data == hcat([0,0,0,0], an.data[:,2:end])
 		@test model(an, mk).data ≈ model(ArrayNode(an.data .* [0 1 1 1 1])).data
+
+		# testing subsetting of an empty sample 
+		an = ArrayNode(randn(4,0))
+		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
+		@test an[mk] == an
 	end
 
 	@testset "Categorical Mask" begin
@@ -150,6 +155,11 @@ end
 			ExplainMill.updateparticipation!(mk)
 			@test all(participate(mk.mask))
 		end
+
+		# testing subsetting of an empty sample 
+		on = ArrayNode(Flux.onehotbatch(Int[], 1:4))
+		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test on[mk] == on
 	end
 
 	@testset "Sparse Mask" begin
@@ -219,6 +229,11 @@ end
 		mk.mask.x[2] = false
 		@test cn[mk].data == [1 0 3 0 5; 0 0 0 4 0]
 		@test model(cn, mk).data ≈ model(ArrayNode(cn.data .* [1 0 1 1 1])).data
+
+		# testing subsetting of an empty sample 
+		on = ArrayNode(sparse(zeros(4,0)))
+		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test on[mk] == on
 	end
 
 	@testset "String Mask" begin
@@ -277,6 +292,11 @@ end
 		@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
 		ExplainMill.updateparticipation!(mk)
 		@test all(participate(mk.mask))
+
+		# testing subsetting of an empty sample 
+		sn = ArrayNode(NGramMatrix(String[], 3, 256, 2053))
+		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
+		@test sn[mk] == sn
 	end
 
 	@testset "Bag Mask --- single nesting" begin
@@ -392,6 +412,12 @@ end
 		ExplainMill.updateparticipation!(mk)
 		@test all(participate(mk.mask))
 		@test participate(mk.child.mask) == Bool[0, 1, 1, 1, 1, 1]
+
+		# testing subsetting of an empty sample 
+		an = ArrayNode(randn(4,0))
+		ds = BagNode(an, AlignedBags([0:-1,0:-1]))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		@test ds[mk] == ds
 	end
 
 	@testset "ProductMask" begin
@@ -467,6 +493,14 @@ end
 		ExplainMill.updateparticipation!(mk)
 		@test all(participate(mk[:a].mask))
 		@test all(participate(mk[:b].mask))
+
+		# testing subsetting of an empty sample 
+		ds = ProductNode(
+			(a = ArrayNode(randn(4,0)),
+			b = ArrayNode(sparse(zeros(4,0))),
+			))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		@test ds[mk] == ds
 	end
 
 	@testset "simple sharing of masks" begin 

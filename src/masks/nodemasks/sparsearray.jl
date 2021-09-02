@@ -8,7 +8,6 @@ const SparseNode = ArrayNode{<:SparseMatrixCSC, <:Any}
 Flux.@functor(SparseArrayMask)
 
 function create_mask_structure(ds::SparseNode, m::ArrayModel, create_mask, cluster)
-	nnz(ds.data) == 0 && return(EmptyMask())
 	column2cluster = cluster(m, ds)
 	columns = identifycolumns(ds.data)
 	cluster_assignments = [column2cluster[c] for c in columns]
@@ -16,7 +15,6 @@ function create_mask_structure(ds::SparseNode, m::ArrayModel, create_mask, clust
 end
 
 function create_mask_structure(ds::SparseNode, create_mask)
-	nnz(ds.data) == 0 && return(EmptyMask())
 	columns = identifycolumns(ds.data)
 	SparseArrayMask(create_mask(nnz(ds.data)), columns)
 end

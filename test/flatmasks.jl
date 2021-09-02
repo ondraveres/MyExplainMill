@@ -8,7 +8,6 @@ using ExplainMill: Mask, FlatView
 using ExplainMill: ParticipationTracker, create_mask_structure, participate
 
 @testset "mapping between flat structure and nodes" begin
-	ds = specimen_sample()
 	for mfun in [
 		d -> SimpleMask(fill(true, d)),
 		d -> HeuristicMask(ones(Float32, d)),
@@ -16,6 +15,7 @@ using ExplainMill: ParticipationTracker, create_mask_structure, participate
 		d -> ParticipationTracker(HeuristicMask(ones(Float32, d))),
 		]
 
+		ds = specimen_sample()
 		mk = create_mask_structure(ds, mfun)
 		fv = FlatView(mk)
 		test_participation =  hasmethod(participate, Tuple{typeof(mfun(1))})
@@ -157,6 +157,23 @@ using ExplainMill: ParticipationTracker, create_mask_structure, participate
 
 			fv .= true
 			@test all(fv[i] == true for i in 1:length(fv))
+		end
+	
+		@testset "Testing ignoring of an empty part" begin 
+			ds = ProductNode((
+				a = BagNode(ArrayNode(NGramMatrix(String[], 3, 256, 2057)), AlignedBags([0:-1, 0:-1])),
+				b = ArrayNode(NGramMatrix(["a","b"], 3, 256, 2057)),
+				))
+			mk = create_mask_structure(ds, mfun)
+			fv = FlatView(mk)
+			@test length(fv) == 2
+			@test ds[mk] == ds
+			fv[1] = false
+			@test ds[mk][:a] == ds[:a]
+			@test ds[mk][:b].data.s == ["", "b"]
+			fv .= [true, false]
+			@test ds[mk][:a] == ds[:a]
+			@test ds[mk][:b].data.s == ["a", ""]
 		end
 	end	
 end

@@ -244,3 +244,4 @@ function greedyremoval!(f, flatmask)
 		end
 	end
 end
+

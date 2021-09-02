@@ -7,13 +7,11 @@ end
 Flux.@functor(CategoricalMask)
 
 function create_mask_structure(ds::OneHotNode, m::ArrayModel, create_mask, cluster)
-	nobs(ds) == 0 && return(EmptyMask())
 	cluster_assignments = cluster(m, ds)
 	CategoricalMask(create_mask(cluster_assignments))
 end
 
 function create_mask_structure(ds::OneHotNode, create_mask)
-	nobs(ds) == 0 && return(EmptyMask())
 	CategoricalMask(create_mask(nobs(ds.data)))
 end
 

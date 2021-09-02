@@ -7,14 +7,12 @@ end
 Flux.@functor(BagMask)
 
 function create_mask_structure(ds::BagNode, model::BagModel, create_mask, cluster)
-	(isnothing(ds.data) || nobs(ds.data) == 0) && return(EmptyMask())
 	child_mask = create_mask_structure(ds.data, model.im, create_mask, cluster)
 	cluster_assignments = cluster(model, ds)
 	BagMask(child_mask, ds.bags, create_mask(cluster_assignments))
 end
 
 function create_mask_structure(ds::BagNode, create_mask)
-	(isnothing(ds.data) || nobs(ds.data) == 0) && return(EmptyMask())
 	child_mask = create_mask_structure(ds.data, create_mask)
 	BagMask(child_mask, ds.bags, create_mask(nobs(ds.data)))
 end
