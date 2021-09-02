@@ -42,8 +42,9 @@ function invalidate!(mk::ProductMask, observations::Vector{Int})
 end
 
 function Base.getindex(ds::ProductNode{T,M}, mk::ProductMask, presentobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
-	ks = keys(ds.data)
-	s = (;[k => ds.data[k][mk.childs[k], presentobs] for k in ks]...)
+	s = map(ds.data, mk.childs) do sub_ds, sub_mk
+       sub_ds[sub_mk, presentobs]
+	end
 	ProductNode(s)
 end
 
