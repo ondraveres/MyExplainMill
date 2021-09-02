@@ -36,7 +36,6 @@ export StochasticExplainer, DafExplainer, GreedyGradient
 export stats, heuristic
 
 include("prunemissing.jl")
-export dropmetadata
 include("predict.jl")
 include("matching.jl")
 include("pruning/pruning.jl")
