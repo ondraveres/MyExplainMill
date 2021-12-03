@@ -49,7 +49,8 @@ function explain(e, ds::AbstractNode, model::AbstractMillModel, extractor::JsonG
     mk = explain(e, dssm, model; kwargs...)
     e2boolean(ds, mk, extractor)
 end
-_remove_metadata(ds::Mill.ProductNode) = Mill.ProductNode(_remove_metadata(ds.data), nothing)
+
+_remove_metadata(ds::Mill.ProductNode) = Mill.ProductNode(map(_remove_metadata, ds.data), nothing)
 _remove_metadata(ds::Mill.ArrayNode) = Mill.ArrayNode(ds.data, nothing)
 _remove_metadata(ds::Mill.BagNode) = Mill.BagNode(ds.data, ds.bags, nothing)
 
