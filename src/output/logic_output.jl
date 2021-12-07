@@ -117,6 +117,8 @@ end
 	unscale(x,e)
 
 	original values of `x` before the extraction by `e` in json
+
+    kind of deprecated when metadata are used
 """
 unscale(x::AbstractArray, e::ExtractScalar) = map(x -> unscale(x,e), x)
 unscale(x::Number, e::ExtractScalar) = x / e.s + e.c
@@ -150,9 +152,9 @@ function yarason(ds::ArrayNode{<:Matrix, M}, m::ObservationMask, e::ExtractScala
     M === Nothing ? unscale(x, e) : x
 end
 
-function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M <: AbstractVector
-    @error "yarason for ArrayNodes carrying FeatureVectors (fixed size vectors) not supported yet."
-end
+# function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M <: AbstractVector
+#     @error "yarason for ArrayNodes carrying FeatureVectors (fixed size vectors) not supported yet."
+# end
 
 function yarason(ds::ArrayNode{<:NGramMatrix}, m, e::ExtractString, exportobs = fill(true, nobs(ds)))
     c = contributing(m, nobs(ds))
@@ -242,7 +244,7 @@ end
 function _parcel(x::Vector{T}, e) where {T}
     d = Dict{Symbol,T}()
     for (offset, (k, f)) in enumerate(e)
-        d[k] = unscale(x[offset], f)
+        d[k] = x[offset]
     end
     d
 end
