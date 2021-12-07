@@ -302,12 +302,6 @@ function removeabsent(d::Dict)
     isempty(x) ? absent : Dict(x)
 end
 
-
-function e2boolean(pruning_mask, dss::AbstractNode, extractor)
-	@warn "deprecated syntax (pruning_mask, dss, extractor)"
-	removeabsent(yarason(dss, pruning_mask, extractor))
-end
-
 function e2boolean(dss::AbstractNode, pruning_mask, extractor)
-	removeabsent(yarason(dss, pruning_mask, extractor))
+    removeabsent(yarason(dss, pruning_mask, extractor))
 end
