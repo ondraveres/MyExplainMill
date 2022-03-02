@@ -25,10 +25,10 @@ function stats(e::GradExplainer, ds, model, classes = onecold(model, ds), cluste
 end
 
 function statsf(e::GradExplainer, ds, model, f, ::typeof(_nocluster))
-	o = softmax(model(ds).data)
+	o = softmax(model(ds))
 	mk = create_mask_structure(ds, d -> SimpleMask(ones(eltype(o), d)))
 	ps = Flux.Params(map(m -> simplemask(m).x, collectmasks(mk)))
-	gs = gradient(() -> f(model(ds, mk).data), ps)
+	gs = gradient(() -> f(model(ds, mk)), ps)
 	mapmask(mk) do m, l
 		d = length(m)
 		if haskey(gs, m.x)

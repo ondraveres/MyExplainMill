@@ -1,5 +1,5 @@
 function confidence(model, ds)
-	o = mapslices(x -> maximum(x), model(ds).data, dims = 1)
+	o = mapslices(x -> maximum(x), model(ds), dims = 1)
     nobs(ds) == 1 ? o[1] : o
 end
 
@@ -21,7 +21,7 @@ function confidencegap(o, classes::Vector{Int})
     end
 end
 
-confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)
+confidencegap(model, ds, classes) = confidencegap(model(ds), classes)
 
 """
     logitconfgap(model, ds, classes)
@@ -29,8 +29,8 @@ confidencegap(model, ds, classes) = confidencegap(model(ds).data, classes)
     confidence gap assuming the output of the model 
     are log of probabilities (i.e. no softmax)
 """
-logitconfgap(model, ds, classes) = confidencegap(softmax(model(ds).data), classes)
+logitconfgap(model, ds, classes) = confidencegap(softmax(model(ds)), classes)
 logitconfgap(o::Matrix, classes) = confidencegap(softmax(o), classes)
 
 
-Flux.onecold(model::Mill.AbstractMillModel, ds::Mill.AbstractMillNode) = Flux.onecold(softmax(model(ds).data))
+Flux.onecold(model::Mill.AbstractMillModel, ds::Mill.AbstractMillNode) = Flux.onecold(softmax(model(ds)))

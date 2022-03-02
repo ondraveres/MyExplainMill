@@ -42,7 +42,7 @@ end
 function statsf(e::DafExplainer, ds::AbstractMillNode, model::AbstractMillModel, f, cluster::typeof(_nocluster))
 	mk = create_mask_structure(ds, d -> ParticipationTracker(DafMask(d)))
 	dafstats!(e, mk) do 
-		f(model(ds[mk]).data)
+		f(model(ds[mk]))
 	end
 	mk
 end

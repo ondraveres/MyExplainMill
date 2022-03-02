@@ -30,11 +30,11 @@ using Mill: partialeval
 			    @test mkₚ.child isa EmptyMask
 			    @test mkₚ.mask === mk.mask
 			    @test keep
-		    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
+		    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
 			    for i in 1:length(mkₚ.mask)
 			    	mkₚ.mask[i] = false
-			    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
-			    	@test model(ds, mk).data ≈ mₚ(dsₚ, mkₚ).data
+			    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
+			    	@test model(ds, mk) ≈ mₚ(dsₚ, mkₚ)
 			    	mkₚ.mask[i] = true
 			    end
 			end
@@ -48,12 +48,12 @@ using Mill: partialeval
 			    @test mkₚ.child.child isa EmptyMask
 			    @test mkₚ.child.mask == mk.child.mask
 			    @test keep
-		    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
+		    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
 		    	fv = FlatView(mkₚ)
 			    for i in 1:length(fv)
 			    	fv[i] = false
-			    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
-			    	@test model(ds, mk).data ≈ mₚ(dsₚ, mkₚ).data
+			    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
+			    	@test model(ds, mk) ≈ mₚ(dsₚ, mkₚ)
 			    	fv[i] = true
 			    end
 			end
@@ -70,12 +70,12 @@ using Mill: partialeval
 					end
 					@test mk.child.child[k].mask == mkₚ.child.child[k].mask
 				    @test keep
-			    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
+			    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
 			    	fv = FlatView(mkₚ)
 				    for i in 1:length(fv)
 				    	fv[i] = false
-				    	@test model(ds[mk]).data ≈ mₚ(dsₚ[mkₚ]).data
-				    	@test model(ds, mk).data ≈ mₚ(dsₚ, mkₚ).data
+				    	@test model(ds[mk]) ≈ mₚ(dsₚ[mkₚ])
+				    	@test model(ds, mk) ≈ mₚ(dsₚ, mkₚ)
 				    	fv[i] = true
 				    end
 				end

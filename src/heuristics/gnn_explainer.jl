@@ -47,7 +47,7 @@ function statsf(e::GnnExplainer, ds, model, f, clustering::typeof(_nocluster))
 	reinit!(ps)
 	opt = ADAM(0.01, (0.5, 0.999))
 	for step in 1:e.n
-		gs = gradient(() -> f(model(ds, mk).data), ps)
+		gs = gradient(() -> f(model(ds, mk)), ps)
 		for p in ps
 			if haskey(gs, p)
 				gs[p] .+= gradient(x -> regularization(x, e.α, e.β), p)[1]
@@ -69,7 +69,7 @@ function regularization(p::AbstractArray{T}, α, β) where {T<:Real}
 end
 
 function gnntarget(model, ds, classes::Vector{Int})
-	d = size(model(ds).data, 1)
+	d = size(model(ds), 1)
 	y = Flux.onehotbatch(classes, 1:d)
 end
 
@@ -78,7 +78,7 @@ function gnntarget(model, ds, class::Int)
 end
 
 function gnntarget(model, ds)
-	o = softmax(model(ds).data)
+	o = softmax(model(ds))
 	d, l = size(o)
 	Flux.onehotbatch(Flux.onecold(o), 1:d)
 end

@@ -35,11 +35,12 @@ using ExplainMill: create_mask_structure, updateparticipation!
 		y = ExplainMill.gnntarget(model, ds)
 		f = x -> begin 
 			fv .= x 
-			sum(softmax(model(ds, mk).data) .* y)
+			sum(softmax(model(ds, mk)) .* y)
 		end 
 		hᵣ = grad(central_fdm(5,1), f , ones(Float64, length(fv)))[1]
 		ps = Flux.Params(map(x -> x.x, fv.masks))
-		gs = gradient(() -> sum(softmax(model(ds, mk).data) .* y), ps)
+		foreach(x -> x .= 1, ps)
+		gs = gradient(() -> sum(softmax(model(ds, mk)) .* y), ps)
 
 		h = stats(GradExplainer(true), ds, model) |> FlatView |> heuristic
 		@test h ≈ abs.(hᵣ)
@@ -69,7 +70,7 @@ using ExplainMill: create_mask_structure, updateparticipation!
 		for i in 1:200
 			sample!(mk)
 			updateparticipation!(mk)
-			o = sum(softmax(model(ds[mk]).data) .* y)
+			o = sum(softmax(model(ds[mk])) .* y)
 			for j in 1:length(fv)
 				!e.banzhaf && !participate(fv)[j] && continue
 				Duff.update!(s, o, fv[j] & participate(fv)[j], j)
