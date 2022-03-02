@@ -60,15 +60,15 @@ function present(mk::MatrixMask, obs)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::MatrixMask)
-    ArrayNode(m.m(diffmask(mk.mask) .* ds.data))
+    m.m(diffmask(mk.mask) .* ds.data)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::ObservationMask)
-    ArrayNode(m.m(transpose(diffmask(mk.mask)) .* ds.data))
+    m.m(transpose(diffmask(mk.mask)) .* ds.data)
 end
 
 """
-	Mill.partialeval(model::AbstracModel, ds::AbstractNode, mk::StructureMask, masks)
+	Mill.partialeval(model::AbstracModel, ds::AbstractMillNode, mk::StructureMask, masks)
 
 	identify subset of `model`, sample `ds`, and structural mask `mk` that are 
 	sensitive to `masks` and evaluate and replace the rest of the model, sample, 
@@ -76,7 +76,7 @@ end
 	is useful when we are explaining only subset of full mask (e.g. level-by-level) 
 	explanation.
 """
-function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:Union{IdentityModel, ArrayModel}}
+function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:ArrayModel}
 	mk ∈ masks && return(model, ds, mk, true)
 	mk.mask ∈ masks && return(model, ds, mk, true)
 	return(ArrayModel(identity), model(ds), EmptyMask(), false)

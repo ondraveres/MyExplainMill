@@ -33,13 +33,13 @@ Base.setindex!(m::DafMask, v, i) = m.x[i] = v
 Base.materialize!(m::DafMask, v::Base.Broadcast.Broadcasted) = m.x .= v
 heuristic(m::DafMask) = Duff.meanscore(m.stats)
 
-function stats(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, classes = onecold(model, ds), cluster = _nocluster)
+function stats(e::DafExplainer, ds::AbstractMillNode, model::AbstractMillModel, classes = onecold(model, ds), cluster = _nocluster)
 	y = gnntarget(model, ds, classes)
 	f(o) = sum(softmax(o) .* y)
 	statsf(e, ds, model, f, cluster)
 end
 
-function statsf(e::DafExplainer, ds::AbstractNode, model::AbstractMillModel, f, cluster::typeof(_nocluster))
+function statsf(e::DafExplainer, ds::AbstractMillNode, model::AbstractMillModel, f, cluster::typeof(_nocluster))
 	mk = create_mask_structure(ds, d -> ParticipationTracker(DafMask(d)))
 	dafstats!(e, mk) do 
 		f(model(ds[mk]).data)

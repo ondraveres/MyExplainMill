@@ -1,6 +1,6 @@
 
 #find non-empty lenses
-""" findnonempty(ds::Mill.AbstractNode)
+""" findnonempty(ds::Mill.AbstractMillNode)
 
     array of lenses corresponding to non-empty leafs in the data node
 """

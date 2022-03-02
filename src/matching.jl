@@ -17,7 +17,7 @@ end
 # 	all(map(x -> match(x, expression, extractor, path = path, verbose = verbose), ds))
 # end
 
-# function Base.match(ds::AbstractNode, expression::Vector, extractor; path = (), verbose = false)
+# function Base.match(ds::AbstractMillNode, expression::Vector, extractor; path = (), verbose = false)
 # 	all(e -> Base.match(ds, e, extractor; path, verbose), expression)
 # end
 
@@ -35,30 +35,26 @@ end
 ####
 #				Dictionary
 ####
-function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
-    !isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
-    # all(map(k -> (@show k;match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose)), collect(keys(expression))))
-    all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
-end
+# function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{Nothing,V}; path = (), verbose = false) where {V}
+#     !isempty(setdiff(keys(expression), keys(ds))) && throw("Expression contains keys not in the datasample")
+#     # all(map(k -> (@show k;match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose)), collect(keys(expression))))
+#     all(map(k -> match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose), collect(keys(expression))))
+# end
 
-function Base.match(ds::ProductNode, expression, extractor::MultipleRepresentation)
-    e = extractor.extractors
-    ks = collect(keys(e))
-    all(match(ds[k], expression, e[k]) for k in ks)
-end
+# function Base.match(ds::ProductNode, expression, extractor::MultipleRepresentation)
+#     e = extractor.extractors
+#     ks = collect(keys(e))
+#     all(match(ds[k], expression, e[k]) for k in ks)
+# end
 
 ####
 #				Dictionary with fused Scalar values
 ####
 
-function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,D}; path = (), verbose = false) where {V,D}
+function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict; path = (), verbose = false)
     !matcharray(ds[:scalars], expression, extractor.vec) && return(false)
     ks = collect(setdiff(keys(expression), keys(extractor.vec)))
     all(match(ds[k], expression[k], extractor[k]; path = (path..., k), verbose = verbose) for k in ks)
-end
-
-function Base.match(ds::ProductNode, expression::Dict, extractor::ExtractDict{V,Nothing}; path = (), verbose = false) where {V}
-    match(ds[:scalars], expression, extractor.vec)
 end
 
 function matcharray(ds::ArrayNode, vals::Dict, extractors::Dict)

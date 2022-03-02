@@ -77,10 +77,20 @@ function (model::Mill.BagModel)(x::BagNode, mk::BagMask)
 end
 
 #TODO: SimpleMask for now, but we should add a proper abstract
+
+function (bc::Mill.BagCount)(x::Mill.Maybe{AbstractArray}, bags::Mill.AbstractBags, mk::BagMask)
+	present_childs = Zygote.@ignore present(mk.child, prunemask(mk.mask))
+    o1 = bc.a(x, bags, mk)
+    T = eltype(o1)
+    o2 = Mill.segmented_sum_forw(transpose(T.(present_childs)), ones(T, 1), bags, nothing)
+    o2 = log.(one(T) .+ o2)
+    vcat(o1, o2)
+end
+
 function (a::Mill.SegmentedMax)(x::Matrix, bags::Mill.AbstractBags, mk::BagMask)
 	present_childs = Zygote.@ignore present(mk.child, prunemask(mk.mask))
 	m = transpose(diffmask(mk.mask) .* present_childs)
-	xx = m .* x .+ (1 .- m) .* a.C 
+	xx = m .* x .+ (1 .- m) .* a.ψ 
 	a(xx, bags)
 end	
 

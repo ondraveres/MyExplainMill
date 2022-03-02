@@ -31,8 +31,8 @@ function updateparticipation!(mk)
 end
 
 """
-	create_mask_structure(f, ds::Mill.AbstractNode)
-	create_mask_structure(ds::Mill.AbstractNode, f)
+	create_mask_structure(f, ds::Mill.AbstractMillNode)
+	create_mask_structure(ds::Mill.AbstractMillNode, f)
 
 	construct structural masks for a sample `ds` while initating 
 	`<:AbstractVectorMask` using function `f`.
@@ -44,7 +44,7 @@ julia> create_mask_structure(ArrayNode(randn(3,4)), d -> SimpleMask(fill(true, d
 typename(MatrixMask)
 ```
 """
-create_mask_structure(f, ds::Mill.AbstractNode) = create_mask_structure(ds, f)
+create_mask_structure(f, ds::Mill.AbstractMillNode) = create_mask_structure(ds, f)
 
 mapmask(f, m::AbstractStructureMask) = mapmask(f, m, 1, IdDict{Any,Any}())
 foreach_mask(f, m::AbstractStructureMask) = foreach_mask(f, m, 1, IdDict{Any,Nothing}())

@@ -52,7 +52,7 @@ function prune!(f, mk::AbstractStructureMask, method::Symbol)
 	end
 end
 
-function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::AbstractStructureMask, method::Symbol)
+function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractMillNode, mk::AbstractStructureMask, method::Symbol)
 	if method == :LbyLo_HAdd
 		ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = false, fine_tuning = false)
 	elseif method == :LbyLo_HArr
@@ -71,7 +71,7 @@ function prune!(f, model::Mill.AbstractMillModel, ds::Mill.AbstractNode, mk::Abs
 end
 
 
-function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractNode, fₚ, method)
+function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::AbstractMillNode, fₚ, method)
     mkp = add_participation(mk)
 
     if method ∈ [:LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, :LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]

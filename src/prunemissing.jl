@@ -1,12 +1,12 @@
 removable(::Missing) = true
 # removable(::Missing) = true
-removable(ds::AbstractNode) = ismissing(ds.data)
+removable(ds::AbstractMillNode) = ismissing(ds.data)
 removable(s::Vector{T}) where {T<:AbstractString} = isempty(s)
 removable(s::Matrix{T}) where {T<:Number} = false
 removable(x::NGramMatrix{String}) = all(isempty.(x.s))
-removable(x::Flux.OneHotMatrix{Array{Flux.OneHotVector,1}}) = all(j.ix == x.height for j in x.data)
+removable(x::Flux.OneHotMatrix) = all(j.ix == x.height for j in x.data)
 
-removemissing(ds::AbstractNode) = removable(ds.data) ? missing : ds
+removemissing(ds::AbstractMillNode) = removable(ds.data) ? missing : ds
 
 function removemissing(ds::BagNode) 
 	data = removemissing(ds.data)

@@ -17,7 +17,7 @@ struct GradGreedyExplainer
 
 end
 
-function explain(e::GradGreedyExplainer, ds::AbstractNode, model::AbstractMillModel, class::Int; clustering = _nocluster, rel_tol = 0.99f0, partial_evaluation = true, kwargs...)
+function explain(e::GradGreedyExplainer, ds::AbstractMillNode, model::AbstractMillModel, class::Int; clustering = _nocluster, rel_tol = 0.99f0, partial_evaluation = true, kwargs...)
 	greedy_gradient_lbyl(model, ds, class, clustering, rel_tol, partial_evaluation)
 end
 
@@ -97,7 +97,7 @@ function greedy_gradient_lbyl(ds; clustering=_nocluster, rel_tol=nothing, abs_to
 	greedy_gradient_lbyl(model, ds, class, clustering, abs_tol, rel_tol, partial_evaluation, adjust_mask)
 end
 
-function explain(e::GreedyGradient, ds::AbstractNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+function explain(e::GreedyGradient, ds::AbstractMillNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
         abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
     cg = logitconfgap(model, ds, class)
     @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"

@@ -56,17 +56,20 @@ end
 
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(an, d -> Dense(d, 10)))
-		@test model(an[mk]).data ≈ model(an, mk).data
+		@test model(an[mk]) ≈ model(an, mk)
 
 
 		# calculation of gradient with respect to boolean mask
-		gs = gradient(() -> sum(model(an, mk).data),  Flux.Params([mk.mask.x]))
+		gs = gradient(() -> sum(model(an, mk)),  Flux.Params([mk.mask.x]))
+		@test gs[mk.mask.x] === nothing
+		mk = create_mask_structure(an, d -> SimpleMask(d))
+		gs = gradient(() -> sum(model(an, mk)),  Flux.Params([mk.mask.x]))
 		@test all(abs.(gs[mk.mask.x]) .> 0)
 
 		# Verify that calculation of the gradient for real mask is correct 
 		mk = create_mask_structure(an, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
-		testmaskgrad(() -> sum(model(an, mk).data),  ps)
+		testmaskgrad(() -> sum(model(an, mk)),  ps)
 
 		# testing foreach_mask
 		cmk = collect_masks_with_levels(mk; level = 2)
@@ -86,7 +89,7 @@ end
 		@test an[mk] == an
 		mk.mask.x[1] = false
 		@test an[mk].data == hcat([0,0,0,0], an.data[:,2:end])
-		@test model(an, mk).data ≈ model(ArrayNode(an.data .* [0 1 1 1 1])).data
+		@test model(an, mk) ≈ model(ArrayNode(an.data .* [0 1 1 1 1]))
 
 		# testing subsetting of an empty sample 
 		an = ArrayNode(randn(4,0))
@@ -117,16 +120,25 @@ end
 
 			# output of a model on pruned sample is equal to output multiplicative weights
 			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
-			@test model(on[mk]).data ≈ model(on, mk).data
+			@test model(on[mk]) ≈ model(on, mk)
 
-			# calculation of gradient with respect to boolean mask
-			gs = gradient(() -> sum(model(on, mk).data),  Flux.Params([mk.mask.x]))
+			# calculation of gradient with respect to boolean mask returns nothing
+			# gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
+			@test_broken gs[mk.mask.x] === nothing
+		end
+
+		mk₁ = create_mask_structure(on, d -> SimpleMask(d))
+		mk₂ = ObservationMask(SimpleMask(nobs(on)))
+		for mk in [mk₁, mk₂]
+			# calculation of gradient
+			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
+			gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
 			@test all(abs.(gs[mk.mask.x]) .> 0)
 
 			# Verify that calculation of the gradient for real mask is correct 
 			mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
 			ps = Flux.Params([mk.mask.x])
-			testmaskgrad(() -> sum(model(on, mk).data),  ps)
+			testmaskgrad(() -> sum(model(on, mk)),  ps)
 
 			# testing foreach_mask
 			cmk = collect_masks_with_levels(mk; level = 2)
@@ -157,9 +169,9 @@ end
 		end
 
 		# testing subsetting of an empty sample 
-		on = ArrayNode(Flux.onehotbatch(Int[], 1:4))
+		on = ArrayNode(Flux.onehotbatch([1], 1:4))[0:-1]
 		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
-		@test on[mk] == on
+		@test_broken on[mk] == on
 	end
 
 	@testset "Sparse Mask" begin
@@ -188,15 +200,19 @@ end
 
 		# calculation of gradient with respect to boolean mask
 		model = f64(reflectinmodel(cn, d -> Chain(Dense(d, 10), Dense(10,10))))
-		@test model(cn[mk]).data ≈ model(cn, mk).data
+		@test model(cn[mk]) ≈ model(cn, mk)
 
+		# Verify that calculation of the gradient for boolean mask is nothing
+		gs = gradient(() -> sum(model(cn, mk)),  Flux.Params([mk.mask.x]))
+		@test gs[mk.mask.x] === nothing
 		# Verify that calculation of the gradient for real mask is correct 
-		gs = gradient(() -> sum(model(cn, mk).data),  Flux.Params([mk.mask.x]))
+		mk = create_mask_structure(cn, d -> SimpleMask(d))
+		gs = gradient(() -> sum(model(cn, mk)),  Flux.Params([mk.mask.x]))
 		@test all(abs.(gs[mk.mask.x]) .> 0)
 
 		mk = create_mask_structure(cn, d -> SimpleMask(rand(d)))
 		ps = Flux.Params([mk.mask.x])
-		testmaskgrad(() -> sum(model(cn, mk).data),  ps)
+		testmaskgrad(() -> sum(model(cn, mk)),  ps)
 
 		# testing foreach_mask
 		cmk = collect_masks_with_levels(mk; level = 2)
@@ -209,7 +225,6 @@ end
 			SimpleMask(m.x .+ 1)
 		end
 		@test cmk.mask.x ≈ mk.mask.x .+ 1
-
 
 		# update of the participation
 		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
@@ -228,7 +243,7 @@ end
 		@test cn[mk] == cn
 		mk.mask.x[2] = false
 		@test cn[mk].data == [1 0 3 0 5; 0 0 0 4 0]
-		@test model(cn, mk).data ≈ model(ArrayNode(cn.data .* [1 0 1 1 1])).data
+		@test model(cn, mk) ≈ model(ArrayNode(cn.data .* [1 0 1 1 1]))
 
 		# testing subsetting of an empty sample 
 		on = ArrayNode(sparse(zeros(4,0)))
@@ -258,15 +273,25 @@ end
 
 			# multiplication is equicalent to subsetting
 			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
-			@test model(sn[mk]).data ≈ model(sn, mk).data
+			@test model(sn[mk]) ≈ model(sn, mk)
 
+			# Verify that calculation of the gradient for boolean mask is correct 
+			gs = gradient(() -> sum(model(sn, mk)),  Flux.Params([mk.mask.x]))
+			@test gs[mk.mask.x] === nothing
+		end
+
+		mk₁ = create_mask_structure(sn, d -> SimpleMask(d))
+		@test mk₁ isa NGramMatrixMask
+		mk₂ = ObservationMask(SimpleMask(nobs(sn)))
+		for mk in [mk₁, mk₂]
 			# Verify that calculation of the gradient for real mask is correct 
-			gs = gradient(() -> sum(model(sn, mk).data),  Flux.Params([mk.mask.x]))
+			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+			gs = gradient(() -> sum(model(sn, mk)),  Flux.Params([mk.mask.x]))
 			@test all(abs.(gs[mk.mask.x]) .> 0)
 
 			mk = create_mask_structure(sn, d -> SimpleMask(rand(d)))
 			ps = Flux.Params([mk.mask.x])
-			testmaskgrad(() -> sum(model(sn, mk).data),  ps)
+			testmaskgrad(() -> sum(model(sn, mk)),  ps)
 
 			# testing foreach_mask
 			cmk = collect_masks_with_levels(mk; level = 2)
@@ -333,34 +358,38 @@ end
 
 		# prepare there models for the test
 		model₁ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMax))
-		model₁.a.C .= minimum(model₁.im(ds.data).data, dims = 2)[:]
+		model₁.a.ψ .= minimum(model₁.im(ds.data), dims = 2)[:]
 
 		model₂ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMean))
-		model₂.a.C .= 0
+		model₂.a.ψ .= 0
 
 		model₃ = f64(reflectinmodel(ds, d -> Chain(Dense(d, 10), Dense(10,10)), Mill.SegmentedMeanMax))
-		model₃.a[1].C .= 0
-		model₃.a[2].C .= minimum(model₃.im(ds.data).data, dims = 2)[:]
+		model₃.a[1].ψ .= 0
+		model₃.a[2].ψ .= minimum(model₃.im(ds.data), dims = 2)[:]
 
 		for model in [model₁, model₂, model₃]
 			# multiplication is equivalent to subsetting
 			mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 			mk.mask.x[[1,3]] .= false
-			@test model(ds[mk]).data ≈ model(ds, mk).data
+			@test model(ds[mk]) ≈ model(ds, mk)
 
 			# If child exports nothing, we return only empty bags
 			x = deepcopy(mk.child.mask.x)
 			mk.child.mask.x .= false
-			@test model(ds[mk]).data ≈ model(ds, mk).data
+			@test model(ds[mk]) ≈ model(ds, mk)
 			mk.child.mask.x .= x
 
+			# Verify that calculation of the gradient for boolean mask is Nothing 
+			gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk.mask.x]))
+			@test gs[mk.mask.x] === nothing
+
 			# Verify that calculation of the gradient for real mask is correct 
-			gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk.mask.x]))
+			mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
+			gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk.mask.x]))
 			@test sum(abs.(gs[mk.mask.x])) > 0
 
-			mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
 			ps = Flux.Params([mk.mask.x])
-			testmaskgrad(() -> sum(model(ds, mk).data),  ps)
+			testmaskgrad(() -> sum(model(ds, mk)),  ps)
 		end
 
 		# testing foreach_mask
@@ -452,18 +481,23 @@ end
 
 		# multiplication is equicalent to subsetting
 		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
-		@test model(ds[mk]).data ≈ model(ds, mk).data
+		@test model(ds[mk]) ≈ model(ds, mk)
 
-		# calculation of gradient with respect to boolean mask
-		gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk[:a].mask.x]))
-		@test all(abs.(gs[mk[:a].mask.x]) .> 0)
-		gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([mk[:b].mask.x]))
-		@test all(abs.(gs[mk[:b].mask.x]) .> 0)
+		# calculation of gradient with respect to boolean mask is nothing
+		gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk[:a].mask.x]))
+		@test gs[mk[:a].mask.x] === nothing
+		gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk[:b].mask.x]))
+		@test gs[mk[:b].mask.x] === nothing
 
 		# Verify that calculation of the gradient for real mask is correct 
 		mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
-		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:a].mask.x]))
-		testmaskgrad(() -> sum(model(ds, mk).data), Flux.Params([mk[:b].mask.x]))
+		gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk[:a].mask.x]))
+		@test all(abs.(gs[mk[:a].mask.x]) .> 0)
+		gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([mk[:b].mask.x]))
+		@test all(abs.(gs[mk[:b].mask.x]) .> 0)
+
+		testmaskgrad(() -> sum(model(ds, mk)), Flux.Params([mk[:a].mask.x]))
+		testmaskgrad(() -> sum(model(ds, mk)), Flux.Params([mk[:b].mask.x]))
 
 		# testing foreach_mask
 		cmk = collect_masks_with_levels(mk; level = 2)
@@ -525,7 +559,7 @@ end
 		mk.child.child[:an].mask.x[1] = false
 		@test ds[mk].data.data[:an].data == ds.data.data[:an].data[:,2:end]
 		@test ds[mk].data.data[:cn].data == ds.data.data[:cn].data[:,2:end]
-		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[2:end]
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[:,2:end]
 		@test ds[mk].data.data[:on].data == ds.data.data[:on].data[:,2:end]
 
 		#test that mapping work as intended and preserves the sharing
@@ -554,6 +588,9 @@ end
 			)))
 
 		#sn is going to be a follower, because it is easy to check
+		# do not forget set empty item in max aggregation to minimum
+		model.im.a.a.fs[2].ψ .= minimum(model.im.im(ds.data.data), dims = 2)
+		model.a.a.fs[2].ψ .= minimum(model.im(ds.data), dims = 2)
 
 		@test ds[mk] == ds
 
@@ -564,9 +601,9 @@ end
 
   		@test ds[mk].data.data[:an].data == ds.data.data[:an].data[:,2:end]
 		@test ds[mk].data.data[:cn].data == ds.data.data[:cn].data[:,2:end]
-		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[2:end]
+		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data[:,2:end]
 		@test ds[mk].data.data[:on].data == ds.data.data[:on].data[:,2:end]
-		@test model(ds[mk]).data ≈ model(ds, mk).data
+		@test model(ds, mk) ≈ model(ds[mk])
 
 		# test of that follower is following the leader
 		mk.child.child[:an].mask.x[1] = true
@@ -574,7 +611,7 @@ end
 		@test ds[mk].data.data[:cn].data ≈ hcat([0,0], ds.data.data[:cn].data[:,2:end])
 		@test ds[mk].data.data[:on].data == hcat(Flux.onehotbatch([4],1:4), ds.data.data[:on].data[:,2:end])
 		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
-		@test model(ds[mk]).data ≈ model(ds, mk).data
+		@test model(ds[mk]) ≈ model(ds, mk)
 
 		#one more test of the follower is following the leader
 		mk.child.child[:an].mask.x[1] = false
@@ -584,15 +621,34 @@ end
 		@test ds[mk].data.data[:on].data == ds.data.data[:on].data
 		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
 
-		@test model(ds[mk]).data ≈ model(ds, mk).data
+		@test model(ds[mk]) ≈ model(ds, mk)
 
-		# calculation of gradient with respect to boolean mask
+		# calculation of gradient with respect to boolean mask should be nothing
 		for k in [:an, :cn, :on]
 			x = mk.child.child[k].mask.x
-			gs = gradient(() -> sum(model(ds, mk).data),  Flux.Params([x]))
-			@test all(abs.(gs[x]) .> 0)
+			gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([x]))
+			@test gs[x] === nothing
 		end
 
+		# calculation of gradient with a non-boolean mask, wrap to let block to not 
+		# override the mask above where we have manually set ObservationMask
+		let 
+			mk = create_mask_structure(ds, d -> SimpleMask(d))
+			@set! mk.child.child.childs.an = ObservationMask(SimpleMask(5))
+			@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(5))
+			@set! mk.child.child.childs.on = ObservationMask(SimpleMask(5))
+			@set! mk.child.child.childs.sn = ObservationMask(FollowingMasks((
+				mk.child.child.childs.an.mask,
+				mk.child.child.childs.cn.mask,
+				mk.child.child.childs.on.mask,
+				)))
+			for k in [:an, :cn, :on]
+				x = mk.child.child[k].mask.x
+				gs = gradient(() -> sum(model(ds, mk)),  Flux.Params([x]))
+				@test all(abs.(gs[x]) .> 0)
+			end
+		end
+		
 		# check the mapmask
 		mk₂ = mapmask((m, l) -> ParticipationTracker(m), mk)
 		@test mk₂.child.child[:an].mask isa ParticipationTracker
@@ -636,7 +692,6 @@ end
 
 		#we should check the gradient and also if model(ds, mk) == model(ds[mk])
 
-
 		mk = create_mask_structure(ds, d -> SimpleMask(rand(d)))
 		@set! mk.child.child.childs.an = ObservationMask(SimpleMask(rand(5)))
 		@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(rand(5)))
@@ -649,7 +704,7 @@ end
 
 		for k in [:an, :cn, :on]
 			ps = Flux.Params([mk.child.child[k].mask.x])
-			@test testmaskgrad(() -> sum(model(ds, mk).data),  ps)
+			@test testmaskgrad(() -> sum(model(ds, mk)),  ps)
 		end
 	end
 end

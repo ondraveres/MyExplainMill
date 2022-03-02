@@ -30,7 +30,7 @@ end
 
 """
 	levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
-	levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+	levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractMillNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 
 	removes excess of items from `mk` such that `f` is above zero. 
 	`f` is a function without parameters closing over `model`, `sample`, 
@@ -94,7 +94,7 @@ function levelbylevelsearch!(f, mk::AbstractStructureMask; levelsearch! = flatse
 end
 
 
-function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
+function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractMillNode, mk::AbstractStructureMask; levelsearch! = flatsearch!, fine_tuning::Bool = false, random_removal::Bool = true)
 	!support_participation(mk) && error("Level by level can be used only with masks supporting tracking of participation")
 	all_masks = collect_masks_with_levels(mk)
 	if isempty(all_masks) 
@@ -130,7 +130,7 @@ function levelbylevelsfs!(f, mk::AbstractStructureMask; kwargs...)
 	levelbylevelsearch!(f, mk; levelsearch! = flatsfs!, kwargs...)
 end
 
-function levelbylevelsfs!(f, model::AbstractMillModel, ds::AbstractNode, mk::AbstractStructureMask; kwargs...)
+function levelbylevelsfs!(f, model::AbstractMillModel, ds::AbstractMillNode, mk::AbstractStructureMask; kwargs...)
 	levelbylevelsearch!(f, model, ds, mk; levelsearch! = flatsfs!, kwargs...)
 end
 

@@ -17,11 +17,12 @@ end
 
 function Base.getindex(ds::OneHotNode, mk::Union{ObservationMask,CategoricalMask}, presentobs=fill(true, nobs(ds)))
 	pm = prunemask(mk.mask)
+	nrows = size(ds.data, 1)
 	ii = map(findall(presentobs)) do j
-		i = ds.data.data[j]
-		pm[j] ? i.ix : i.of
+		i = ds.data.indices[j]
+		pm[j] ? i : nrows
 	end
-	x = Flux.onehotbatch(ii, 1:ds.data.height)
+	x = Flux.onehotbatch(ii, 1:nrows)
 	ArrayNode(x, ds.metadata)
 end
 

@@ -23,7 +23,7 @@ function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}
 	x = ds.data
 	pm = prunemask(mk.mask) 
 	s = map(findall(presentobs)) do i 
-		pm[i] ? x.s[i] : ""
+		pm[i] ? x.S[i] : ""
 	end
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
@@ -49,7 +49,7 @@ end
 # since we do not need gradients with respect to `x` and `y`
 function (m::Mill.ArrayModel)(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask})
 	ng = ds.data
-	eg = NGramMatrix(fill("", length(ng.s)), ng.n, ng.b, ng.m)
+	eg = NGramMatrix(fill("", length(ng.S)), ng.n, ng.b, ng.m)
 	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ng))
 	y = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(eg))
 	dm = reshape(diffmask(mk.mask), 1, :)

@@ -25,7 +25,6 @@ end
 
 * Should we explicitly model missing in categorical variable as an n + 2 item?
 * Remove skipping of Dictionary in JsonGrinder and replace it with the IdentityModel()
-* Should we remove automatic joining of scalars and leave it up to mill to "handle" scalars as IdentityModel?
 * ArrayModel in Mill should have a default for missing values and potentially ProductModel
 
 # ExplainMill.jl

@@ -71,12 +71,12 @@ function (m::Mill.ArrayModel)(ds::SparseNode, mk::SparseArrayMask)
 	x = ds.data
 	nzval = x.nzval .* diffmask(mk.mask)
 	xx = dense_sparse(x.m, x.n, x.colptr, x.rowval, nzval)
-    ArrayNode(m.m(xx))
+    m.m(xx)
 end
 
 function (m::Mill.ArrayModel)(ds::SparseNode, mk::ObservationMask)
 	xx = ds.data .* transpose(diffmask(mk.mask))
-    ArrayNode(m.m(xx))
+    m.m(xx)
 end
 
 dense_sparse(m::Int, n::Int, colptr, rowval, nzval) = Matrix(SparseMatrixCSC(m, n, colptr, rowval, nzval))

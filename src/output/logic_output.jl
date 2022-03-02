@@ -189,29 +189,12 @@ end
 _echild(e::JsonGrinder.ExtractArray) = e.item
 _echild(e::JsonGrinder.ExtractKeyAsField) = e
 
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,<:Dict}, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
-    nobs(ds) == 0 && return(zeroobs())
-    !any(exportobs) && return(emptyexportobs())
-
-    o = _exportother(ds, m, e, exportobs)
-
-    if :scalars ∈ setdiff(keys(ds), keys(e.other))
-        o = map(d -> merge(d...), zip(o, _exportmatrix(ds[:scalars], m[:scalars], e.vec, exportobs)))
-    end
-    o
-end
-
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{Nothing,<:Dict}, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
     nobs(ds) == 0 && return(zeroobs())
     !any(exportobs) && return(emptyexportobs())
     _exportother(ds, m, e, exportobs)
 end
 
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict{<:Dict,Nothing}, exportobs=fill(true, nobs(ds))) where {S<: Dict, T<:NamedTuple, M}
-    nobs(ds) == 0 && return(zeroobs())
-    !any(exportobs) && return(emptyexportobs())
-    _exportmatrix(ds[:scalars], m[:scalars], e.vec, exportobs)
-end
 
 function _exportother(ds::ProductNode, m, e::JsonGrinder.ExtractDict, exportobs)
 	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
@@ -304,6 +287,6 @@ function removeabsent(d::Dict)
     isempty(x) ? absent : Dict(x)
 end
 
-function e2boolean(dss::AbstractNode, pruning_mask, extractor)
+function e2boolean(dss::AbstractMillNode, pruning_mask, extractor)
     removeabsent(yarason(dss, pruning_mask, extractor))
 end
