@@ -97,88 +97,11 @@ end
 		@test an[mk] == an
 	end
 
-	@testset "Categorical Mask - Flux.onehotbatch" begin
-		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
-		@test all(on isa T for T in [ExplainMill.OneHotNode, ExplainMill.OneHotFlux])
-		@test !(on isa ExplainMill.OneHotMill)
-		mk₁ = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
-		@test mk₁ isa CategoricalMask
-		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(on))))
-		for mk in [mk₁, mk₂]
-			@test on[mk] == on
-
-			# subsetting
-			mk.mask.x[[1,3]] .= false
-			@test mk.mask.x == [false, true, false, true, true]
-
-			# test pruning of samples 
-			@test on[mk].data ≈ Flux.onehotbatch([4, 2, 4, 1, 2], 1:4)
-
-			#test indication of presence of observations
-			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
-
-			# testing subsetting while exporting only subset of observations
-			@test on[mk, [true, false, true, false, true]].data ≈ Flux.onehotbatch([4, 4, 2], 1:4)
-
-			# output of a model on pruned sample is equal to output multiplicative weights
-			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
-			@test model(on[mk]) ≈ model(on, mk)
-
-			# calculation of gradient with respect to boolean mask returns nothing
-			# gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
-			@test_broken gs[mk.mask.x] === nothing
-		end
-
-		mk₁ = create_mask_structure(on, d -> SimpleMask(d))
-		mk₂ = ObservationMask(SimpleMask(nobs(on)))
-		for mk in [mk₁, mk₂]
-			# calculation of gradient
-			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
-			gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
-			@test all(abs.(gs[mk.mask.x]) .> 0)
-
-			# Verify that calculation of the gradient for real mask is correct 
-			mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
-			ps = Flux.Params([mk.mask.x])
-			testmaskgrad(() -> sum(model(on, mk)),  ps)
-
-			# testing foreach_mask
-			cmk = collect_masks_with_levels(mk; level = 2)
-			@test length(cmk) == 1
-			@test cmk[1].first == mk.mask
-			@test cmk[1].second == 2
-
-			# testing mapmask
-			cmk = mapmask(mk) do m, l
-				SimpleMask(m.x .+ 1)
-			end
-			@test cmk.mask.x ≈ mk.mask.x .+ 1
-		end
-
-		# update of the participation
-		mk₁ = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
-		@test mk₁ isa CategoricalMask
-		mk₂ = ObservationMask(ParticipationTracker(SimpleMask(fill(true, nobs(on)))))
-		for mk in [mk₁, mk₂]	
-			@test all(participate(mk.mask))
-			invalidate!(mk, [1])
-			@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
-			invalidate!(mk, [1, 3])
-			@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
-			ExplainMill.updateparticipation!(mk)
-			@test all(participate(mk.mask))
-		end
-
-		# testing subsetting of an empty sample 
-		on = ArrayNode(Flux.onehotbatch([1], 1:4))[0:-1]
-		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
-		@test_broken on[mk] == on
-	end
-
 	@testset "Categorical Mask - Mill.MayBeHot" begin
+		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+		@test create_mask_structure(on, d -> SimpleMask(fill(true, d))) isa EmptyMask
 		on = ArrayNode(Mill.maybehotbatch([1, 2, 3, 1, 2], 1:4))
-		@test all(on isa T for T in [ExplainMill.OneHotNode, ExplainMill.OneHotMill])
-		@test !(on isa ExplainMill.OneHotFlux)
+		@test on isa ExplainMill.OneHotNode
 		mk₁ = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
 		@test mk₁ isa CategoricalMask
 		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(on))))
@@ -793,7 +716,7 @@ end
 
 @testset "An integration test of nested samples" begin
 	an = ArrayNode(reshape(collect(1:10), 2, 5))
-	on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+	on = ArrayNode(Mill.maybehotbatch([1, 2, 3, 1, 2], 1:4))
 	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
 	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
 
@@ -809,7 +732,7 @@ end
 	@test nobs(dss.data.data) == 3
 	@test isequal(dss.data.data.data.a.data, [1 5 9; missing missing missing])
 	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
-	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([1,3,4], 1:4)
+	@test isequal(dss.data.data.data.o.data, Mill.maybehotbatch([1,3,missing], 1:4))
 
 	mk.child.child[:a].mask.x .= [false, true]
 	mk.child.child[:c].mask.x .= [false, true, false, true, false]
@@ -821,7 +744,7 @@ end
 	@test nobs(dss.data) == 3
 	@test nobs(dss.data.data) == 3
 	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
-	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([4, 4, 4], 1:4)
+	@test isequal(dss.data.data.data.o.data, Mill.maybehotbatch([missing, missing, missing], 1:4))
 	@test isequal(dss.data.data.data.a.data, [missing missing missing; 2 6 10])
 
 	mk.child.child[:a].mask.x .= [false, true]
@@ -835,7 +758,7 @@ end
 	@test all(dss.data.bags.bags .== [1:1, 2:2])
 	@test nobs(dss.data.data) == 2
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
-	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([4, 4], 1:4)
+	@test isequal(dss.data.data.data.o.data, Mill.maybehotbatch([missing, missing], 1:4))
 	@test isequal(dss.data.data.data.a.data, [missing missing; 2 10])
 
 	@test ds[ExplainMill.EmptyMask()] == ds

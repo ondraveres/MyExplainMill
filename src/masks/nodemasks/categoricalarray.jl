@@ -1,6 +1,5 @@
-const OneHotNode = ArrayNode{T, <:Any} where {T<:Union{<:Flux.OneHotMatrix, <:Mill.MaybeHotMatrix}}
 const OneHotFlux = ArrayNode{<:Flux.OneHotMatrix, <:Any}
-const OneHotMill = ArrayNode{<:Mill.MaybeHotMatrix, <:Any}
+const OneHotNode = ArrayNode{<:Mill.MaybeHotMatrix, <:Any}
 
 struct CategoricalMask{M} <: AbstractListMask
 	mask::M
@@ -17,18 +16,10 @@ function create_mask_structure(ds::OneHotNode, create_mask)
 	CategoricalMask(create_mask(nobs(ds.data)))
 end
 
-function Base.getindex(ds::OneHotFlux, mk::Union{ObservationMask,CategoricalMask}, presentobs=fill(true, nobs(ds)))
-	pm = prunemask(mk.mask)
-	nrows = size(ds.data, 1)
-	ii = map(findall(presentobs)) do j
-		i = ds.data.indices[j]
-		pm[j] ? i : nrows
-	end
-	x = Flux.onehotbatch(ii, 1:nrows)
-	ArrayNode(x, ds.metadata)
-end
+create_mask_structure(ds::OneHotFlux, m::ArrayModel, create_mask, cluster) = EmptyMask()
+create_mask_structure(ds::OneHotFlux, create_mask) = EmptyMask()
 
-function Base.getindex(ds::OneHotMill, mk::Union{ObservationMask,CategoricalMask}, presentobs=fill(true, nobs(ds)))
+function Base.getindex(ds::OneHotNode, mk::Union{ObservationMask,CategoricalMask}, presentobs=fill(true, nobs(ds)))
 	pm = prunemask(mk.mask)
 	nrows = size(ds.data, 1)
 	ii = map(findall(presentobs)) do j
@@ -59,21 +50,13 @@ function mapmask(f, m::CategoricalMask, level, visited)
 	CategoricalMask(new_mask)
 end
 
-# This might be actually simplified if we define gradient with respect to ds[mk]
-function (m::Mill.ArrayModel)(ds::OneHotFlux, mk::Union{ObservationMask,CategoricalMask})
-	x = Zygote.@ignore sparse(ds.data)
-	y = Zygote.@ignore sparse(fill(size(x)...), collect(1:size(x,2)), 1)
-	dm = reshape(diffmask(mk.mask), 1, :)
-    m(ArrayNode(@. dm * x + (1 - dm) * y))
-end
-
 #######
 # This part is annoying. We need to handle at Dense layer and Chain
 # but the first element of chain has to be Dense with PostImputingMatrix
 # We wrap arguments (ds, mk) to Tuple, such that Chain is OK with it 
 # and unwrap them once they hit the Dense layer
 #######
-function (m::Mill.ArrayModel)(ds::OneHotMill, mk::Union{ObservationMask,CategoricalMask})
+function (m::Mill.ArrayModel)(ds::OneHotNode, mk::AbstractStructureMask)
 	m.m((ds.data, mk))
 end
 
