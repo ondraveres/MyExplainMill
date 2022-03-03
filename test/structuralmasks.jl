@@ -97,8 +97,10 @@ end
 		@test an[mk] == an
 	end
 
-	@testset "Categorical Mask" begin
+	@testset "Categorical Mask - Flux.onehotbatch" begin
 		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
+		@test all(on isa T for T in [ExplainMill.OneHotNode, ExplainMill.OneHotFlux])
+		@test !(on isa ExplainMill.OneHotMill)
 		mk₁ = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
 		@test mk₁ isa CategoricalMask
 		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(on))))
@@ -154,7 +156,6 @@ end
 		end
 
 		# update of the participation
-		on = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))
 		mk₁ = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
 		@test mk₁ isa CategoricalMask
 		mk₂ = ObservationMask(ParticipationTracker(SimpleMask(fill(true, nobs(on)))))
@@ -172,6 +173,87 @@ end
 		on = ArrayNode(Flux.onehotbatch([1], 1:4))[0:-1]
 		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
 		@test_broken on[mk] == on
+	end
+
+	@testset "Categorical Mask - Mill.MayBeHot" begin
+		on = ArrayNode(Mill.maybehotbatch([1, 2, 3, 1, 2], 1:4))
+		@test all(on isa T for T in [ExplainMill.OneHotNode, ExplainMill.OneHotMill])
+		@test !(on isa ExplainMill.OneHotFlux)
+		mk₁ = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test mk₁ isa CategoricalMask
+		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(on))))
+		for mk in [mk₁, mk₂]
+			mk.mask.x .= true
+			@test on[mk] == on
+
+			# subsetting
+			mk.mask.x[[1,3]] .= false
+			@test mk.mask.x == [false, true, false, true, true]
+
+			# test pruning of samples 
+			@test UInt32.(on[mk].data.I[[2,4,5]]) ≈ UInt32[2, 1, 2]
+			@test all(on[mk].data.I[[1,3]] .=== missing)
+
+			#test indication of presence of observations
+			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
+
+			# testing subsetting while exporting only subset of observations
+			@test on[mk, [true, false, true, false, true]].data.I[3] == 2
+			@test all(on[mk, [true, false, true, false, true]].data.I[1:2] .=== missing)
+
+			# output of a model on pruned sample is equal to output multiplicative weights
+			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
+			@test model(on[mk]) ≈ model(on, mk)
+
+			# calculation of gradient with respect to boolean mask returns nothing
+			gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
+			@test gs[mk.mask.x] === nothing
+		end
+
+		mk₁ = create_mask_structure(on, d -> SimpleMask(d))
+		mk₂ = ObservationMask(SimpleMask(nobs(on)))
+		for mk in [mk₁, mk₂]
+			# calculation of gradient
+			model = f64(reflectinmodel(on, d -> Chain(Dense(d, 10), Dense(10,10))))
+			gs = gradient(() -> sum(model(on, mk)),  Flux.Params([mk.mask.x]))
+			@test all(abs.(gs[mk.mask.x]) .> 0)
+
+			# Verify that calculation of the gradient for real mask is correct 
+			mk = create_mask_structure(on, d -> SimpleMask(rand(d)))
+			ps = Flux.Params([mk.mask.x])
+			testmaskgrad(() -> sum(model(on, mk)),  ps)
+
+			# testing foreach_mask
+			cmk = collect_masks_with_levels(mk; level = 2)
+			@test length(cmk) == 1
+			@test cmk[1].first == mk.mask
+			@test cmk[1].second == 2
+
+			# testing mapmask
+			cmk = mapmask(mk) do m, l
+				SimpleMask(m.x .+ 1)
+			end
+			@test cmk.mask.x ≈ mk.mask.x .+ 1
+		end
+
+		# update of the participation
+		mk₁ = create_mask_structure(on, d -> ParticipationTracker(SimpleMask(fill(true, d))))
+		@test mk₁ isa CategoricalMask
+		mk₂ = ObservationMask(ParticipationTracker(SimpleMask(fill(true, nobs(on)))))
+		for mk in [mk₁, mk₂]	
+			@test all(participate(mk.mask))
+			invalidate!(mk, [1])
+			@test participate(mk.mask) == Bool[0, 1, 1, 1, 1]
+			invalidate!(mk, [1, 3])
+			@test participate(mk.mask) == Bool[0, 1, 0, 1, 1]
+			ExplainMill.updateparticipation!(mk)
+			@test all(participate(mk.mask))
+		end
+
+		# testing subsetting of an empty sample 
+		on = ArrayNode(Mill.maybehotbatch(Int[], 1:4))
+		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		@test on[mk] == on
 	end
 
 	@testset "Sparse Mask" begin

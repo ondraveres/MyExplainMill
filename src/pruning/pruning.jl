@@ -75,8 +75,8 @@ function prune!(mk::AbstractStructureMask, model::AbstractMillModel, ds::Abstrac
     mkp = add_participation(mk)
 
     if method ∈ [:LbyLo_HAdd, :LbyLo_HArr, :LbyLo_HArrft, :LbyLo_Gadd, :LbyLo_Garr, :LbyLo_Garrft]
-        return prune!((model, ds, mk) -> fₚ(model(ds[mk]).data), model, ds, mkp, method)
+        return prune!((model, ds, mk) -> fₚ(model(ds[mk])), model, ds, mkp, method)
     end
     # a fallback
-    return prune!(() -> fₚ(model(ds[mkp]).data), mkp, method)
+    return prune!(() -> fₚ(model(ds[mkp])), mkp, method)
 end

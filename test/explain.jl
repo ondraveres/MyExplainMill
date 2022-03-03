@@ -18,10 +18,10 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
         for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
             mk = ExplainMill.add_participation(stats(e, ds, model))
 
-            o = softmax(model(ds).data)[:]
+            o = softmax(model(ds))[:]
             τ = 0.9 * maximum(o) 
-            class = argmax(softmax(model(ds).data)[:])
-            f = () -> softmax(model(ds[mk]).data)[class] - τ
+            class = argmax(softmax(model(ds))[:])
+            f = () -> softmax(model(ds[mk]))[class] - τ
             @test !ExplainMill.flatsearch!(f, mk)
             @test !ExplainMill.levelbylevelsearch!(f, mk)
 
@@ -43,10 +43,10 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
         for e in [ConstExplainer()]
             mk = ExplainMill.add_participation(stats(e, ds, model))
 
-            o = softmax(model(ds).data)[:]
+            o = softmax(model(ds))[:]
             τ = 0.9 * maximum(o) 
-            class = argmax(softmax(model(ds).data)[:])
-            f = () -> softmax(model(ds[mk]).data)[class] - τ
+            class = argmax(softmax(model(ds))[:])
+            f = () -> softmax(model(ds[mk]))[class] - τ
 
             @test !ExplainMill.flatsfs!(f, mk, random_removal = true)
             @test !ExplainMill.levelbylevelsfs!(f, mk, random_removal = true)
@@ -62,10 +62,10 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
         for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
             mk = ExplainMill.add_participation(stats(e, ds, model))
 
-            o = softmax(model(ds).data)[:]
+            o = softmax(model(ds))[:]
             τ = 0.9 * maximum(o) 
-            class = argmax(softmax(model(ds).data)[:])
-            f = (model, ds, mk) -> softmax(model(ds[mk]).data)[class] - τ
+            class = argmax(softmax(model(ds))[:])
+            f = (model, ds, mk) -> softmax(model(ds[mk]))[class] - τ
             fₚ = o -> softmax(o)[class] - τ
 
             @test !ExplainMill.levelbylevelsearch!(f, model, ds, mk, random_removal = true)

@@ -37,7 +37,7 @@ end
 
 
 function explain(e, ds::AbstractMillNode, model::AbstractMillModel; kwargs...)
-    class = Flux.onecold(softmax(model(ds).data))
+    class = Flux.onecold(softmax(model(ds)))
     if length(unique(class))  > 1 
     	@warn "Two or more classes predicted by the model!, wish you know what you are doing."
     end
