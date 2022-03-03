@@ -2,9 +2,12 @@ removable(::Missing) = true
 # removable(::Missing) = true
 removable(ds::AbstractMillNode) = ismissing(ds.data)
 removable(s::Vector{T}) where {T<:AbstractString} = isempty(s)
+removable(::Missing) = true
 removable(s::Matrix{T}) where {T<:Number} = false
-removable(x::NGramMatrix{String}) = all(isempty.(x.s))
+removable(x::Matrix{Union{Missing, T}}) where {T<:Number} = all(x .=== missing)
+removable(x::NGramMatrix) = all(x.S .=== missing)
 removable(x::Flux.OneHotMatrix) = all(j.ix == x.height for j in x.data)
+removable(x::Mill.MaybeHotMatrix) = all(x .=== missing)
 
 removemissing(ds::AbstractMillNode) = removable(ds.data) ? missing : ds
 
