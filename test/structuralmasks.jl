@@ -191,8 +191,7 @@ end
 			@test mk.mask.x == [false, true, false, true, true]
 
 			# test pruning of samples 
-			@test UInt32.(on[mk].data.I[[2,4,5]]) ≈ UInt32[2, 1, 2]
-			@test all(on[mk].data.I[[1,3]] .=== missing)
+			@test isequal(on[mk].data.I, [missing, 2, missing, 1, 2])
 
 			#test indication of presence of observations
 			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
@@ -337,24 +336,25 @@ end
 		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
 		mk₁ = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
 		@test mk₁ isa NGramMatrixMask
-
 		mk₂ = ObservationMask(SimpleMask(fill(true, nobs(sn))))
+
 		for mk in [mk₁, mk₂]
+			mk.mask.x .= true
 			@test sn[mk] == sn
 
 			# subsetting
 			mk.mask.x[[1,3]] .= false
 			@test mk.mask.x == [false, true, false, true, true]
-			@test sn[mk].data == NGramMatrix(["", "2", "", "4", "5"], 3, 256, 2053)
+			@test isequal(sn[mk].data.S, [missing, "2", missing, "4", "5"])
 
 			# testing subsetting while exporting only subset of observations
-			@test sn[mk, [true, false, true, false, true]].data == NGramMatrix(["", "", "5"], 3, 256, 2053)
+			@test isequal(sn[mk, [true, false, true, false, true]].data.S, [missing, missing, "5"])
 
 			#test indication of presence of observations
 			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
 			# multiplication is equicalent to subsetting
-			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+			model = f64(reflectinmodel(sn, d -> Chain(postimputing_dense(d, 10), Dense(10,10))))
 			@test model(sn[mk]) ≈ model(sn, mk)
 
 			# Verify that calculation of the gradient for boolean mask is correct 

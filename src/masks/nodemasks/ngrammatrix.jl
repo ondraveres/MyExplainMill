@@ -23,7 +23,7 @@ function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}
 	x = ds.data
 	pm = prunemask(mk.mask) 
 	s = map(findall(presentobs)) do i 
-		pm[i] ? x.S[i] : ""
+		pm[i] ? x.S[i] : missing
 	end
 	ArrayNode(NGramMatrix(s, x.n, x.b, x.m), ds.metadata)
 end
@@ -44,17 +44,22 @@ function mapmask(f, m::NGramMatrixMask, level, visited)
 	NGramMatrixMask(new_mask)
 end
 
-	
-# TODO: We should make this one faster by writing a custom gradient for interpolation
-# since we do not need gradients with respect to `x` and `y`
 function (m::Mill.ArrayModel)(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask})
-	ng = ds.data
-	eg = NGramMatrix(fill("", length(ng.S)), ng.n, ng.b, ng.m)
-	x = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(ng))
-	y = Zygote.@ignore Matrix(SparseMatrixCSC{Float32, Int64}(eg))
-	dm = reshape(diffmask(mk.mask), 1, :)
-	x′ = @. dm * x + (1 - dm) * y
-    m(ArrayNode(x′))
+	m.m((ds.data, mk))
 end
+
+function (m::Dense{<:Any, <:PostImputingMatrix,<:Any})(xmk::Tuple{<:NGramMatrix,<:AbstractStructureMask})
+	m(xmk...)
+end
+
+function (m::Dense{<:Any, <:PostImputingMatrix,<:Any})(x::NGramMatrix, mk::AbstractStructureMask)
+	W, b, σ = m.W, m.b, m.σ
+	dm = reshape(diffmask(mk.mask), 1, :)
+	y = W * x
+	y = @. dm * y + (1 - dm) * W.ψ
+	σ.(y .+ b)
+end
+
+
 
 _nocluster(m::ArrayModel, ds::NGramNode)  = nobs(ds.data)
