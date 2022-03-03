@@ -214,7 +214,7 @@ end
 function _exportmatrix(args...)
     @error "Cannot extract metadata from an ArrayNode, did you extract with `store_input=true`?"
 end
-function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.MatrixMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
+function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.FeatureMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
     x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
     map(x -> _parcel(x, e), x)
 end

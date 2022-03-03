@@ -5,7 +5,7 @@ using Flux
 using SparseArrays
 using Setfield
 using ExplainMill: SimpleMask, create_mask_structure, foreach_mask, collect_masks_with_levels, mapmask
-using ExplainMill: CategoricalMask, MatrixMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask, FollowingMasks
+using ExplainMill: CategoricalMask, FeatureMask, NGramMatrixMask, SparseArrayMask, BagMask, ProductMask, FollowingMasks
 using ExplainMill: ParticipationTracker, participate, invalidate!, present
 using FiniteDifferences
 using StatsBase: nobs
@@ -31,10 +31,10 @@ function fdmgradient(f, p)
 end
 
 @testset "Structural masks" begin
-	@testset "MatrixMask" begin
+	@testset "FeatureMask" begin
 		an = ArrayNode(randn(4,5))
 		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
-		@test mk isa MatrixMask
+		@test mk isa FeatureMask
 		@test an[mk] == an
 
 		#this is not really a nice syntax
@@ -42,7 +42,7 @@ end
 		@test mk.mask.x == [false, true, false, true]
 
 		# testing basic subsetting of data 
-		@test an[mk].data ≈ an.data .* [false, true, false, true]	
+		@test isequal(an[mk].data, an.data .*  [missing, true, missing, true])
 
 		#test indication of presence of observations
 		x = deepcopy(mk.mask.x)
@@ -52,10 +52,10 @@ end
 		mk.mask.x .= x
 
 		# testing subsetting while exporting only subset of observations
-		@test an[mk, [true, false, true, false, true]].data ≈ an.data[:,[true, false, true, false, true]] .* [false, true, false, true]	
+		@test isequal(an[mk, [true, false, true, false, true]].data, an.data[:,[true, false, true, false, true]] .* [missing, true, missing, true])
 
 		# multiplication is equicalent to subsetting
-		model = f64(reflectinmodel(an, d -> Dense(d, 10)))
+		model = f64(reflectinmodel(an, d -> Dense(d, 10), all_imputing = true))
 		@test model(an[mk]) ≈ model(an, mk)
 
 
@@ -88,7 +88,7 @@ end
 		mk = ObservationMask(SimpleMask(fill(true, nobs(an))))
 		@test an[mk] == an
 		mk.mask.x[1] = false
-		@test an[mk].data == hcat([0,0,0,0], an.data[:,2:end])
+		@test isequal(an[mk].data, hcat([missing, missing, missing, missing], an.data[:,2:end]))
 		@test model(an, mk) ≈ model(ArrayNode(an.data .* [0 1 1 1 1]))
 
 		# testing subsetting of an empty sample 
@@ -354,7 +354,7 @@ end
 			@test present(mk, [true, false, true, false, true]) == [false, false, false, false, true]
 
 			# multiplication is equicalent to subsetting
-			model = f64(reflectinmodel(sn, d -> Chain(postimputing_dense(d, 10), Dense(10,10))))
+			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10)), all_imputing = true))
 			@test model(sn[mk]) ≈ model(sn, mk)
 
 			# Verify that calculation of the gradient for boolean mask is correct 
@@ -367,7 +367,7 @@ end
 		mk₂ = ObservationMask(SimpleMask(nobs(sn)))
 		for mk in [mk₁, mk₂]
 			# Verify that calculation of the gradient for real mask is correct 
-			model = f64(reflectinmodel(sn, d -> Chain(Dense(d, 10), Dense(10,10))))
+			model = f64(reflectinmodel(sn, d -> Chain(postimputing_dense(d, 10), Dense(10,10)), all_imputing = true))
 			gs = gradient(() -> sum(model(sn, mk)),  Flux.Params([mk.mask.x]))
 			@test all(abs.(gs[mk.mask.x]) .> 0)
 
@@ -544,10 +544,10 @@ end
 		mk[:a].mask.x[1:2] .= false
 		mk[:b].mask.x[1:2] .= false
 
-		@test ds[mk][:a].data ≈ ds[:a].data .* [false, false, true, true]	
+		@test isequal(ds[mk][:a].data, ds[:a].data .* [missing, missing, true, true])
 		@test ds[mk][:b].data ≈ sparse(Float64[0 0 3 0 5; 0 2 0 4 0])
 
-		@test ds[mk, [true, false, true, false, true]][:a].data ≈ ds[:a].data[:,[true, false, true, false, true]] .* [false, false, true, true]	
+		@test isequal(ds[mk, [true, false, true, false, true]][:a].data, ds[:a].data[:,[true, false, true, false, true]] .* [missing, missing, true, true])
 		@test ds[mk, [true, false, true, false, true]][:b].data ≈ sparse(Float64[0 3 5; 0 0 0])
 
 		#test indication of presence of observations
@@ -562,7 +562,7 @@ end
 		mk[:b].mask.x .= xb
 
 		# multiplication is equicalent to subsetting
-		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
+		model = f64(reflectinmodel(ds, d -> Dense(d, 10), all_imputing = true))
 		@test model(ds[mk]) ≈ model(ds, mk)
 
 		# calculation of gradient with respect to boolean mask is nothing
@@ -659,7 +659,7 @@ end
 	@testset "Leader / follower sharing of masks" begin 
 		ds = specimen_sample()
 		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
-		model = f64(reflectinmodel(ds, d -> Dense(d, 10)))
+		model = f64(reflectinmodel(ds, d -> Dense(d, 10), all_imputing = true))
 		@set! mk.child.child.childs.an = ObservationMask(SimpleMask(trues(5)))
 		@set! mk.child.child.childs.cn = ObservationMask(SimpleMask(trues(5)))
 		@set! mk.child.child.childs.on = ObservationMask(SimpleMask(trues(5)))
@@ -691,15 +691,15 @@ end
 		mk.child.child[:an].mask.x[1] = true
   		@test ds[mk].data.data[:an].data == ds.data.data[:an].data
 		@test ds[mk].data.data[:cn].data ≈ hcat([0,0], ds.data.data[:cn].data[:,2:end])
-		@test ds[mk].data.data[:on].data == hcat(Flux.onehotbatch([4],1:4), ds.data.data[:on].data[:,2:end])
+		@test isequal(ds[mk].data.data[:on].data.I, vcat([missing], ds.data.data[:on].data[:,2:end].I))
 		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
 		@test model(ds[mk]) ≈ model(ds, mk)
 
 		#one more test of the follower is following the leader
 		mk.child.child[:an].mask.x[1] = false
 		mk.child.child[:on].mask.x[1] = true
-  		@test ds[mk].data.data[:an].data == hcat([0,0], ds.data.data[:an].data[:,2:end])
-		@test ds[mk].data.data[:cn].data ≈ hcat([0,0], ds.data.data[:cn].data[:,2:end])
+  		@test isequal(ds[mk].data.data[:an].data, hcat([missing, missing], ds.data.data[:an].data[:,2:end]))
+		@test ds[mk].data.data[:cn].data ≈ hcat([0, 0], ds.data.data[:cn].data[:,2:end])
 		@test ds[mk].data.data[:on].data == ds.data.data[:on].data
 		@test ds[mk].data.data[:sn].data == ds.data.data[:sn].data
 
@@ -807,9 +807,9 @@ end
 	@test nobs(dss) == 1
 	@test nobs(dss.data) == 3
 	@test nobs(dss.data.data) == 3
-	@test dss.data.data.data.a.data ≈ [1 5 9; 0 0 0 ]
+	@test isequal(dss.data.data.data.a.data, [1 5 9; missing missing missing])
 	@test dss.data.data.data.c.data.nzval ≈ [1,3,5]
-	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([1,3,4], 1:4)
+	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([1,3,4], 1:4)
 
 	mk.child.child[:a].mask.x .= [false, true]
 	mk.child.child[:c].mask.x .= [false, true, false, true, false]
@@ -821,8 +821,8 @@ end
 	@test nobs(dss.data) == 3
 	@test nobs(dss.data.data) == 3
 	@test dss.data.data.data.c.data.nzval ≈ [0, 0, 0]
-	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4,4], 1:4)
-	@test dss.data.data.data.a.data ≈ [0 0 0; 2 6 10]
+	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([4, 4, 4], 1:4)
+	@test isequal(dss.data.data.data.a.data, [missing missing missing; 2 6 10])
 
 	mk.child.child[:a].mask.x .= [false, true]
 	mk.child.child[:c].mask.x .= [true, true, true, true, true]
@@ -835,8 +835,8 @@ end
 	@test all(dss.data.bags.bags .== [1:1, 2:2])
 	@test nobs(dss.data.data) == 2
 	@test dss.data.data.data.c.data.nzval ≈ [1, 5]
-	@test dss.data.data.data.o.data ≈ Flux.onehotbatch([4,4], 1:4)
-	@test dss.data.data.data.a.data ≈ [0 0; 2 10]
+	@test dss.data.data.data.o.data ≈ Mill.maybehotbatch([4, 4], 1:4)
+	@test isequal(dss.data.data.data.a.data, [missing missing; 2 10])
 
 	@test ds[ExplainMill.EmptyMask()] == ds
 end

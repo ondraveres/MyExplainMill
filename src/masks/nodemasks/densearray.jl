@@ -1,5 +1,5 @@
 """
-	struct MatrixMask{M} <: AbstractListMask
+	struct FeatureMask{M} <: AbstractListMask
 		mask::M
 		rows::Int
 		cols::Int
@@ -10,61 +10,91 @@
 	It is assumed and 
 
 """
-struct MatrixMask{M} <: AbstractListMask
+struct FeatureMask{M} <: AbstractListMask
 	mask::M
 	rows::Int
 	cols::Int
 end
 
-Flux.@functor(MatrixMask)
+Flux.@functor(FeatureMask)
 
 function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Matrix, M} 
 	create_mask_structure(ds, create_mask)
 end
 
 function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Matrix, M} 
-	MatrixMask(create_mask(size(ds.data, 1)), size(ds.data)...)
+	FeatureMask(create_mask(size(ds.data, 1)), size(ds.data)...)
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, mk::MatrixMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
+function Base.getindex(ds::ArrayNode{T,M}, mk::FeatureMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
 	x = ds.data[:,presentobs]
-	x[.!prunemask(mk.mask), :] .= 0
+	if eltype(x) <: Real
+		x = Matrix{Union{Missing, eltype(x)}}(x)
+	end
+	x[.!prunemask(mk.mask), :] .= missing
 	ArrayNode(x, ds.metadata)
 end
 
 function Base.getindex(ds::ArrayNode{T,M}, mk::ObservationMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
 	x = ds.data[:, presentobs]
-	x[:, (.!prunemask(mk.mask))[presentobs]] .= 0
+	if eltype(x) <: Real
+		x = Matrix{Union{Missing, eltype(x)}}(x)
+	end
+	x[:, (.!prunemask(mk.mask))[presentobs]] .= missing
 	ArrayNode(x, ds.metadata)
 end
 
-function foreach_mask(f, m::MatrixMask, level, visited)
+function foreach_mask(f, m::FeatureMask, level, visited)
 	if !haskey(visited, m.mask)
 		f(m.mask, level)
 		visited[m.mask] = nothing
 	end
 end
 
-function mapmask(f, m::MatrixMask, level, visited)
+function mapmask(f, m::FeatureMask, level, visited)
 	new_mask = get!(visited, m.mask, f(m.mask, level))
-	MatrixMask(new_mask, m.rows, m.cols)
+	FeatureMask(new_mask, m.rows, m.cols)
 end
 
-function invalidate!(mk::MatrixMask, observations::Vector{Int})
+function invalidate!(mk::FeatureMask, observations::Vector{Int})
 	
 end
 
-function present(mk::MatrixMask, obs)
+function present(mk::FeatureMask, obs)
 	any(prunemask(mk.mask)) && return(obs)
 	fill(false, length(obs))
 end
 
-function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::MatrixMask)
+function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::FeatureMask)
     m.m(diffmask(mk.mask) .* ds.data)
 end
 
 function (m::Mill.ArrayModel)(ds::ArrayNode{<:Matrix,<:Any}, mk::ObservationMask)
     m.m(transpose(diffmask(mk.mask)) .* ds.data)
+end
+
+function (m::Mill.ArrayModel)(ds::Matrix, mk::AbstractStructureMask)
+	m.m((ds.data, mk))
+end
+
+function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(xmk::Tuple{<:Matrix,<:AbstractStructureMask})
+	m(xmk...)
+end
+
+function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::FeatureMask)
+	W, b, σ = m.W, m.b, m.σ
+	dm = diffmask(mk.mask)
+	y = W * x
+	y = @. dm * y + (1 - dm) * W.ψ
+	σ.(y .+ b)
+end
+
+function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::ObservationMask)
+	W, b, σ = m.W, m.b, m.σ
+	dm = reshape(diffmask(mk.mask), 1, :)
+	y = W * x
+	y = @. dm * y + (1 - dm) * W.ψ
+	σ.(y .+ b)
 end
 
 """

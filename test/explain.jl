@@ -12,7 +12,7 @@ partial_pruning_methods = [:LbyLo_HAdd, :LbyLo_HArr]
 greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
 @testset "Checking integration with pruner" begin
     ds = specimen_sample()
-    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
+    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean, all_imputing = true)
 
     @testset "heuristic methods" begin
         for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
@@ -59,7 +59,7 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
     end
 
     @testset "level-by-level search with partial evaluation" begin
-        for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
+        for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), DafExplainer()]
             mk = ExplainMill.add_participation(stats(e, ds, model))
 
             o = softmax(model(ds))[:]
@@ -75,7 +75,6 @@ greedy_pruning_methods = [:Flat_Gadd, :Flat_Garr, :LbyL_Gadd, :LbyL_Garr]
     end
 
     @testset "Testing shared ObservationMasks" begin
-
         function adjust_mask(mk)
             mx = mk.child.child.childs.on.mask
             m = ObservationMask(mx)
@@ -103,7 +102,9 @@ end
 @testset "Simple end2end test with a strict equality" begin
     ds = ArrayNode(ones(Float32, 6, 1))
     motif = [1, 0, 0, 0, 0, 1]
-    model = ArrayModel(Dense(Float32.([1 0 0 0 0 1;-1 0 0 0 0 -1]), zeros(Float32, 2)))
+    model = ArrayModel(preimputing_dense(6, 2))
+    model.m.weight.W .= [1 0 0 0 0 1;-1 0 0 0 0 -1]
+    model.m.b .= 0
     for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
 
         mk = ExplainMill.add_participation(stats(e, ds, model))

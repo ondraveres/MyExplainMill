@@ -15,7 +15,7 @@ BagNode with 4 bag(s)
 
 julia> mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 typename(BagMask)
-  └── typename(MatrixMask)
+  └── typename(FeatureMask)
 
 julia> collect_masks_with_levels(mk)
 2-element Vector{Any}:

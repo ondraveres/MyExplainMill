@@ -114,7 +114,8 @@ function levelbylevelsearch!(f, model::AbstractMillModel, ds::AbstractMillNode, 
 		modelₗ, dsₗ, mkₗ = partialeval(model, ds, mk, map(first, level_masks))
 		# @debug "depth: $level length of mask: $(length(level_flat)) participating: $(sum(participate(level_flat)))"
 		levelsearch!(() -> f(modelₗ, dsₗ, mkₗ), FlatView(level_masks); participateonly = true, random_removal, fine_tuning)
-		@assert f(modelₗ, dsₗ, mkₗ) ≈ _f()
+		# @show f(modelₗ, dsₗ, mkₗ) - _f()
+		@assert abs(f(modelₗ, dsₗ, mkₗ) - _f()) < 1e-4
 	end
 
 	random_removal && randomremoval!(_f, full_flat)

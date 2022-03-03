@@ -41,7 +41,7 @@ Example:
 
 ```julia
 julia> create_mask_structure(ArrayNode(randn(3,4)), d -> SimpleMask(fill(true, d)))
-typename(MatrixMask)
+typename(FeatureMask)
 ```
 """
 create_mask_structure(f, ds::Mill.AbstractMillNode) = create_mask_structure(ds, f)

@@ -1,6 +1,6 @@
 using ExplainMill
 using ExplainMill: prune, Mask, invalidate!, foreach_mask, participate, mask, prunemask
-using ExplainMill: MatrixMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
+using ExplainMill: FeatureMask, SparseArrayMask, CategoricalMask, ProductMask, BagMask
 using ExplainMill: NGramMatrixMask, EmptyMask
 using ExplainMill: FlatView, identifycolumns, create_mask_structure, ParticipationTracker
 using Random, StatsBase

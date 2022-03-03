@@ -11,7 +11,7 @@ using ExplainMill: create_mask_structure, updateparticipation!
 
 @testset "correctness of heuristic functions" begin 
 	ds = specimen_sample()
-	model = f64(reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean))
+	model = f64(reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean, all_imputing = true))
 
 	@testset "ConstExplainer" begin
 		mk = stats(ConstExplainer(), ds, model)

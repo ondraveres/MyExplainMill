@@ -66,8 +66,8 @@ So the current idea would be to have:
 	- `foreach_mask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child. The argument of `f` is a tuple `(<:AbstractVectorMask, depth::Int)`, where `depth` is the distance of a current `mask::AbstractVectorMask` from the top node. It is responsibility of the implementation to increase the depth accordingly. This allows to apply `f` on on masks at some level. The overloading allows not to count some `AbstractStructureMask` if they do not play active role (e.g. `ProductMask`) and to impose structure if some `<:AbstractStructureMask` contain more then one `<:AbstractVectorMask`. Contrary, `BagMask` should increase the level, since it contains a mask which directly influences masks of its child.
 	- `mapmask(f, mask)` applies function `f` on `<:AbstractVectorMask` of a given node and its child and return modified structural mask `AbstractStructureMask`. For example for `Matrix`, it would look like this 
 	```
-	function mapmask(f, m::MatrixMask, level = 1)
-		MatrixMask(f(m.mask, level))
+	function mapmask(f, m::FeatureMask, level = 1)
+		FeatureMask(f(m.mask, level))
 	end
 	```
 	This function is more of a convenience and nice to have things, as it allows to separate mask used to calculate heuristic values from mask used in the pruning process, where it might be sufficient just to provide heuristic values. If differentiable mask undergoes some complicated transformation, e.g. `σ`, it is not clear, what to use for a heuristic values.
@@ -109,7 +109,7 @@ The goal is to put as much test related to a single `Type` in one block, such th
 ```julia
 	an = ArrayNode(randn(4,5))
 	mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
-	@test mk isa MatrixMask
+	@test mk isa FeatureMask
 	@test an[mk] == an
 ```		
 * Verify pruning has an effect
@@ -224,3 +224,11 @@ Or alternatively, check before level-by-level that participation is supported an
 Another solution might be as follows. Imagine that we adopt a design contract that `mask` can be shared only within the same `Dict`, which sort of make sense. Then, the mapping might be implemented such that the dict checks for duplicated masks and do what is expected. That might work. Will think about it
 
 I will use a trick of Mike Innes and will cache results using IdDict, which will allow to check, if the mask was already `mapped` and take the result. Though needless to say, when a mask is on following more then one mask, that would still be tough. Likely there will need to be a special dispatch of `ObservationMask` on `FollowingMasks`.
+
+
+## Notes from transition to 2.0
+* I can explain only models, which has Pre- and Post- Imputing Matrices on the lists. For safety,
+the model should be created by `reflectinmodel` with `kwarg` `all_imputing=true`
+* `Matrix` and `NGramMatrix` works as is, as those containers natively support `missing` (with appropriate tooling)
+* Support of explanation of `Flux.OneHotMatrix` is cancelled and if is be encountered, it will be skipped in the explanation using `EmptyMask`. The reason is that `OneHotMatrix` does not have properly designed `missing` item. But, if `Flux.OneHotMatrix` is a child of `BagNode`, individual observations will be pruned due to `BagMask` masking individual instances in the bag.
+* Explanations of categorical variables is supported if the categorical variables are encoded by `Mill.MaybeHotMatrix`, which can properly handle `missing` variables.

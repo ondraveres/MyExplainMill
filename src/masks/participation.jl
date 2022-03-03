@@ -18,7 +18,7 @@
 	This means that if `BagMask` has mask `[true,false,true,false,true]`, 
 	then explanation of `NGramMatrix` can consider only `["a","c","e"]` instead of 
 	all items, because `["b","d"]` are removed by the `BagMask` of above. 
-	The `participation(mk::NGramMatrixMask)` should therefore 
+	The `participation(mk::NGramMask)` should therefore 
 	return `[true,false,true,false,true]`.
 
 	`ParticipationTracker` is a decorator of `<:AbstractVectorMask`. It would reexport 

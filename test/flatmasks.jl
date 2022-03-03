@@ -170,10 +170,10 @@ using ExplainMill: ParticipationTracker, create_mask_structure, participate
 			@test ds[mk] == ds
 			fv[1] = false
 			@test ds[mk][:a] == ds[:a]
-			@test ds[mk][:b].data.S == ["", "b"]
+			@test isequal(ds[mk][:b].data.S, [missing, "b"])
 			fv .= [true, false]
 			@test ds[mk][:a] == ds[:a]
-			@test ds[mk][:b].data.S == ["a", ""]
+			@test isequal(ds[mk][:b].data.S, ["a", missing])
 		end
 	end	
 end

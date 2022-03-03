@@ -13,7 +13,7 @@ using Mill: partialeval
 # provides the same outputs
 @testset "Partial Evaluation" begin 
     ds = specimen_sample()
-    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean)
+    model = reflectinmodel(ds, d -> Dense(d, 4), SegmentedMean, all_imputing = true)
 
 	for mfun in [
 		d -> SimpleMask(fill(true, d)),
