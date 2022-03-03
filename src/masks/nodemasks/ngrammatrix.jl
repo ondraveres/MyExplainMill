@@ -2,7 +2,7 @@ struct NGramMatrixMask{M} <: AbstractListMask
 	mask::M
 end
 
-const NGramNode = ArrayNode{<:Mill.NGramMatrix{String},<:Any}
+const NGramNode = ArrayNode{<:Mill.NGramMatrix,<:Any}
 
 Flux.@functor(NGramMatrixMask)
 
