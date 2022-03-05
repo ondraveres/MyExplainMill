@@ -113,7 +113,10 @@ function Mill.partialeval(model::BagModel, ds::BagNode, mk::BagMask, masks)
 	if (mk ∈ masks) | (mk.mask ∈ masks) | keep
 		return(BagModel(im, model.a,  model.bm), BagNode(ids, ds.bags, ds.metadata), BagMask(childms, mk.bags, mk.mask), true)
 	end
-	return(ArrayModel(identity), model.bm(model.a(ids, ds.bags)), EmptyMask(), false)
+	present_childs = present(mk.child, prunemask(mk.mask))
+	x = ids[:, present_childs]
+	nb = Mill.adjustbags(ds.bags, present_childs)
+	return(ArrayModel(identity), model.bm(model.a(x, nb)), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::BagModel, ds::BagNode, mk::EmptyMask, masks)

@@ -95,6 +95,16 @@ end
 		an = ArrayNode(randn(4,0))
 		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
 		@test an[mk] == an
+
+		# testing of partial eval 
+		an = ArrayNode(randn(4,5))
+		mk = create_mask_structure(an, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(an, d -> Dense(d, 4), all_imputing = true)
+		randn!(model.m.W.ψ)
+		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
+			mk.mask.x .= ii  
+			@test model(an[mk]) ≈ Mill.partialeval(model, an, mk, [])[2]
+		end
 	end
 
 	@testset "Categorical Mask - Mill.MayBeHot" begin
@@ -176,6 +186,16 @@ end
 		on = ArrayNode(Mill.maybehotbatch(Int[], 1:4))
 		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
 		@test on[mk] == on
+
+		# testing of partial eval 
+		on = ArrayNode(Mill.maybehotbatch(Int[1,2,3,4], 1:4))
+		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(on, d -> Dense(d, 4), all_imputing = true)
+		randn!(model.m.W.ψ)
+		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
+			mk.mask.x .= ii  
+			@test model(on[mk]) ≈ Mill.partialeval(model, on, mk, [])[2]
+		end
 	end
 
 	@testset "Sparse Mask" begin
@@ -250,9 +270,19 @@ end
 		@test model(cn, mk) ≈ model(ArrayNode(cn.data .* [1 0 1 1 1]))
 
 		# testing subsetting of an empty sample 
-		on = ArrayNode(sparse(zeros(4,0)))
-		mk = create_mask_structure(on, d -> SimpleMask(fill(true, d)))
-		@test on[mk] == on
+		cn = ArrayNode(sparse(zeros(4,0)))
+		mk = create_mask_structure(cn, d -> SimpleMask(fill(true, d)))
+		@test cn[mk] == cn
+
+		# testing of partial eval 
+		cn = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0])))
+		mk = create_mask_structure(cn, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(cn, d -> Dense(d, 4), all_imputing = true)
+		randn!(model.m.W.ψ)
+		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
+			mk.mask.x .= ii  
+			@test model(cn[mk]) ≈ Mill.partialeval(model, cn, mk, [])[2]
+		end
 	end
 
 	@testset "String Mask" begin
@@ -324,9 +354,18 @@ end
 		@test all(participate(mk.mask))
 
 		# testing subsetting of an empty sample 
-		sn = ArrayNode(NGramMatrix(String[], 3, 256, 2053))
 		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
 		@test sn[mk] == sn
+
+		# testing of partial eval 
+		sn = ArrayNode(NGramMatrix(string.([1,2,3,4,5]), 3, 256, 2053))
+		mk = create_mask_structure(sn, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(sn, d -> Dense(d, 4), all_imputing = true)
+		randn!(model.m.W.ψ)
+		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
+			mk.mask.x .= ii  
+			@test model(sn[mk]) ≈ Mill.partialeval(model, sn, mk, [])[2]
+		end
 	end
 
 	@testset "Bag Mask --- single nesting" begin
@@ -452,6 +491,19 @@ end
 		ds = BagNode(an, AlignedBags([0:-1,0:-1]))
 		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 		@test ds[mk] == ds
+
+		# testing partial evaluation
+		an = ArrayNode(NGramMatrix(["a", "b", "c", "b", "e"]))
+		ds = BagNode(an, AlignedBags([1:2,3:3,0:-1,4:5]))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(ds, d -> Dense(d, 4))
+		for ii in Iterators.product(fill(0:1,5)...)
+			mk.mask.x .= ii  
+			for jj in Iterators.product(fill(0:1,5)...)
+				mk.child.mask.x .= jj  
+				@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+			end
+		end
 	end
 
 	@testset "ProductMask" begin
@@ -540,6 +592,23 @@ end
 			))
 		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
 		@test ds[mk] == ds
+
+		#testing of partialeval
+		ds = ProductNode(
+			(a = ArrayNode(randn(4,5)),
+			b = ArrayNode(sparse(Float64.([1 2 3 0 5; 0 2 0 4 0]))),
+			))
+		mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
+		randn!(model[:a].m.W.ψ)
+		randn!(model[:b].m.W.ψ)
+		for ii in Iterators.product(fill(0:1,length(mk[:a].mask.x))...)
+			mk[:a].mask.x .= ii  
+			for jj in Iterators.product(fill(0:1,length(mk[:b].mask.x))...)
+				mk[:b].mask.x .= jj
+				@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+			end
+		end
 	end
 
 	@testset "simple sharing of masks" begin 
@@ -762,4 +831,19 @@ end
 	@test isequal(dss.data.data.data.a.data, [missing missing; 2 10])
 
 	@test ds[ExplainMill.EmptyMask()] == ds
+
+	an = ArrayNode(reshape(collect(1:10), 2, 5))
+	on = ArrayNode(Mill.maybehotbatch([1, 2, 3, 1, 2], 1:4))
+	cn = ArrayNode(sparse([1 0 3 0 5; 0 2 0 4 0]))
+	ds = BagNode(BagNode(ProductNode((a = an, c = cn, o = on)), AlignedBags([1:2,3:3,4:5])), AlignedBags([1:3]))
+	mk = create_mask_structure(ds, d -> SimpleMask(fill(true, d)))
+	model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
+	randn!(model.im.im[:a].m.W.ψ)
+	randn!(model.im.im[:c].m.W.ψ)
+	randn!(model.im.im[:o].m.W.ψ)
+	fv = FlatView(mk)
+	for i in 1:100
+		fv .= rand([false,true], length(fv))
+		@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+	end
 end
