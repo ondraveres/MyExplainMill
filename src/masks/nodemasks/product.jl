@@ -34,6 +34,14 @@ end
 function present(mk::ProductMask, obs)
 	mapreduce(m -> present(m, obs), (a,b) -> max.(a,b), mk.childs)
 end
+# function present(mk::ProductMask, obs)
+# 	mapreduce(m -> present(m, obs), (a,b) -> max.(a,b), mk.childs)
+# 	@show obs
+# 	mapreduce((a,b) -> max.(a,b), mk.childs) do m 
+# 		@show present(m, obs)
+# 		present(m, obs)
+# 	end
+# end
 
 function invalidate!(mk::ProductMask, observations::Vector{Int})
 	for c in mk.childs
@@ -63,7 +71,6 @@ function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mk::ProductMask) wher
     m.m(xx)
 end
 
-
 function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
 	ks = keys(model.ms)
 	mods = map(ks) do k
@@ -75,8 +82,9 @@ function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::P
 	if any(f[4] for f in mods)
 		return(ProductModel((;zip(ks, childmodels)...), model.m), ProductNode((;zip(ks, childds)...), ds.metadata), ProductMask((;zip(ks, childms)...)), true)
 	end
-	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
-
+	@assert all(cm isa ArrayModel{typeof(identity)} for cm in childmodels)
+	x = model.m(reduce(vcat, map((cd, cm) -> cd[cm].data, childds, childms)))
+	return(ArrayModel(identity), ArrayNode(x), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::ProductModel, ds::ProductNode, mk::EmptyMask, masks)

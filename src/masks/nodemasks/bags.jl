@@ -57,7 +57,10 @@ function Base.getindex(ds::BagNode, mk::BagMask, presentobs=fill(true, nobs(ds))
 	if !any(presentobs)
 		return(ds[0:-1])
 	end
+	# @show presentobs
+	# @show prunemask(mk.mask)
 	present_childs = present(mk.child, prunemask(mk.mask))
+	# @show present_childs
 	for (i,b) in enumerate(ds.bags) 
 	    presentobs[i] && continue
 	    present_childs[b] .= false
@@ -114,9 +117,9 @@ function Mill.partialeval(model::BagModel, ds::BagNode, mk::BagMask, masks)
 		return(BagModel(im, model.a,  model.bm), BagNode(ids, ds.bags, ds.metadata), BagMask(childms, mk.bags, mk.mask), true)
 	end
 	present_childs = present(mk.child, prunemask(mk.mask))
-	x = ids[:, present_childs]
+	x = ids[present_childs].data
 	nb = Mill.adjustbags(ds.bags, present_childs)
-	return(ArrayModel(identity), model.bm(model.a(x, nb)), EmptyMask(), false)
+	return(ArrayModel(identity), ArrayNode(model.bm(model.a(x, nb))), EmptyMask(), false)
 end
 
 function Mill.partialeval(model::BagModel, ds::BagNode, mk::EmptyMask, masks)

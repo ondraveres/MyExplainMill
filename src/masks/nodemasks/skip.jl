@@ -19,7 +19,7 @@ present(::EmptyMask, obs) = obs
 
 prune(ds, mk::EmptyMask) = ds
 
-function Base.getindex(ds, mk::EmptyMask, presentobs = fill(true, nobs(ds))) 
+function Base.getindex(ds::AbstractMillNode, mk::EmptyMask, presentobs = fill(true, nobs(ds))) 
 	all(presentobs) && return(ds)
 	ds[presentobs]
 end

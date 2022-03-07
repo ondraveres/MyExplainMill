@@ -3,6 +3,7 @@ import Base: ==, hash
 
 """
     Absent
+    
 	represent a part of an explanation which is not important
 """
 struct Absent end
@@ -89,6 +90,7 @@ _retrieve_obs(::LazyNode, i) = error("LazyNode in Mill.jl does not support metad
 
 _retrieve_obs(ds::ArrayNode{<:NGramMatrix, Nothing}, i) = ds.data.s[i]
 _retrieve_obs(ds::ArrayNode{<:Flux.OneHotMatrix, Nothing}, i) = ds.data.data[i].ix
+_retrieve_obs(ds::ArrayNode{<:Mill.MaybeHotMatrix, Nothing}, i) = ds.data.data[i].ix
 _retrieve_obs(ds::ArrayNode{<:Matrix, Nothing}, i, j) = ds.data[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractMatrix}, i, j) = ds.metadata[i, j]
 _retrieve_obs(ds::ArrayNode{<:AbstractMatrix, <:AbstractVector}, j) = ds.metadata[j]
@@ -103,7 +105,7 @@ _reversedict(d) = Dict([v => k for (k,v) in d]...)
 contributing(m::AbstractStructureMask, _) = prunemask(m.mask)
 contributing(m::EmptyMask, l) = Fill(true, l)
 
-function yarason(ds::ArrayNode{<:Flux.OneHotMatrix, M}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
+function yarason(ds::ArrayNode{<:Mill.MaybeHotMatrix, M}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds))) where M
     c = contributing(m, nobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
     if M === Nothing
@@ -176,10 +178,10 @@ function yarason(ds::BagNode, m, e::T, exportobs=fill(true, nobs(ds))) where T <
 
     #get indexes of c clusters
 	present_childs = Vector(contributing(m, nobs(ds.data)))
+    !any(present_childs) && return(fill(absent, sum(exportobs)))
 	for b in ds.bags[.!exportobs]
 	    present_childs[b] .= false
 	end
-
 	x = yarason(ds.data, m.child, _echild(e), present_childs)
 	x = addor(m, x, present_childs)
 	bags = Mill.adjustbags(ds.bags, present_childs)[exportobs]
@@ -190,49 +192,12 @@ _echild(e::JsonGrinder.ExtractArray) = e.item
 _echild(e::JsonGrinder.ExtractKeyAsField) = e
 
 function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
-    nobs(ds) == 0 && return(zeroobs())
-    !any(exportobs) && return(emptyexportobs())
-    _exportother(ds, m, e, exportobs)
-end
-
-
-function _exportother(ds::ProductNode, m, e::JsonGrinder.ExtractDict, exportobs)
-	s = map(sort(collect(intersect(keys(ds.data), keys(e.other))))) do k
-        k => yarason(ds[k], m[k], e.other[k], exportobs)
-    end
-    _arrayofdicts(Dict(s), sum(exportobs))
-end
-
-function _arrayofdicts(d::Dict, l)
-    isempty(d) && return(fill(d, l))
-    ks = collect(keys(d))
-    map(1:l) do i
-        Dict(map(k -> k => isabsent(d[k]) ? absent : d[k][i], ks))
+    S =  eltype(keys(e.dict))
+    ks = sort(collect(intersect(keys(ds.data), Symbol.(keys(e.dict)))))
+    s = map(ks) do k
+        k => yarason(ds[k], m[k], e.dict[S(k)], exportobs)
     end
 end
-
-function _exportmatrix(args...)
-    @error "Cannot extract metadata from an ArrayNode, did you extract with `store_input=true`?"
-end
-function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.FeatureMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
-    x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
-    map(x -> _parcel(x, e), x)
-end
-
-function _exportmatrix(ds::ArrayNode{T, <:AbstractMatrix},  m::ExplainMill.ObservationMask, e::Dict, exportobs=fill(true, nobs(ds))) where T
-    x = yarason(ds, m, ExtractScalar(Float32, 0, 1), exportobs)
-    map(x -> _parcel(x, e), x)
-end
-
-function _parcel(x::Vector{T}, e) where {T}
-    d = Dict{Symbol,T}()
-    for (offset, (k, f)) in enumerate(e)
-        d[k] = x[offset]
-    end
-    d
-end
-
-# x = vcat([f(get(v,String(k),nothing)) for (k,f) in s.vec]...)
 
 function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs=fill(true, nobs(ds)))
 	nobs(ds) == 0 && return(zeroobs())

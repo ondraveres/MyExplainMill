@@ -109,7 +109,7 @@ end
 function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:ArrayModel}
 	mk ∈ masks && return(model, ds, mk, true)
 	mk.mask ∈ masks && return(model, ds, mk, true)
-	return(ArrayModel(identity), model(ds[mk]), EmptyMask(), false)
+	return(ArrayModel(identity), ArrayNode(model(ds[mk])), EmptyMask(), false)
 end
 
 _nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 2)

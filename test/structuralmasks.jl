@@ -103,7 +103,9 @@ end
 		randn!(model.m.W.ψ)
 		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
 			mk.mask.x .= ii  
-			@test model(an[mk]) ≈ Mill.partialeval(model, an, mk, [])[2]
+			modelₗ, dsₗ, mkₗ = Mill.partialeval(model, an, mk, [])
+			@test model(an[mk]) ≈ dsₗ.data
+			@test model(an[mk]) ≈ modelₗ(dsₗ[mkₗ])
 		end
 	end
 
@@ -194,7 +196,9 @@ end
 		randn!(model.m.W.ψ)
 		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
 			mk.mask.x .= ii  
-			@test model(on[mk]) ≈ Mill.partialeval(model, on, mk, [])[2]
+			modelₗ, dsₗ, mkₗ = Mill.partialeval(model, on, mk, [])
+			@test model(on[mk]) ≈ dsₗ.data
+			@test model(on[mk]) ≈ modelₗ(dsₗ[mkₗ])
 		end
 	end
 
@@ -281,7 +285,10 @@ end
 		randn!(model.m.W.ψ)
 		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
 			mk.mask.x .= ii  
-			@test model(cn[mk]) ≈ Mill.partialeval(model, cn, mk, [])[2]
+			modelₗ, dsₗ, mkₗ = Mill.partialeval(model, cn, mk, [])
+			@test model(cn[mk]) ≈ dsₗ.data
+			@test model(cn[mk]) ≈ modelₗ(dsₗ[mkₗ])
+
 		end
 	end
 
@@ -364,7 +371,9 @@ end
 		randn!(model.m.W.ψ)
 		for ii in Iterators.product(fill(0:1, length(prunemask(mk.mask)))...)
 			mk.mask.x .= ii  
-			@test model(sn[mk]) ≈ Mill.partialeval(model, sn, mk, [])[2]
+			modelₗ, dsₗ, mkₗ = Mill.partialeval(model, sn, mk, [])
+			@test model(sn[mk]) ≈ dsₗ.data
+			@test model(sn[mk]) ≈ modelₗ(dsₗ[mkₗ])
 		end
 	end
 
@@ -501,7 +510,9 @@ end
 			mk.mask.x .= ii  
 			for jj in Iterators.product(fill(0:1,5)...)
 				mk.child.mask.x .= jj  
-				@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+				modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [])
+				@test model(ds[mk]) ≈ dsₗ.data
+				@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ])
 			end
 		end
 	end
@@ -606,7 +617,18 @@ end
 			mk[:a].mask.x .= ii  
 			for jj in Iterators.product(fill(0:1,length(mk[:b].mask.x))...)
 				mk[:b].mask.x .= jj
-				@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+				modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [])
+				@test model(ds[mk]) ≈ modelₗ(dsₗ)
+				@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ])
+
+				modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.childs[:a]])
+				@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
+
+				modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.childs[:b]])
+				@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
+
+				modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.childs[:a], mk.childs[:b]])
+				@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
 			end
 		end
 	end
@@ -844,6 +866,17 @@ end
 	fv = FlatView(mk)
 	for i in 1:100
 		fv .= rand([false,true], length(fv))
-		@test model(ds[mk]) ≈ Mill.partialeval(model, ds, mk, [])[2]
+		modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [])
+		@test model(ds[mk]) ≈ modelₗ(dsₗ)
+		@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ])
+
+		modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.child.child.childs[:a]])
+		@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
+
+		modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.child.child])
+		@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
+
+		modelₗ, dsₗ, mkₗ = Mill.partialeval(model, ds, mk, [mk.child.child.childs[:a],mk.child.child.childs[:a]])
+		@test model(ds[mk]) ≈ modelₗ(dsₗ[mkₗ]) rtol=1e-6
 	end
 end
