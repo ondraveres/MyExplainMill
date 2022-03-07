@@ -37,7 +37,6 @@ export stats, heuristic
 
 include("prunemissing.jl")
 include("predict.jl")
-include("matching.jl")
 include("pruning/pruning.jl")
 include("utils/lensutils.jl")
 include("explain.jl")

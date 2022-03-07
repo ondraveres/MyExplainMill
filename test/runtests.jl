@@ -24,8 +24,5 @@ include("specimen.jl")
     include("heuristics.jl")
     include("partialeval.jl")
     include("explain.jl")
-
-    @testset "Logic output" begin 
-    	@test_broken false
-    end
+	include("logic_output.jl")
 end

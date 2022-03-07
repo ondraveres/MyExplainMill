@@ -1,8 +1,6 @@
 removable(::Missing) = true
-# removable(::Missing) = true
 removable(ds::AbstractMillNode) = ismissing(ds.data)
 removable(s::Vector{T}) where {T<:AbstractString} = isempty(s)
-removable(::Missing) = true
 removable(s::Matrix{T}) where {T<:Number} = false
 removable(x::Matrix{Union{Missing, T}}) where {T<:Number} = all(x .=== missing)
 removable(x::NGramMatrix) = all(x.S .=== missing)
@@ -18,9 +16,11 @@ end
 
 function removemissing(ds::ProductNode) 
 	ks = [k => removemissing(ds.data[k]) for k in collect(keys(ds.data))]
+	ks = map(removemissing, ds.data)
 	ks = filter(k -> !ismissing(k.second), ks)
 	isempty(ks) && return(missing)
-	ProductNode((;ks...))
+	dd = (;ks...)
+	ProductNode(dd)
 end
 
 @deprecate prunemissing removemissing
