@@ -24,5 +24,5 @@ include("specimen.jl")
     include("heuristics.jl")
     include("partialeval.jl")
     include("explain.jl")
-	include("logic_output.jl")
+	include("json_output.jl")
 end

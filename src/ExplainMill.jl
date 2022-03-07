@@ -24,7 +24,7 @@ output(x::AbstractArray) = x
 
 include("masks/masks.jl")
 export prunemask, diffmask, HeuristicMask, SimpleMask, ObservationMask
-include("output/logic_output.jl")
+include("output/json_output.jl")
 
 include("heuristics/const_explainer.jl")
 include("heuristics/daf_explainer.jl")

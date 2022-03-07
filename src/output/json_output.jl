@@ -1,6 +1,3 @@
-import JSON: lower
-import Base: ==, hash
-
 """
     Absent
     
@@ -29,15 +26,6 @@ function yarason(ds::ArrayNode{<:Mill.MaybeHotMatrix, <:Any}, m::AbstractStructu
     length(x) > 1 ? reduce(hcat, x) : x
 end
 
-"""
-    yarason(ds, m, e, exportobs::Vector{Bool})
-
-    Values for items in `ds` corresponding to `true` in `prunemask(m)`
-    and `participating(m)`, or `absent` otherwise. Values are exported
-    only for those indicated in binary mask `exportobs`. The export
-    also takes into the account "clusters", which are exported using the
-    `OR` as `OR
-"""
 function yarason(ds::ArrayNode{<:Matrix, <:Any}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M
     rows, cols = size(ds.data)
     c = contributing(m, rows)
