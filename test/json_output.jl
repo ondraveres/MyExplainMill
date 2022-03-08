@@ -2,9 +2,8 @@
 # Unit test for extraction of logical formulas and their matching
 ####
 using ExplainMill, Mill, JsonGrinder
-using ExplainMill: Mask, yarason, participate, prunemask, addor, OR, EmptyMask, logicaland
+using ExplainMill: Mask, yarason, participate, prunemask, EmptyMask
 using ExplainMill: create_mask_structure
-using ExplainMill: Absent, absent, isabsent
 using Flux
 using Setfield
 using Test
@@ -87,7 +86,7 @@ using SparseArrays
 		e = ExtractDict(Dict(:a => ExtractCategorical(["ca","cb","cc","cd"]), 
 			:b => ExtractString()))
 		js = map(x -> Dict(:a => x[1], :b => x[2]), zip(["ca","cb","cc","cd","ce"], ["sa","sb","sc","sd","se"]))
-		ds = reduce(catobs, map(i -> e(i, store_input = true), s))
+		ds = reduce(catobs, map(i -> e(i, store_input = true), js))
 		mk = create_mask_structure(ds, d -> SimpleMask(rand([true, false], d)))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
 		for i in 1:10
