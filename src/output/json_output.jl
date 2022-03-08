@@ -144,6 +144,20 @@ end
 
 kvpair(k::Nothing, v::Nothing) = nothing
 
+prunejson(::Nothing) = nothing 
+prunejson(s) = s === nothing ? nothing : s
+function prunejson(ss::Vector)
+    ss = map(prunejson, ss)
+    ss = filter(!isnothing, ss)
+    isempty(ss) ? nothing : ss
+end
+
+function prunejson(d::Dict)
+    ss = map(s -> s.first => prunejson(s.second), collect(d))
+    ss = filter(s -> s.second !== nothing, ss)
+    isempty(ss) ? nothing : Dict(ss)
+end
+
 function e2boolean(dss::AbstractMillNode, pruning_mask, extractor)
     js = yarason(dss, pruning_mask, extractor)
     js === nothing && return(nothing)
