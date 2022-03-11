@@ -144,6 +144,11 @@ end
 
 kvpair(k::Nothing, v::Nothing) = nothing
 
+"""
+    prunejson
+
+    remove empty arrays and nothings from the the explanation
+"""
 prunejson(::Nothing) = nothing 
 prunejson(s) = s === nothing ? nothing : s
 function prunejson(ss::Vector)
