@@ -115,7 +115,7 @@ might undergo further changes. At the moment, it is simple to take it out of
 the explanation. For example if we want to remove PathNode from explanation,
 define constructor as `Duff.Daf(::PathNode) = ExplainMill.SkipDaf()`
 
-##Design thoughts on logic output
+## Design thoughts on logic output
 
 * We need to carry observations that will be exported downward, otherwise skipped explanation and export of arrays would not work properly. This can get into interesting situations, where 
 - something can be present because of the upper mask but missing because of the lower mask. In this case, I will emit missing
