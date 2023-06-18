@@ -37,7 +37,7 @@ explained_ds = ExplainMill.explain(ds, model, n = 1000)
 using Setfield
 new_model = @set model.bm.m = Chain(model.bm, x -> x[1,:])
 
-# ###Peaking under the hood
+# ### Peaking under the hood
 # The explanation starts by creating a structure holding a shapley values for 
 # individual nodes. The structure resembles the Mill structure, but instead of
 # data it holds `Duff.Daf` statistics. For a `ds`, the structure is created as
