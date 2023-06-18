@@ -6,7 +6,7 @@ function Base.getproperty(F::EmptyMask, d::Symbol)
 	error("EmptyMask does not have a property $(d)")
 end
 
-Base.getindex(m::EmptyMask,i...) = EmptyMask()
+Base.getindex(::EmptyMask, i...) = EmptyMask()
 
 function StatsBase.sample!(pruning_mask::EmptyMask)
 end
@@ -17,9 +17,9 @@ participate(::EmptyMask) = Vector{Bool}()
 
 present(::EmptyMask, obs) = obs
 
-prune(ds, mk::EmptyMask) = ds
+prune(ds, ::EmptyMask) = ds
 
-function Base.getindex(ds::AbstractMillNode, mk::EmptyMask, presentobs = fill(true, nobs(ds))) 
+function Base.getindex(ds::AbstractMillNode, mk::EmptyMask, presentobs = fill(true, numobs(ds))) 
 	all(presentobs) && return(ds)
 	ds[presentobs]
 end

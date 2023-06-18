@@ -1,6 +1,6 @@
 function confidence(model, ds)
 	o = mapslices(x -> maximum(x), model(ds), dims = 1)
-    nobs(ds) == 1 ? o[1] : o
+    numobs(ds) == 1 ? o[1] : o
 end
 
 function confidencegap(o, i::Int)

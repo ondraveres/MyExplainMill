@@ -1,11 +1,3 @@
-using ExplainMill
-using Mill
-using Test
-using Flux
-using SparseArrays
-using StatsBase: nobs
-using ExplainMill: logitconfgap
-
 # heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :Flat_HArrft, :LbyL_HAdd, :LbyL_HArr, :LbyL_HArrft]
 heuristic_pruning_methods = [:Flat_HAdd, :Flat_HArr, :LbyL_HAdd, :LbyL_HArr]
 partial_pruning_methods = [:LbyLo_HAdd, :LbyLo_HArr]
@@ -104,7 +96,7 @@ end
     motif = [1, 0, 0, 0, 0, 1]
     model = ArrayModel(preimputing_dense(6, 2))
     model.m.weight.W .= [1 0 0 0 0 1;-1 0 0 0 0 -1]
-    model.m.b .= 0
+    model.m.bias .= 0
     for e in [ConstExplainer(), StochasticExplainer(), GnnExplainer(200), GradExplainer(), ExplainMill.DafExplainer()]
 
         mk = ExplainMill.add_participation(stats(e, ds, model))

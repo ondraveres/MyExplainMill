@@ -16,7 +16,7 @@ struct FeatureMask{M} <: AbstractListMask
 	cols::Int
 end
 
-Flux.@functor(FeatureMask)
+Flux.@functor FeatureMask
 
 function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, cluster) where {T<:Matrix, M} 
 	create_mask_structure(ds, create_mask)
@@ -26,7 +26,7 @@ function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Matrix
 	FeatureMask(create_mask(size(ds.data, 1)), size(ds.data)...)
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, mk::FeatureMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
+function Base.getindex(ds::ArrayNode{T,M}, mk::FeatureMask, presentobs=fill(true, numobs(ds))) where {T<:Matrix, M}
 	x = ds.data[:,presentobs]
 	if eltype(x) <: Real
 		x = Matrix{Union{Missing, eltype(x)}}(x)
@@ -35,7 +35,7 @@ function Base.getindex(ds::ArrayNode{T,M}, mk::FeatureMask, presentobs=fill(true
 	ArrayNode(x, ds.metadata)
 end
 
-function Base.getindex(ds::ArrayNode{T,M}, mk::ObservationMask, presentobs=fill(true,nobs(ds))) where {T<:Matrix, M}
+function Base.getindex(ds::ArrayNode{T,M}, mk::ObservationMask, presentobs=fill(true, numobs(ds))) where {T<:Matrix, M}
 	x = ds.data[:, presentobs]
 	if eltype(x) <: Real
 		x = Matrix{Union{Missing, eltype(x)}}(x)
@@ -82,7 +82,7 @@ function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(xmk::Tuple{<:Matrix,<:Abst
 end
 
 function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::FeatureMask)
-	W, b, σ = m.W, m.b, m.σ
+	W, b, σ = m.weight, m.bias, m.σ
 	dm = diffmask(mk.mask)
 	y = W * x
 	y = @. dm * y + (1 - dm) * W.ψ
@@ -90,7 +90,7 @@ function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::FeatureMask
 end
 
 function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::ObservationMask)
-	W, b, σ = m.W, m.b, m.σ
+	W, b, σ = m.weight, m.bias, m.σ
 	dm = reshape(diffmask(mk.mask), 1, :)
 	y = W * x
 	y = @. dm * y + (1 - dm) * W.ψ
@@ -98,7 +98,7 @@ function (m::Dense{<:Any, <:PreImputingMatrix,<:Any})(x::Matrix, mk::Observation
 end
 
 """
-	Mill.partialeval(model::AbstracModel, ds::AbstractMillNode, mk::StructureMask, masks)
+	partialeval(model::AbstracModel, ds::AbstractMillNode, mk::StructureMask, masks)
 
 	identify subset of `model`, sample `ds`, and structural mask `mk` that are 
 	sensitive to `masks` and evaluate and replace the rest of the model, sample, 
@@ -106,10 +106,10 @@ end
 	is useful when we are explaining only subset of full mask (e.g. level-by-level) 
 	explanation.
 """
-function Mill.partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:ArrayModel}
+function partialeval(model::M, ds::ArrayNode, mk, masks) where {M<:ArrayModel}
 	mk ∈ masks && return(model, ds, mk, true)
 	mk.mask ∈ masks && return(model, ds, mk, true)
 	return(ArrayModel(identity), ArrayNode(model(ds[mk])), EmptyMask(), false)
 end
 
-_nocluster(m::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix,M} = size(ds.data, 2)
+_nocluster(::ArrayModel, ds::ArrayNode{T,M}) where {T<:Matrix, M} = size(ds.data, 2)

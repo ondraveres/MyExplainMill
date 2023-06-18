@@ -1,8 +1,8 @@
 """
-	collect_masks_with_levels(mk::AbstractStructureMask, level = 1)
+    collect_masks_with_levels(mk::AbstractStructureMask, level = 1)
 
-	recursively traverse the hierarchical mask structure and 
-	collect mask that have explainable content together with their level.
+    recursively traverse the hierarchical mask structure and 
+    collect mask that have explainable content together with their level.
 
 example:
 ```julia
@@ -25,13 +25,13 @@ julia> collect_masks_with_levels(mk)
 ```
 """
 function collect_masks_with_levels(mk; level = 1)
-	collected_masks = Vector{Pair}()
-	foreach_mask((mk, depth) -> push!(collected_masks, mk => depth), mk, level, IdDict{Any, Nothing}())
-	collected_masks
+    collected_masks = Vector{Pair}()
+    foreach_mask((mk, depth) -> push!(collected_masks, mk => depth), mk, level, IdDict{Any, Nothing}())
+    collected_masks
 end
 
 function collectmasks(mk)
-	collected_masks = []
-	foreach_mask((mk, depth) -> push!(collected_masks, mk), mk)
-	collected_masks
+    collected_masks = []
+    foreach_mask((mk, depth) -> push!(collected_masks, mk), mk)
+    collected_masks
 end

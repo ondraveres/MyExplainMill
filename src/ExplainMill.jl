@@ -1,22 +1,20 @@
 module ExplainMill
-using Mill
+
+using ChainRulesCore
+using Clustering
+using DataStructures
+using Distances
 using Duff
+using Flux
+using HierarchicalUtils
+using JSON
+using JsonGrinder
+using Mill
+using Random
+using Setfield
 using SparseArrays
 using StatsBase
-using Distances
-using Clustering
-using Flux
-using Zygote
-using JSON
-using HierarchicalUtils
-using DataFrames
-using JSON
-using Zygote
-using JsonGrinder
-using SparseArrays
-using Setfield
-using DataStructures
-import Mill: partialeval
+
 import Flux: onecold
 
 output(ds::ArrayNode) = ds.data
@@ -37,6 +35,7 @@ export stats, heuristic
 
 include("prunemissing.jl")
 include("predict.jl")
+include("partialeval.jl")
 include("pruning/pruning.jl")
 include("utils/lensutils.jl")
 include("explain.jl")
@@ -48,6 +47,6 @@ Base.show(io::IO, ::T) where T <: AbstractStructureMask = print(io, Base.nameof(
 Base.show(io::IO, ::MIME"text/plain", n::AbstractStructureMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractStructureMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
-export explain, e2boolean, confidence, prunemissing, prune, e2boolean
+export explain, e2boolean, confidence, prune, e2boolean
 export removeabsent, removemissing
 end # module

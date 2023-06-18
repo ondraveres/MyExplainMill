@@ -1,14 +1,6 @@
 ####
 # Unit test for extraction of logical formulas and their matching
 ####
-using ExplainMill, Mill, JsonGrinder
-using ExplainMill: Mask, yarason, participate, prunemask, EmptyMask
-using ExplainMill: create_mask_structure
-using Flux
-using Setfield
-using Test
-using Random
-using SparseArrays
 
 # The idea behind the test is to take the sample, mask, and the extractor,
 # recreate JSON from it. Then, extract this json to Mill, pass it through 
@@ -22,7 +14,7 @@ using SparseArrays
 		x = [1, 2, 3, 4, 5]
 		ds = reduce(catobs, map(i -> e(i, store_input = true), x))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.m.W.ψ)
+		randn!(model.m.weight.ψ)
 		for (b, v) in [(true, x), (false, fill(nothing, length(x)))]
 			mk = create_mask_structure(ds, d -> SimpleMask(rand([b], d)))
 			rx = yarason(ds, mk, e)
@@ -44,7 +36,7 @@ using SparseArrays
 		x = ["a","b","c","d","e"]
 		ds = reduce(catobs, map(i -> e(i, store_input = true), x))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.m.W.ψ)
+		randn!(model.m.weight.ψ)
 		mk = create_mask_structure(ds, d -> SimpleMask(rand([true, false], d)))
 		for i in 1:10
 			rand!(mk.mask.x)
@@ -65,7 +57,7 @@ using SparseArrays
 		e = ExtractCategorical(["a","b","c","d"])
 		ds = reduce(catobs, map(i -> e(i, store_input = true), x))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.m.W.ψ)
+		randn!(model.m.weight.ψ)
 		mk = create_mask_structure(ds, d -> SimpleMask(rand([true, false], d)))
 		for i in 1:10
 			rand!(mk.mask.x)
@@ -115,7 +107,7 @@ using SparseArrays
 		ds = reduce(catobs, map(i -> e(i, store_input = true), [["a","b"],["c"],["d","e"]]))
 		mk = create_mask_structure(ds, d -> SimpleMask(rand([true, false], d)))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.im.m.W.ψ)
+		randn!(model.im.m.weight.ψ)
 		for i in 1:10
 			rand!(mk.mask.x)
 			rand!(mk.child.mask.x)
@@ -138,7 +130,7 @@ using SparseArrays
 		ds = reduce(catobs, map(i -> e(i, store_input = true), [[["a","b"],["c"]],[["d","e"]]]))
 		mk = create_mask_structure(ds, d -> SimpleMask(rand([true, false], d)))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.im.im.m.W.ψ)
+		randn!(model.im.im.m.weight.ψ)
 		randn!(model.im.a.a[1].ψ)
 		randn!(model.im.a.a[2].ψ)
 		randn!(model.a.a[1].ψ)
@@ -171,8 +163,8 @@ using SparseArrays
 		ds = reduce(catobs, map(i -> e(i, store_input = true), s))
 		mk = create_mask_structure(ds, d -> SimpleMask(trues(d)))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model.im[:key].m.W.ψ)
-		randn!(model.im[:item].im.m.W.ψ)
+		randn!(model.im[:key].m.weight.ψ)
+		randn!(model.im[:item].im.m.weight.ψ)
 		randn!(model.im[:item].a.a[1].ψ)
 		randn!(model.im[:item].a.a[2].ψ)
 		randn!(model.a.a[1].ψ)
@@ -198,8 +190,8 @@ using SparseArrays
 		ds = reduce(catobs, map(i -> e(i, store_input = true), s))
 		mk = create_mask_structure(ds, d -> SimpleMask(trues(d)))
 		model = reflectinmodel(ds, d -> Dense(d, 4), all_imputing = true)
-		randn!(model[:e1].m.W.ψ)
-		randn!(model[:e2].m.W.ψ)
+		randn!(model[:e1].m.weight.ψ)
+		randn!(model[:e2].m.weight.ψ)
 		for i in 1:10
 			rand!(mk[:e1].mask.x)
 			mk[:e1].mask.x .= mk[:e2].mask.x

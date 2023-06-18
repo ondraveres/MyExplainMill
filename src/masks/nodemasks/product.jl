@@ -49,14 +49,14 @@ function invalidate!(mk::ProductMask, observations::Vector{Int})
 	end
 end
 
-function Base.getindex(ds::ProductNode{T,M}, mk::ProductMask, presentobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function Base.getindex(ds::ProductNode{T,M}, mk::ProductMask, presentobs=fill(true, numobs(ds))) where {T<:NamedTuple, M}
 	s = map(ds.data, mk.childs) do sub_ds, sub_mk
        sub_ds[sub_mk, presentobs]
 	end
 	ProductNode(s)
 end
 
-function Base.getindex(ds::ProductNode{T,M}, mk::ProductMask, presentobs=fill(true, nobs(ds))) where {T<:Tuple, M}
+function Base.getindex(ds::ProductNode{T,M}, mk::ProductMask, presentobs=fill(true, numobs(ds))) where {T<:Tuple, M}
 	s = tuple([ds.data[k][mk.childs[k], presentobs] for k in 1:length(ds.data)]...)
 	ProductNode(s)
 end
@@ -71,10 +71,10 @@ function (m::Mill.ProductModel{MS,M})(x::ProductNode{P,T}, mk::ProductMask) wher
     m.m(xx)
 end
 
-function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
+function partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::ProductMask, masks) where {P<:NamedTuple,T,MS<:NamedTuple, M} 
 	ks = keys(model.ms)
 	mods = map(ks) do k
-		Mill.partialeval(model.ms[k], ds.data[k], mk[k], masks)
+		partialeval(model.ms[k], ds.data[k], mk[k], masks)
 	end
 	childmodels = map(f -> f[1], mods)
 	childds = map(f -> f[2], mods)
@@ -87,10 +87,10 @@ function Mill.partialeval(model::ProductModel{MS,M}, ds::ProductNode{P,T}, mk::P
 	return(ArrayModel(identity), ArrayNode(x), EmptyMask(), false)
 end
 
-function Mill.partialeval(model::ProductModel, ds::ProductNode, mk::EmptyMask, masks)
+function partialeval(model::ProductModel, ds::ProductNode, mk::EmptyMask, masks)
 	return(ArrayModel(identity), model.m(vcat(childds...)), EmptyMask(), false)
 end
 
-_nocluster(m::ProductModel, ds::ProductNode) = nobs(ds)
+_nocluster(m::ProductModel, ds::ProductNode) = numobs(ds)
 
 prunemask(m::ProductMask) = nothing

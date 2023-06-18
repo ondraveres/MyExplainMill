@@ -1,12 +1,3 @@
-using ExplainMill
-using Test
-using Mill
-using Flux
-using SparseArrays
-using Random
-using ExplainMill: Mask, FlatView		
-using ExplainMill: ParticipationTracker, create_mask_structure, participate
-
 @testset "mapping between flat structure and nodes" begin
 	for mfun in [
 		d -> SimpleMask(fill(true, d)),

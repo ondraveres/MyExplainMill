@@ -4,7 +4,7 @@ end
 
 const NGramNode = ArrayNode{<:Mill.NGramMatrix,<:Any}
 
-Flux.@functor(NGramMatrixMask)
+Flux.@functor NGramMatrixMask
 
 function create_mask_structure(ds::NGramNode, m::ArrayModel, create_mask, cluster)
 	cluster_assignments = cluster(m, ds)
@@ -12,14 +12,14 @@ function create_mask_structure(ds::NGramNode, m::ArrayModel, create_mask, cluste
 end
 
 function create_mask_structure(ds::NGramNode, create_mask)
-	NGramMatrixMask(create_mask(nobs(ds.data)))
+	NGramMatrixMask(create_mask(numobs(ds.data)))
 end
 
 function invalidate!(mk::NGramMatrixMask, invalid_observations::AbstractVector{Int})
 	invalidate!(mk.mask, invalid_observations)
 end
 
-function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}, presentobs=fill(true,nobs(ds)))
+function Base.getindex(ds::NGramNode, mk::Union{ObservationMask,NGramMatrixMask}, presentobs=fill(true, numobs(ds)))
 	x = ds.data
 	pm = prunemask(mk.mask) 
 	s = map(findall(presentobs)) do i 
@@ -53,7 +53,7 @@ function (m::Dense{<:Any, <:PostImputingMatrix,<:Any})(xmk::Tuple{<:NGramMatrix,
 end
 
 function (m::Dense{<:Any, <:PostImputingMatrix,<:Any})(x::NGramMatrix, mk::AbstractStructureMask)
-	W, b, σ = m.W, m.b, m.σ
+	W, b, σ = m.weight, m.bias, m.σ
 	dm = reshape(diffmask(mk.mask), 1, :)
 	y = W * x
 	y = @. dm * y + (1 - dm) * W.ψ
@@ -62,4 +62,4 @@ end
 
 
 
-_nocluster(m::ArrayModel, ds::NGramNode)  = nobs(ds.data)
+_nocluster(m::ArrayModel, ds::NGramNode) = numobs(ds.data)

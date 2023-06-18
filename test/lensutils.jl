@@ -1,6 +1,3 @@
-using Test
-using ExplainMill: findnonempty, ModelLens
-
 @testset "findnonempty" begin
 	@test findnonempty(ArrayNode(randn(2,0))) == nothing
 	@test findnonempty(ArrayNode(randn(2,1))) == [(@lens _.data)]

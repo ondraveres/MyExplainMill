@@ -20,13 +20,13 @@ _reversedict(d) = Dict(map(reverse, collect(d)))
 contributing(m::AbstractStructureMask, _) = prunemask(m.mask)
 contributing(m::EmptyMask, l) = Fill(true, l)
 
-function yarason(ds::ArrayNode{<:Mill.MaybeHotMatrix, <:Any}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, nobs(ds)))
-    c = contributing(m, nobs(ds))
+function yarason(ds::ArrayNode{<:Mill.MaybeHotMatrix, <:Any}, m::AbstractStructureMask, e::ExtractCategorical, exportobs=fill(true, numobs(ds)))
+    c = contributing(m, numobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : nothing, findall(exportobs))
     length(x) > 1 ? reduce(hcat, x) : x
 end
 
-function yarason(ds::ArrayNode{<:Matrix, <:Any}, m, e::ExtractScalar, exportobs=fill(true, nobs(ds))) where M
+function yarason(ds::ArrayNode{<:Matrix, <:Any}, m, e::ExtractScalar, exportobs=fill(true, numobs(ds)))
     rows, cols = size(ds.data)
     c = contributing(m, rows)
     x = map(findall(exportobs)) do j
@@ -35,25 +35,25 @@ function yarason(ds::ArrayNode{<:Matrix, <:Any}, m, e::ExtractScalar, exportobs=
     hcat(x...)
 end
 
-function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractVector, exportobs=fill(true, nobs(ds))) where M <: AbstractVector
-    c = contributing(m, nobs(ds))
+function yarason(ds::ArrayNode{<:Matrix, <:AbstractVector{M}}, m, e::ExtractVector, exportobs=fill(true, numobs(ds))) where M <: AbstractVector
+    c = contributing(m, numobs(ds))
     any(c) ? Float32[] : ds.data[c, :]
 end
 
-function yarason(ds::ArrayNode{<:NGramMatrix}, m, e::ExtractString, exportobs = fill(true, nobs(ds)))
-    c = contributing(m, nobs(ds))
+function yarason(ds::ArrayNode{<:NGramMatrix}, m, e::ExtractString, exportobs = fill(true, numobs(ds)))
+    c = contributing(m, numobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : nothing, findall(exportobs))
     hcat(x...)
 end
 
-function yarason(ds::LazyNode, m, e, exportobs=fill(true, nobs(ds)))
-    c = contributing(m, nobs(ds))
+function yarason(ds::LazyNode, m, e, exportobs=fill(true, numobs(ds)))
+    c = contributing(m, numobs(ds))
     x = map(i -> c[i] ? _retrieve_obs(ds, i) : absent, findall(exportobs))
     addor(m, x, exportobs)
 end
 
 
-function yarason(ds::BagNode, mk::BagMask, e::JsonGrinder.ExtractArray, exportobs=fill(true, nobs(ds)))
+function yarason(ds::BagNode, mk::BagMask, e::JsonGrinder.ExtractArray, exportobs=fill(true, numobs(ds)))
     if !any(exportobs)
         return(nothing)
     end
@@ -68,7 +68,7 @@ function yarason(ds::BagNode, mk::BagMask, e::JsonGrinder.ExtractArray, exportob
     map(b -> x[b], bags[exportobs])
 end
 
-function yarason(ds::BagNode, mk, e::JsonGrinder.ExtractKeyAsField, exportobs=fill(true, nobs(ds)))
+function yarason(ds::BagNode, mk, e::JsonGrinder.ExtractKeyAsField, exportobs=fill(true, numobs(ds)))
     if !any(exportobs)
         return(nothing)
     end
@@ -86,7 +86,7 @@ function yarason(ds::BagNode, mk, e::JsonGrinder.ExtractKeyAsField, exportobs=fi
     end
 end
 
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractDict, exportobs=fill(true, numobs(ds))) where {T<:NamedTuple, M}
     S =  eltype(keys(e.dict))
     ks = sort(collect(intersect(keys(ds.data), Symbol.(keys(e.dict)))))
     s = map(ks) do k
@@ -106,8 +106,8 @@ function soa2aos(s, exportobs)
     end
 end
 
-function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs=fill(true, nobs(ds)))
-	nobs(ds) == 0 && return(zeroobs())
+function yarason(ds::ProductNode, m, e::JsonGrinder.MultipleRepresentation, exportobs=fill(true, numobs(ds)))
+	numobs(ds) == 0 && return(zeroobs())
 	!any(exportobs) && emptyexportobs()
 	s = map(sort(collect(keys(ds.data)))) do k
         yarason(ds[k], m[k], e.extractors[k], exportobs)
@@ -123,7 +123,7 @@ logicaland(a, b) = a
 logicaland(::Nothing, ::Nothing) = nothing
 
 
-function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs=fill(true, nobs(ds))) where {T<:NamedTuple, M}
+function yarason(ds::ProductNode{T,M}, m, e::JsonGrinder.ExtractKeyAsField, exportobs=fill(true, numobs(ds))) where {T<:NamedTuple, M}
 	k = yarason(ds[:key], m[:key],  e.key, exportobs)
 	d = yarason(ds[:item], m[:item],  e.item, exportobs)
 	kvpair(k, d)
@@ -167,5 +167,5 @@ end
 function e2boolean(dss::AbstractMillNode, pruning_mask, extractor)
     js = yarason(dss, pruning_mask, extractor)
     js === nothing && return(nothing)
-    nobs(dss) == 1 ? only(js) : js
+    numobs(dss) == 1 ? only(js) : js
 end

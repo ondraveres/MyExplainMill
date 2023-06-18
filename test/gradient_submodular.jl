@@ -1,9 +1,3 @@
-using Mill
-using JsonGrinder
-using ExplainMill
-using Flux
-using ExplainMill: create_mask_structure, GradientMask, Mask, FlatView
-
 a = ArrayNode(reshape(collect(1:10), 2, 5))
 b = ArrayNode(NGramMatrix(["a","b","c","d","e"], 3, 123, 256))
 c = ArrayNode(Flux.onehotbatch([1, 2, 3, 1, 2], 1:4))

@@ -21,5 +21,3 @@ function removemissing(ds::ProductNode)
 	dd = (;ks...)
 	ProductNode(dd)
 end
-
-@deprecate prunemissing removemissing
