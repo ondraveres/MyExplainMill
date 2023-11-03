@@ -1,3 +1,6 @@
+# ExplainMill.jl
+Explaining hierarchical models built in `Mill.jl`
+
 [![Build Status](https://teamcity.ida.avast.com/app/rest/builds/buildType:Research_Skunk_ExplainMill_jl_Test/statusIcon)](https://teamcity.ida.avast.com/buildConfiguration/Research_Skunk_ExplainMill_jl_Test)
 
 # Breaking change
@@ -124,4 +127,3 @@ define constructor as `Duff.Daf(::PathNode) = ExplainMill.SkipDaf()`
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-
