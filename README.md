@@ -1,4 +1,7 @@
-# ExplainMill.jl
+<p align="center">
+  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/master/docs/src/assets/logo.svg#gh-light-mode-only" alt="ExplainMill.jl logo"/>
+  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/master/docs/src/assets/logo-dark.svg#gh-dark-mode-only" alt="ExplainMill.jl logo"/>
+</p>
 
 ---
 
