@@ -1,7 +1,7 @@
 name = "ExplainMill"
 uuid = "a2c437b0-bf6b-41a1-8a62-162a814afa99"
 authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
-version = "0.11.8"
+version = "0.0.1"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
