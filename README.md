@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/master/docs/src/assets/logo.svg#gh-light-mode-only" alt="ExplainMill.jl logo"/>
-  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/master/docs/src/assets/logo-dark.svg#gh-dark-mode-only" alt="ExplainMill.jl logo"/>
+  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/main/docs/src/assets/logo.svg#gh-light-mode-only" alt="ExplainMill.jl logo"/>
+  <img src="https://github.com/CTUAvastLab/ExplainMill.jl/raw/main/docs/src/assets/logo-dark.svg#gh-dark-mode-only" alt="ExplainMill.jl logo"/>
 </p>
 
 ---
@@ -10,8 +10,8 @@
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://CTUAvastLab.github.io/ExplainMill.jl/dev)
 [![Build Status](https://github.com/CTUAvastLab/ExplainMill.jl/workflows/CI/badge.svg)](https://github.com/CTUAvastLab/ExplainMill.jl/actions?query=workflow%3ACI)
 
-[![Coverage Status](https://coveralls.io/repos/github/CTUAvastLab/ExplainMill.jl/badge.svg?branch=master)](https://coveralls.io/github/CTUAvastLab/ExplainMill.jl?branch=master)
-[![codecov.io](http://codecov.io/github/CTUAvastLab/ExplainMill.jl/coverage.svg?branch=master)](http://codecov.io/github/CTUAvastLab/ExplainMill.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/CTUAvastLab/ExplainMill.jl/badge.svg?branch=main)](https://coveralls.io/github/CTUAvastLab/ExplainMill.jl?branch=main)
+[![codecov.io](http://codecov.io/github/CTUAvastLab/ExplainMill.jl/coverage.svg?branch=main)](http://codecov.io/github/CTUAvastLab/ExplainMill.jl?branch=main)
 
 Explaining hierarchical models built in [Mill.jl](https://github.com/CTUAvastLab/Mill.jl).
 
