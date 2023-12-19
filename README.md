@@ -11,3 +11,18 @@
 [![codecov.io](http://codecov.io/github/CTUAvastLab/ExplainMill.jl/coverage.svg?branch=master)](http://codecov.io/github/CTUAvastLab/ExplainMill.jl?branch=master)
 
 Explaining hierarchical models built in [Mill.jl](https://github.com/CTUAvastLab/Mill.jl).
+
+## Installation
+
+Run the following in REPL:
+
+```julia
+] add ExplainMill
+```
+
+Julia v1.9 or later is required.
+
+## Getting Started
+
+## Citation
+
