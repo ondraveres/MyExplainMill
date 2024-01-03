@@ -853,7 +853,8 @@ end
 
     @test ds[ExplainMill.EmptyMask()] == ds
 
-    @test_broken "this is not yet solved problem"
+    # TODO this is not yet solved problem
+    @test_broken false 
     # an = ArrayNode(reshape(collect(1:10), 2, 5))
     # on = ArrayNode(Mill.maybehotbatch([1, 2, 3, 1, 2], 1:4))
     # cn = ArrayNode(sparse(Float32[1 0 3 0 5; 0 2 0 4 0]))
