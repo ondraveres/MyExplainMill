@@ -4,25 +4,16 @@ on:
   push:
     branches:
       - main
-    tags: '*'
-    paths:
-      - 'docs/**'
-      - 'src/**'
-      - '.github/workflows/docs.yml'
+      - dev
   pull_request:
-    paths:
-      - 'docs/**'
-      - 'src/**'
-      - '.github/workflows/docs.yml'
-
-env:
-  JULIA_NUM_THREADS: 1
+    branches:
+      - main
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
@@ -32,7 +23,7 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()));
             Pkg.instantiate()'
       - name: Build and deploy
+        run: julia --project=docs/ docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: julia --project=docs/ docs/make.jl
