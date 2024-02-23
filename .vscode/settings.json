@@ -1,0 +1,8 @@
+{
+    "julia.environmentPath": "/Users/ondrejveres/Diplomka/ExplainMill.jl/myscripts",
+    "julia.lint.missingrefs": "all",
+    "julia.lint.disabledDirs": [
+        "docs",
+        "test"
+    ]
+}

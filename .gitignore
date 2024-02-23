@@ -23,7 +23,6 @@ docs/site/
 # environment.
 Manifest.toml
 
-# Preferences.jl
-LocalPreferences.toml
-
 .DS_store
+
+/data

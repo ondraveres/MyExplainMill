@@ -23,8 +23,8 @@ end
     `pruning_method`. If `class` that is wished to be explained is not provided, 
     the most probable class is used.
 """
-function explain(e, ds::AbstractMillNode, model::AbstractMillModel, class; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
-        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+function explain(e, ds::AbstractMillNode, model::AbstractMillModel, class; clustering=ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+    abs_tol=nothing, rel_tol=nothing, adjust_mask=identity)
     cg = logitconfgap(model, ds, class)
     @assert all(0 .≤ cg) "Cannot explain class with negative confidence gap!"
     mk = stats(e, ds, model, class, clustering)
@@ -38,8 +38,8 @@ end
 
 function explain(e, ds::AbstractMillNode, model::AbstractMillModel; kwargs...)
     class = Flux.onecold(softmax(model(ds)))
-    if length(unique(class))  > 1 
-    	@warn "Two or more classes predicted by the model!, wish you know what you are doing."
+    if length(unique(class)) > 1
+        @warn "Two or more classes predicted by the model!, wish you know what you are doing."
     end
     explain(e, ds, model, class; kwargs...)
 end
@@ -59,8 +59,8 @@ end
     where `o` is the output of the model on the sample. During pruning, we try to 
     find the smallest subset of the sample such that `fₚ > 0`.
 """
-function explainf(e, ds::AbstractMillNode, model::AbstractMillModel, fₛ, fₚ; clustering = ExplainMill._nocluster, pruning_method=:LbyL_HArr,
-        abs_tol=nothing, rel_tol=nothing, adjust_mask = identity)
+function explainf(e, ds::AbstractMillNode, model::AbstractMillModel, fₛ, fₚ; clustering=ExplainMill._nocluster, pruning_method=:LbyL_HArr,
+    abs_tol=nothing, rel_tol=nothing, adjust_mask=identity)
     mk = statsf(e, ds, model, fₛ, clustering)
     mk = adjust_mask(mk)
     prune!(mk, model, ds, fₚ, pruning_method)
