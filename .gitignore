@@ -24,6 +24,10 @@ docs/site/
 Manifest.toml
 
 .DS_store
+.DS_Store
+
+*.jld2
+*.so
 
 /data
 
