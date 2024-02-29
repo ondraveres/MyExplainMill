@@ -79,8 +79,9 @@ function jsondiff(d1::Array{T}, d2::Array{U}) where {T<:Union{AbstractString,Num
 end
 
 function jsondiff(d1::Array, d2::Array)
+
     if (length(d1) == 0)
-        return d2
+        return []
     end
     if (length(d2) == 0)
         return d1
