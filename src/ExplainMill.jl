@@ -14,6 +14,7 @@ using Random
 using Setfield
 using SparseArrays
 using StatsBase
+using GLMNet
 
 import Flux: onecold
 
@@ -31,8 +32,10 @@ include("heuristics/daf_explainer.jl")
 include("heuristics/gnn_explainer.jl")
 include("heuristics/grad_explainer.jl")
 include("heuristics/stochastic_explainer.jl")
+include("heuristics/lime_explainer.jl")
 export GnnExplainer, GradExplainer, ConstExplainer
 export StochasticExplainer, DafExplainer, GreedyGradient
+export LimeExplainer
 export stats, heuristic
 
 include("prunemissing.jl")

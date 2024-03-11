@@ -18,7 +18,7 @@ end
 
 GradExplainer() = GradExplainer(false)
 
-function stats(e::GradExplainer, ds, model, classes = onecold(model, ds), clustering = _nocluster)
+function stats(e::GradExplainer, ds, model, classes=onecold(model, ds), clustering=_nocluster)
     y = gnntarget(model, ds, classes)
     f(o) = sum(softmax(o) .* y)
     statsf(e, ds, model, f, clustering)
