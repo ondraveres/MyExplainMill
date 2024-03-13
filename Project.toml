@@ -4,6 +4,7 @@ authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
 version = "0.0.1"
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"

@@ -20,6 +20,8 @@ import Flux: onecold
 output(ds::ArrayNode) = ds.data
 output(x::AbstractArray) = x
 
+include("utils/setops.jl")
+
 include("masks/masks.jl")
 export prunemask, diffmask, HeuristicMask, SimpleMask, ObservationMask
 include("output/json_output.jl")
@@ -43,7 +45,7 @@ export pruning_methods
 
 include("hierarchical_utils.jl")
 
-Base.show(io::IO, ::T) where T <: AbstractStructureMask = print(io, Base.nameof(T))
+Base.show(io::IO, ::T) where {T<:AbstractStructureMask} = print(io, Base.nameof(T))
 Base.show(io::IO, ::MIME"text/plain", n::AbstractStructureMask) = HierarchicalUtils.printtree(io, n; trav=false, htrunc=3, vtrunc=20)
 Base.getindex(n::AbstractStructureMask, i::AbstractString) = HierarchicalUtils.walk(n, i)
 
