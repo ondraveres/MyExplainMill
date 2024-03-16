@@ -43,8 +43,10 @@ include("predict.jl")
 include("partialeval.jl")
 include("pruning/pruning.jl")
 include("utils/lensutils.jl")
+include("utils/treelime.jl")
 include("explain.jl")
 export pruning_methods
+export treelime
 
 include("hierarchical_utils.jl")
 
