@@ -1,5 +1,6 @@
 function treelime(ds, model, extractor, sch, perturbation_count, perturbation_chance, perturbation_strategy)
-    mask = ExplainMill.create_mask_structure(ds, d -> HeuristicMask(fill(0.0, d)))
+    mask = ExplainMill.create_mask_structure(ds, d -> SimpleMask(fill(0.0, d)))
+    h_mask = ExplainMill.create_mask_structure(ds, d -> HeuristicMask(fill(0.0, d)))
     # p = Progress(perturbation_count, 1)  # 
     modified_samples = []
     modification_masks = []
@@ -19,16 +20,19 @@ function treelime(ds, model, extractor, sch, perturbation_count, perturbation_ch
         mask_copy = deepcopy(mask)
         sch_copy = deepcopy(sch)
         extractor_copy = deepcopy(extractor)
-        (s, m) = my_recursion(mysample_copy, mask_copy, extractor_copy, sch_copy, 1 - perturbation_chance, perturbation_strategy)
-        local new_flat_view = ExplainMill.FlatView(m)
+        (s, m) = my_recursion(mysample_copy, mask_copy, extractor_copy, sch_copy, 1 - perturbation_chance, perturbation_strategy, nothing)
+
+        new_flat_view = ExplainMill.FlatView(m)
+        # for i in 1:length(new_flat_view.itemmap)
+        #     new_flat_view[i] = rand() < perturbation_chance ? false : true
+        # end
+
+
         new_mask_bool_vector = [new_flat_view[i] for i in 1:length(new_flat_view.itemmap)]
         push!(flat_modification_masks, new_mask_bool_vector)
         push!(labels, argmax(model(s))[1])
-        push!(samples, s)
         # println(model(s))
         # println(model(s))
-        push!(modified_samples, s)
-        push!(modification_masks, m)
         # logical = ExplainMill.e2boolean(s, mask, extractor)
         # logical_json = JSON.json(logical)
         # filename = "perturbation_$(i).json"
@@ -57,13 +61,22 @@ function treelime(ds, model, extractor, sch, perturbation_count, perturbation_ch
     yvector = convert(Vector, y)
 
     # Fit the model
+    label_freq = countmap(yvector)
 
-    cv = glmnetcv(Xmatrix, yvector; alpha=1.0)  # alpha=1.0 for lasso
-    βs = cv.path.betas
-    λs = cv.lambda
-    βs
+    weights = [1 / label_freq[label] for label in yvector]
+    # weights /= sum(weights)
 
-    sharedOpts = (legend=false, xlabel="lambda", xscale=:log10)
+    # Fit glmnet model with weights
+    cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
+
+    # Perform cross-validation
+    # cv = glmnetcv(fit)
+
+    # βs = cv.path.betas
+    # λs = cv.lambda
+    # βs
+
+    # sharedOpts = (legend=false, xlabel="lambda", xscale=:log10)
     coef = GLMNet.coef(cv)
 
 
@@ -82,15 +95,18 @@ function treelime(ds, model, extractor, sch, perturbation_count, perturbation_ch
         return mask_node
     end
 
-    new_flat_view = ExplainMill.FlatView(mask)
-    new_flat_view[non_zero_indices] = true
+    new_flat_view = ExplainMill.FlatView(h_mask)
+    # new_flat_view[non_zero_indices] = true
     y_pred_inverted = 1 .- y_pred
     for i in 1:length(flat_modification_masks[1])
         mi = new_flat_view.itemmap[i]
-        new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
+
+        new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
+        #new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
+        # new_flat_view.masks[mi.maskid].x[mi.innerid] = abs(coef[i])
         # new_flat_view.masks[i].h = 0.123
     end
-    return mask
+    return h_mask
 end
 
 
@@ -99,7 +115,7 @@ function extractbatch_andstore(extractor, samples; store_input=false)
     mapreduce(s -> extractor(s, store_input=store_input), catobs, samples)
 end
 
-function my_recursion(data_node, mask_node, extractor_node, schema_node, perturbation_chance, perturbation_strategy)
+function my_recursion(data_node, mask_node, extractor_node, schema_node, perturbation_chance, perturbation_strategy, parent_mask)
 
     if data_node isa ProductNode
         children_names = []
@@ -122,7 +138,7 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
                 @error e
                 return
             end
-            (modified_child_data, modified_child_mask) = my_recursion(data_ch_node, mask_ch_node, extractor_child_node, scheme_child_node, perturbation_chance, perturbation_strategy)
+            (modified_child_data, modified_child_mask) = my_recursion(data_ch_node, mask_ch_node, extractor_child_node, scheme_child_node, perturbation_chance, perturbation_strategy, mask_node)
             push!(modified_data_ch_nodes, modified_child_data)
             push!(modified_mask_ch_nodes, modified_child_mask)
         end
@@ -134,8 +150,9 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
     if data_node isa BagNode
 
         child_node = Mill.data(data_node)
-        (modified_data_child_node, modified_child_mask) = my_recursion(child_node, mask_node.child, extractor_node.item, schema_node.items, perturbation_chance, perturbation_strategy)
+        (modified_data_child_node, modified_child_mask) = my_recursion(child_node, mask_node.child, extractor_node.item, schema_node.items, perturbation_chance, perturbation_strategy, mask_node)
 
+        # println("bag length ", length(mask_node.mask.x))
         return BagNode(modified_data_child_node, data_node.bags, data_node.metadata), ExplainMill.BagMask(modified_child_mask, mask_node.bags, mask_node.mask)
     end
     if data_node isa ArrayNode
@@ -164,6 +181,10 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
             for i in 1:numobs(data_node)
                 # original_hot_vector = data_node.data[:, i]
                 if rand() > perturbation_chance
+                    if (parent_mask isa BagMask)
+                        # println("&&&&&%%%%%%&&&")
+                        parent_mask.mask.x[i] = true
+                    end
 
                     random_val = sample(vals, w)
                     # if (random_val == data_node.metadata[i])
@@ -177,7 +198,7 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
                     push!(new_values, random_val)
                     # println("pushing ", random_val)
 
-                    mask_node.mask.x[i] = true
+                    # mask_node.mask.x[i] = true
                 else
                     # println("pushing ", data_node.metadata[i])
 
@@ -192,6 +213,10 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
             return new_array_node, mask_node
         elseif mask_node isa ExplainMill.FeatureMask
             if rand() > perturbation_chance
+                if (parent_mask isa BagMask)
+                    println("&&&&&&&&&&&&&&&&&&&&&")
+                    parent_mask.mask.x .= true
+                end
                 new_hot_vectors = []
                 new_random_keys = []
                 global my_mask_node = mask_node
