@@ -132,13 +132,20 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     #     return mask_node
     # end
 
-    new_flat_view = ExplainMill.FlatView(mk)
+    # new_flat_view = ExplainMill.FlatView(mk)
     # new_flat_view[non_zero_indices] = true
     y_pred_inverted = 1 .- y_pred
     for i in 1:length(flat_modification_masks[1])
         mi = new_flat_view.itemmap[i]
+        println(typeof(new_flat_view.masks[mi.maskid].m.stats.present))
+        println(fieldnames(typeof(new_flat_view.masks[mi.maskid].m.stats.present)))
+        # new_flat_view.masks[mi.maskid].h = abs(coef[i]) == 0 ? 0 : abs(coef[i])
+        new_flat_view.masks[mi.maskid].m.stats.present.s = [abs(coef[i])]
+        new_flat_view.masks[mi.maskid].m.stats.present.n = [1]
 
-        new_flat_view.masks[mi.maskid].stats[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
+        new_flat_view.masks[mi.maskid].m.stats.absent.s = [0.0]
+        new_flat_view.masks[mi.maskid].m.stats.absent.n = [1]
+        # new_flat_view.masks[mi.maskid].stats[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
         #new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
         # new_flat_view.masks[mi.maskid].x[mi.innerid] = abs(coef[i])
         # new_flat_view.masks[i].h = 0.123
