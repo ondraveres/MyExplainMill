@@ -18,6 +18,7 @@ function statsf(e::LimeExplainer, ds, model, f, ::typeof(_nocluster))
     println("f: ", f)
     heuristic_mask = ExplainMill.treelime(ds, model, e.extractor, e.schema, e.perturbation_count, e.perturbation_chance, e.perturbation_strategy)
     fv = FlatView(heuristic_mask)
+
     fv_v = [fv[i] for i in 1:length(fv.itemmap)]
 
     println("heuristic_mask ", fv_v, " heures ", heuristic(fv))

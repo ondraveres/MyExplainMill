@@ -63,8 +63,13 @@ function treelime(ds, model, extractor, sch, perturbation_count, perturbation_ch
     # Fit the model
     label_freq = countmap(yvector)
 
+
+    # weights = 1 ./ (2 .^ (sum(Xmatrix .== 1, dims=2)[:, 1] ./ 100))
+    # weights = sum(Xmatrix .== 1, dims=2)[:, 1]
+
     weights = [1 / label_freq[label] for label in yvector]
     # weights /= sum(weights)
+    println("weights are", weights)
 
     # Fit glmnet model with weights
     cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
@@ -198,7 +203,7 @@ function my_recursion(data_node, mask_node, extractor_node, schema_node, perturb
                     push!(new_values, random_val)
                     # println("pushing ", random_val)
 
-                    # mask_node.mask.x[i] = true
+                    mask_node.mask.x[i] = true
                 else
                     # println("pushing ", data_node.metadata[i])
 

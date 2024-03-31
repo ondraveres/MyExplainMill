@@ -1,10 +1,11 @@
 function flatsearch!(f, fv::FlatView; rev::Bool=true, participateonly::Bool=false, fine_tuning::Bool=false, max_n=5, random_removal::Bool=true)
     significance = heuristic(fv)
     ii = participateonly ? sortindices(findall(participate(fv)), significance, rev=rev) : sortperm(significance, rev=rev)
+    print("###II", ii)
     fill!(fv, false)
     addminimumbi!(f, fv, significance, ii)
     used = useditems(fv)
-    @debug "flatsearch: output = $(f()) added $(length(used)) features"
+    println("flatsearch: output = $(f()) added $(length(used)) features", used)
     random_removal && randomremoval!(f, fv)
     used = useditems(fv)
     @debug "flatsearch: output = $(f()) keeping $(length(used)) features"

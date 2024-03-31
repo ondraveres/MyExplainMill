@@ -30,6 +30,8 @@ function explain(e, ds::AbstractMillNode, model::AbstractMillModel, class; clust
     mk = stats(e, ds, model, class, clustering)
     mk = adjust_mask(mk)
     thresholds = get_thresholds(cg, abs_tol, rel_tol)
+    println("CG", cg)
+    println("THRESHOLD", thresholds)
     fₚ(o) = sum(min.(logitconfgap(o, class) .- thresholds, 0))
     prune!(mk, model, ds, fₚ, pruning_method)
     mk
