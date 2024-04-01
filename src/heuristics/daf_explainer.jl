@@ -9,6 +9,7 @@ struct DafExplainer
     n::Int
     hard::Bool
     banzhaf::Bool
+    extractor::Any
 end
 
 DafExplainer(n::Int) = DafExplainer(n, true, false)
@@ -66,6 +67,16 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         push!(flat_modification_masks, new_mask_bool_vector)
         push!(labels, argmax(model(ds[mk]))[1])
         println(argmax(model(ds[mk]))[1])
+        og_mk = create_mask_structure(ds, d -> SimpleMask(d))
+
+        s = ExplainMill.e2boolean(ds, mk, e.extractor)
+        og = ExplainMill.e2boolean(ds, og_mk, e.extractor)
+
+        println(nnodes(s))
+        println(nleaves(s))
+        ce = jsondiff(og, s)
+        ec = jsondiff(s, og)
+        println("metric ", nleaves(ce) + nleaves(ec))
 
         # o = f()
         # foreach_mask(mk) do m, _
@@ -76,6 +87,8 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     println(flat_modification_masks[2])
     println("labels", labels)
 
+    og_class = Flux.onecold((model(ds)))[1]
+    labels = ifelse.(labels .== og_class, 2, 1)
     X = hcat(flat_modification_masks...)
     y = labels
 
@@ -97,13 +110,9 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
 
     println(typeof(Xmatrix))
     println(typeof(yvector))
-    variances = var(Xmatrix, dims=1)
-
-    # Print the variances
-    println(variances)
 
     # Fit glmnet model with weights
-    cv = glmnetcv(Xmatrix, yvector; nfolds=2, alpha=1.0)
+    cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
     println("cv", cv.meanloss)
 
     # Perform cross-validation
@@ -132,19 +141,42 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     #     return mask_node
     # end
 
-    # new_flat_view = ExplainMill.FlatView(mk)
+    new_flat_view = ExplainMill.FlatView(mk)
     # new_flat_view[non_zero_indices] = true
     y_pred_inverted = 1 .- y_pred
     for i in 1:length(flat_modification_masks[1])
         mi = new_flat_view.itemmap[i]
-        println(typeof(new_flat_view.masks[mi.maskid].m.stats.present))
-        println(fieldnames(typeof(new_flat_view.masks[mi.maskid].m.stats.present)))
+        # println(typeof(new_flat_view.masks[mi.maskid].m.stats.present))
+        # println(fieldnames(typeof(new_flat_view.masks[mi.maskid].m.stats.present)))
+        # println(abs(coef[i]))
         # new_flat_view.masks[mi.maskid].h = abs(coef[i]) == 0 ? 0 : abs(coef[i])
-        new_flat_view.masks[mi.maskid].m.stats.present.s = [abs(coef[i])]
-        new_flat_view.masks[mi.maskid].m.stats.present.n = [1]
+        # if typeof(new_flat_view.masks[mi.maskid].m.stats.present.s) != Array{Float64,1}
+        #     new_flat_view.masks[mi.maskid].m.stats.present.s = Float64[]
+        # end
 
-        new_flat_view.masks[mi.maskid].m.stats.absent.s = [0.0]
-        new_flat_view.masks[mi.maskid].m.stats.absent.n = [1]
+        # Append abs(coef[i]) to s
+        # push!(new_flat_view.masks[mi.maskid].m.stats.present.s, abs(coef[i]))
+        # # Initialize as an empty array if not already an array and append 1
+        # if typeof(new_flat_view.masks[mi.maskid].m.stats.present.n) != Array{Int64,1}
+        #     new_flat_view.masks[mi.maskid].m.stats.present.n = Int64[]
+        # end
+        # push!(new_flat_view.masks[mi.maskid].m.stats.present.n, 1)
+
+        # # Initialize as an empty array if not already an array and append 0.0
+        # if typeof(new_flat_view.masks[mi.maskid].m.stats.absent.s) != Array{Float64,1}
+        #     new_flat_view.masks[mi.maskid].m.stats.absent.s = Float64[]
+        # end
+        # push!(new_flat_view.masks[mi.maskid].m.stats.absent.s, 0.0)
+
+        # # Initialize as an empty array if not already an array and append 1
+        # if typeof(new_flat_view.masks[mi.maskid].m.stats.absent.n) != Array{Int64,1}
+        #     new_flat_view.masks[mi.maskid].m.stats.absent.n = Int64[]
+        # end
+        # push!(new_flat_view.masks[mi.maskid].m.stats.absent.n, 1)
+        new_flat_view.masks[mi.maskid].m.stats.present.s[mi.innerid] = abs(coef[i])
+        new_flat_view.masks[mi.maskid].m.stats.present.n[mi.innerid] = 1
+        new_flat_view.masks[mi.maskid].m.stats.absent.s[mi.innerid] = 0
+        new_flat_view.masks[mi.maskid].m.stats.absent.n[mi.innerid] = 1
         # new_flat_view.masks[mi.maskid].stats[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
         #new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
         # new_flat_view.masks[mi.maskid].x[mi.innerid] = abs(coef[i])
@@ -163,6 +195,6 @@ end
 
 function StatsBase.sample!(mk::AbstractStructureMask)
     foreach_mask(mk) do m, l
-        m .= sample([true, false], length(m))
+        m .= sample([true, false], Weights([50, 1]), length(m))
     end
 end
