@@ -19,8 +19,6 @@ using GLMNet
 import Flux: onecold
 
 output(ds::ArrayNode) = ds.data
-output(x::AbstractArray) = x
-
 include("utils/setops.jl")
 
 include("masks/masks.jl")

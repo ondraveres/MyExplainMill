@@ -61,8 +61,16 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         sample!(mk)
         updateparticipation!(mk)
 
-        new_flat_view = ExplainMill.FlatView(mk)
-        new_mask_bool_vector = [new_flat_view[i] for i in 1:length(new_flat_view.itemmap)]
+        flat_view = ExplainMill.FlatView(mk)
+        p_flat_view = participate(ExplainMill.FlatView(mk))
+        # for i in 1:length(p_flat_view)
+        #     if flat_view[i] && p_flat_view[i]
+        #         println("MATCH")
+        #     else
+        #         println("Not match")
+        #     end
+        # end
+        new_mask_bool_vector = [(p_flat_view[i] && flat_view[i]) for i in 1:length(p_flat_view)]
 
         push!(flat_modification_masks, new_mask_bool_vector)
         push!(labels, argmax(model(ds[mk]))[1])
@@ -83,8 +91,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         #     Duff.update!(e, m, o)
         # end
     end
-    println("flat_modification_masks", flat_modification_masks[1])
-    println(flat_modification_masks[2])
+    println(length(flat_modification_masks[1]), flat_modification_masks[1])
     println("labels", labels)
 
     og_class = Flux.onecold((model(ds)))[1]
@@ -113,7 +120,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
 
     # Fit glmnet model with weights
     cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
-    println("cv", cv.meanloss)
+    # println("cv", cv.meanloss)
 
     # Perform cross-validation
     # cv = glmnetcv(fit)
@@ -195,6 +202,6 @@ end
 
 function StatsBase.sample!(mk::AbstractStructureMask)
     foreach_mask(mk) do m, l
-        m .= sample([true, false], Weights([50, 1]), length(m))
+        m .= sample([true, false], length(m))
     end
 end
