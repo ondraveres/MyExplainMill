@@ -13,7 +13,14 @@ function create_mask_structure(ds::OneHotNode, m::ArrayModel, create_mask, clust
     CategoricalMask(create_mask(cluster_assignments))
 end
 function HierarchicalUtils.nodeshow(io::IO, m::CategoricalMask{M}) where {M}
-    print(io, "CategoricalMask: ", size(m.mask.x))
+    mask = nothing
+    try
+        mask = m.mask.x
+    catch
+        mask = m.mask.m.x
+    end
+    print(io, "CategoricalMask: ", mask) #size(m.mask.x))
+
 end
 
 function create_mask_structure(ds::OneHotNode, create_mask)

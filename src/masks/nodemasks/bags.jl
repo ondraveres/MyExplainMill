@@ -7,7 +7,13 @@ struct BagMask{C,B,M} <: AbstractStructureMask
 end
 
 function HierarchicalUtils.nodeshow(io::IO, m::BagMask{C,B,M}) where {C,B,M}
-    print(io, "BagMask: ", size(m.mask.x))
+    mask = nothing
+    try
+        mask = m.mask.x
+    catch
+        mask = m.mask.m.x
+    end
+    print(io, "BagMask: ", mask) #size(m.mask.x))
 end
 
 Flux.@functor BagMask

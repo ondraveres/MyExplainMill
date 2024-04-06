@@ -23,7 +23,13 @@ function create_mask_structure(ds::ArrayNode{T,M}, m::ArrayModel, create_mask, c
     create_mask_structure(ds, create_mask)
 end
 function HierarchicalUtils.nodeshow(io::IO, m::FeatureMask{M}) where {M}
-    print(io, "FeatureMask: ", size(m.mask.x))
+    mask = nothing
+    try
+        mask = m.mask.x
+    catch
+        mask = m.mask.m.x
+    end
+    print(io, "FeatureMask: ", mask) #size(m.mask.x))
 end
 
 function create_mask_structure(ds::ArrayNode{T,M}, create_mask) where {T<:Matrix,M}

@@ -8,13 +8,19 @@ const NGramNode = ArrayNode{<:Mill.NGramMatrix,<:Any}
 
 Flux.@functor NGramMatrixMask
 function HierarchicalUtils.nodeshow(io::IO, m::NGramMatrixMask{M}) where {M}
-    print(io, "NGramMatrixMask: ", size(m.mask.x))
+    mask = nothing
+    try
+        mask = m.mask.x
+    catch
+        mask = m.mask.m.x
+    end
+    print(io, "NGramMatrixMask: ", mask) #size(m.mask.x))
 end
 
-function nodecommshow(io::IO, n::NGramMatrixMask)
-    bytes = Base.format_bytes(Base.summarysize(n) - (isleaf(n) ? 0 : Base.summarysize(data(n))))
-    print(io, " # ", numobs(n), " obs, ", bytes)
-end
+# function nodecommshow(io::IO, n::NGramMatrixMask)
+#     bytes = Base.format_bytes(Base.summarysize(n) - (isleaf(n) ? 0 : Base.summarysize(data(n))))
+#     print(io, " # ", numobs(n), " obs, ", bytes)
+# end
 
 function create_mask_structure(ds::NGramNode, m::ArrayModel, create_mask, cluster)
     cluster_assignments = cluster(m, ds)
