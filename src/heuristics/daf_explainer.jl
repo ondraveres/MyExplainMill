@@ -57,8 +57,12 @@ end
 function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     flat_modification_masks = []
     labels = []
+    distances = []
     for _ in 1:e.n
-        sample!(mk)
+        random_number = rand()
+
+        sample!(mk, Weights([random_number, 1 - random_number]))
+
         updateparticipation!(mk)
 
         flat_view = ExplainMill.FlatView(mk)
@@ -85,6 +89,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         ce = jsondiff(og, s)
         ec = jsondiff(s, og)
         println("metric ", nleaves(ce) + nleaves(ec))
+        push!(distances, nleaves(ce) + nleaves(ec))
 
         # o = f()
         # foreach_mask(mk) do m, _
@@ -112,14 +117,15 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     # weights = sum(Xmatrix .== 1, dims=2)[:, 1]
 
     weights = [1 / label_freq[label] for label in yvector]
+    normalized_distances = 1 ./ ((distances .+ 1e-6) .^ 2)
     # weights /= sum(weights)
-    println("weights are", weights)
+    println("weights are", weights .* normalized_distances)
 
     println(typeof(Xmatrix))
     println(typeof(yvector))
 
     # Fit glmnet model with weights
-    cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
+    cv = glmnetcv(Xmatrix, yvector; weights=weights .* normalized_distances, alpha=0.0)
     # println("cv", cv.meanloss)
 
     # Perform cross-validation
@@ -200,8 +206,8 @@ function Duff.update!(e::DafExplainer, mk::AbstractVectorMask, o)
     end
 end
 
-function StatsBase.sample!(mk::AbstractStructureMask)
+function StatsBase.sample!(mk::AbstractStructureMask, weights)
     foreach_mask(mk) do m, l
-        m .= sample([true, false], length(m))
+        m .= sample([true, false], weights, length(m))
     end
 end
