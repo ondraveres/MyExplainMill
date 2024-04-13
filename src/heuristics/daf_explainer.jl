@@ -154,16 +154,17 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     i = 0
 
     cg = 1
-    lambdas = []
     cgs = []
     non_zero_lengths = []
     # while cg > 0
     i += 1
-    path = glmnetcv(Xmatrix, yvector; weights=weights, alpha=1.0, nlambda=1000)#, lambda=[lambda])
+    lambdas = collect(range(0.001, stop=1, step=0.001))
+    path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
+    lambdas = []
     println(path.lambda)
+    betas = convert(Matrix, path.betas)
     for i in 1:length(path.lambda)
         println("######")
-        betas = convert(Matrix, path.path.betas)
         coef = betas[:, i]
         non_zero_indices = findall(x -> abs(x) > 0, coef)
         println("lambda ", path.lambda[i])
@@ -175,7 +176,8 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
             globat_flat_view[i] = 1
         end
         # printtree(mk)
-        cg = ExplainMill.confidencegap(model, ds[mk], og_class)[1]
+        cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
+        println(ExplainMill.logitconfgap(model, ds[mk], og_class))
         push!(lambdas, path.lambda[i])
         push!(non_zero_lengths, length(non_zero_indices))
 
@@ -183,7 +185,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         println("cg: ", cg)
         println("######")
     end
-    @save "cg_lambda_plot.jld2" lambdas cgs non_zero_lengths
+    @save "cg_lambda_plot_$(e.n).jld2" lambdas cgs non_zero_lengths
     # println("coef", mean(coef))
     # non_zero_indices = findall(x -> abs(x) > 0, coef)
     # println("non_zero_indices ration", length(non_zero_indices) / length(coef))
