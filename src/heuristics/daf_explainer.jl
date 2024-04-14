@@ -74,6 +74,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         push!(mask_ids_at_level, current_depth_mask_ids)
     end
     ##1 keeps, 0 deletes
+
     for _ in 1:e.n
         println("flat?", e.flat)
         random_number = rand()
@@ -214,6 +215,11 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
             println("######")
         end
     end
+    positive_cgs = cgs .> 0
+    best_index = findmin(non_zero_lengths[positive_cgs])[2]
+    coef = betas[:, best_index]
+
+
     @save "cg_lambda_plot_$(e.n)_$(e.flat).jld2" lambdas cgs non_zero_lengths
     # println("coef", mean(coef))
     # non_zero_indices = findall(x -> abs(x) > 0, coef)
