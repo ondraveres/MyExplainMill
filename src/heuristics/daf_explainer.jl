@@ -10,6 +10,7 @@ struct DafExplainer
     hard::Bool
     banzhaf::Bool
     extractor::Any
+    flat::Bool
 end
 using JLD2
 
@@ -74,6 +75,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     end
     ##1 keeps, 0 deletes
     for _ in 1:e.n
+        println("flat?", e.flat)
         random_number = rand()
 
         sample!(mk, Weights([random_number, 1 - random_number]))
@@ -92,11 +94,17 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         #         println("Not match")
         #     end
         # end
-        # new_mask_bool_vector = [(p_flat_view[i] && flat_view[i]) for i in 1:length(p_flat_view)]
+        new_mask_bool_vector = [(p_flat_view[i] && local_flat_view[i]) for i in 1:length(local_flat_view.itemmap)]
 
 
         flat_first_level = vcat((mask.m.x for mask in local_flat_view.masks[mask_ids_at_level[1]])...)
-        push!(flat_modification_masks, flat_first_level)
+
+        if e.flat
+            push!(flat_modification_masks, new_mask_bool_vector)
+        else
+            push!(flat_modification_masks, flat_first_level)
+        end
+
 
         push!(labels, argmax(model(ds[mk]))[1])
         println(argmax(model(ds[mk]))[1])
@@ -158,34 +166,55 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
     non_zero_lengths = []
     # while cg > 0
     i += 1
-    lambdas = collect(range(0.001, stop=1, step=0.001))
+    println(any(isnan, Xmatrix))
+    println(any(isinf, Xmatrix))
+    println(any(isnan, yvector))
+    println(any(isinf, yvector))
+    println(any(isnan, weights))
+    println(any(isinf, weights))
+    lambdas = collect(range(0.000, stop=1, step=0.001))
     path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
     lambdas = []
     println(path.lambda)
     betas = convert(Matrix, path.betas)
     for i in 1:length(path.lambda)
-        println("######")
         coef = betas[:, i]
+        if i == 1
+            println("######")
+            println("lambda ", path.lambda[i])
+            coef .+= 0.1
+            non_zero_indices = findall(x -> abs(x) > 0, coef)
+            println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
+        end
         non_zero_indices = findall(x -> abs(x) > 0, coef)
-        println("lambda ", path.lambda[i])
-        println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
-        for i in items_ids_at_level[1]
-            globat_flat_view[i] = 0
+        if e.flat
+            for i in 1:length(globat_flat_view.itemmap)
+                globat_flat_view[i] = 0
+            end
+            for i in non_zero_indices
+                globat_flat_view[i] = 1
+            end
+        else
+            for i in items_ids_at_level[1]
+                globat_flat_view[i] = 0
+            end
+            for i in items_ids_at_level[1][non_zero_indices]
+                globat_flat_view[i] = 1
+            end
         end
-        for i in items_ids_at_level[1][non_zero_indices]
-            globat_flat_view[i] = 1
-        end
-        # printtree(mk)
+
         cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
-        println(ExplainMill.logitconfgap(model, ds[mk], og_class))
         push!(lambdas, path.lambda[i])
         push!(non_zero_lengths, length(non_zero_indices))
-
         push!(cgs, cg)
-        println("cg: ", cg)
-        println("######")
+        # printtree(mk)
+        if i == 1
+            println(ExplainMill.logitconfgap(model, ds[mk], og_class))
+            println("cg: ", cg)
+            println("######")
+        end
     end
-    @save "cg_lambda_plot_$(e.n).jld2" lambdas cgs non_zero_lengths
+    @save "cg_lambda_plot_$(e.n)_$(e.flat).jld2" lambdas cgs non_zero_lengths
     # println("coef", mean(coef))
     # non_zero_indices = findall(x -> abs(x) > 0, coef)
     # println("non_zero_indices ration", length(non_zero_indices) / length(coef))
