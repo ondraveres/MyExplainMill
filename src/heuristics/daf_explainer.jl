@@ -168,7 +168,7 @@ function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
         # while cg > 0
         i += 1
 
-        lambdas = collect(range(0.000, stop=1, step=0.001))
+        lambdas = collect(range(0.000, stop=0.5, step=0.0005))
         path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
         lambdas = []
         betas = convert(Matrix, path.betas)
