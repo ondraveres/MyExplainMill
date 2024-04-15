@@ -1,253 +1,224 @@
-function treelime(ds, model, extractor, sch, perturbation_count, perturbation_chance, perturbation_strategy)
-    mask = ExplainMill.create_mask_structure(ds, d -> SimpleMask(fill(0.0, d)))
-    h_mask = ExplainMill.create_mask_structure(ds, d -> HeuristicMask(fill(0.0, d)))
-    # p = Progress(perturbation_count, 1)  # 
-    modified_samples = []
-    modification_masks = []
-    flat_modification_masks = []
-    labels = []
-    samples = []
+using JLD2
+using ExplainMill
 
-    og_class = Flux.onecold((model(ds)))[1]
-    println("og_class is ", og_class)
-    # o_logical = ExplainMill.e2boolean(ds, mask, extractor)
-    # o_logical_json = JSON.json(o_logical)
-    # open("original.json", "w") do f
-    #     write(f, o_logical_json)
-    # end
-    for i in 1:perturbation_count
-        mysample_copy = deepcopy(ds)
-        mask_copy = deepcopy(mask)
-        sch_copy = deepcopy(sch)
-        extractor_copy = deepcopy(extractor)
-        (s, m) = my_recursion(mysample_copy, mask_copy, extractor_copy, sch_copy, 1 - perturbation_chance, perturbation_strategy, nothing)
-
-        new_flat_view = ExplainMill.FlatView(m)
-        # for i in 1:length(new_flat_view.itemmap)
-        #     new_flat_view[i] = rand() < perturbation_chance ? false : true
-        # end
-
-
-        new_mask_bool_vector = [new_flat_view[i] for i in 1:length(new_flat_view.itemmap)]
-        push!(flat_modification_masks, new_mask_bool_vector)
-        push!(labels, argmax(model(s))[1])
-        # println(model(s))
-        # println(model(s))
-        # logical = ExplainMill.e2boolean(s, mask, extractor)
-        # logical_json = JSON.json(logical)
-        # filename = "perturbation_$(i).json"
-        # open(filename, "w") do f
-        #     write(f, logical_json)
-        # end
-    end
-    # dss = reduce(catobs, samples)
-    # labels = Flux.onecold((model(dss)))
-    println("labels are ", labels)
-    # results = tmap(model, samples)
-    # labels = Flux.onecold.(results)
-    println("exploration rate: ", 1 - mean(labels .== og_class))
-    # return labels
-    labels = ifelse.(labels .== og_class, 2, 1)
-    mean(labels .== 2)
-
-    println("lenght ", length(flat_modification_masks[1]))
-
-    X = hcat(flat_modification_masks...)
-    y = labels
-
-    # println("y is ", y)
-
-    Xmatrix = convert(Matrix, X')  # transpose X because glmnet assumes features are in columns
-    yvector = convert(Vector, y)
-
-    # Fit the model
-    label_freq = countmap(yvector)
-
-
-    # weights = 1 ./ (2 .^ (sum(Xmatrix .== 1, dims=2)[:, 1] ./ 100))
-    # weights = sum(Xmatrix .== 1, dims=2)[:, 1]
-
-    weights = [1 / label_freq[label] for label in yvector]
-    # weights /= sum(weights)
-    println("weights are", weights)
-
-    # Fit glmnet model with weights
-    cv = glmnetcv(Xmatrix, yvector; weights=weights, alpha=0.0)
-
-    # Perform cross-validation
-    # cv = glmnetcv(fit)
-
-    # βs = cv.path.betas
-    # λs = cv.lambda
-    # βs
-
-    # sharedOpts = (legend=false, xlabel="lambda", xscale=:log10)
-    coef = GLMNet.coef(cv)
-
-
-    non_zero_indices = findall(x -> abs(x) > 0, coef)
-
-
-    y_pred = GLMNet.predict(cv, Xmatrix)
-    y_pred_labels = ifelse.(y_pred .>= 1.5, 2, 1)
-    println("mean prediction label ", mean(y_pred_labels))
-    my_accuracy = mean(y_pred_labels .== yvector)
-    println("Accuracy: $my_accuracy, Non-zero indexes: $(length(non_zero_indices))")
-
-
-    leafmap!(mask) do mask_node
-        mask_node.mask.x .= false
-        return mask_node
-    end
-
-    new_flat_view = ExplainMill.FlatView(h_mask)
-    # new_flat_view[non_zero_indices] = true
-    y_pred_inverted = 1 .- y_pred
-    for i in 1:length(flat_modification_masks[1])
-        mi = new_flat_view.itemmap[i]
-
-        new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
-        #new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
-        # new_flat_view.masks[mi.maskid].x[mi.innerid] = abs(coef[i])
-        # new_flat_view.masks[i].h = 0.123
-    end
-    return h_mask
+@enum Direction begin
+    UP
+    DOWN
 end
 
-
-
-function extractbatch_andstore(extractor, samples; store_input=false)
-    mapreduce(s -> extractor(s, store_input=store_input), catobs, samples)
+@enum LimeType begin
+    FLAT
+    LAYERED
 end
 
-function my_recursion(data_node, mask_node, extractor_node, schema_node, perturbation_chance, perturbation_strategy, parent_mask)
+struct TreeLimeExplainer
+    n::Int
+    rounds::Int
+    type::LimeType
+    direction::Direction
+end
 
-    if data_node isa ProductNode
-        children_names = []
-        modified_data_ch_nodes = []
-        modified_mask_ch_nodes = []
-        for (
-            (data_ch_name, data_ch_node),
-            (mask_ch_name, mask_ch_node)
-        ) in zip(
-            pairs(children(data_node)),
-            pairs(children(mask_node))
-        )
-            push!(children_names, data_ch_name)
-            extractor_child_node = extractor_node[data_ch_name]
-            scheme_child_node = nothing
-            try
-                scheme_child_node = schema_node[data_ch_name]
-            catch e
-                printtree(schema_node)
-                @error e
-                return
-            end
-            (modified_child_data, modified_child_mask) = my_recursion(data_ch_node, mask_ch_node, extractor_child_node, scheme_child_node, perturbation_chance, perturbation_strategy, mask_node)
-            push!(modified_data_ch_nodes, modified_child_data)
-            push!(modified_mask_ch_nodes, modified_child_mask)
-        end
-        nt_data = NamedTuple{Tuple(children_names)}(modified_data_ch_nodes)
-        nt_mask = NamedTuple{Tuple(children_names)}(modified_mask_ch_nodes)
+function treelime(e::TreeLimeExplainer, ds::AbstractMillNode, model::AbstractMillModel, extractor)
+    mk = ExplainMill.create_mask_structure(ds, d -> ExplainMill.ParticipationTracker(ExplainMill.SimpleMask(fill(true, d))))
+    treelime!(e, mk, ds, model, extractor)
+    return mk
+end
 
-        return ProductNode(nt_data), ExplainMill.ProductMask(nt_mask)
+function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, ds, model, extractor)
+    globat_flat_view = ExplainMill.FlatView(mk)
+    max_depth = maximum(item.level for item in globat_flat_view.itemmap)
+    items_ids_at_level = []
+    mask_ids_at_level = []
+    for depth in 1:max_depth
+        current_depth_itemmap = filter(mask -> mask.level == depth, globat_flat_view.itemmap)
+        current_depth_item_ids = [item.itemid for item in current_depth_itemmap]
+        current_depth_mask_ids = unique([item.maskid for item in current_depth_itemmap])
+
+        push!(items_ids_at_level, current_depth_item_ids)
+        push!(mask_ids_at_level, current_depth_mask_ids)
     end
-    if data_node isa BagNode
-
-        child_node = Mill.data(data_node)
-        (modified_data_child_node, modified_child_mask) = my_recursion(child_node, mask_node.child, extractor_node.item, schema_node.items, perturbation_chance, perturbation_strategy, mask_node)
-
-        # println("bag length ", length(mask_node.mask.x))
-        return BagNode(modified_data_child_node, data_node.bags, data_node.metadata), ExplainMill.BagMask(modified_child_mask, mask_node.bags, mask_node.mask)
+    for i in 1:length(globat_flat_view.itemmap)
+        globat_flat_view[i] = 1
     end
-    if data_node isa ArrayNode
-        if numobs(data_node) == 0
-            return (data_node, mask_node)
-        end
-        total = sum(values(schema_node.counts))
-        normalized_probs = [v / total for v in values(schema_node.counts)]
-        n = length(normalized_probs)  # Get the number of elements
-        w = Weights(ones(n))#collect(values(schema_node.counts)))
-        vals = collect(keys(schema_node.counts))
+    ##1 keeps, 0 deletes
+    layers = collect(1:max_depth)
+    if e.direction == UP
+        layers = reverse(layers)
+    end
+    rounds_list = collect(1:e.rounds)
+    for round in rounds_list
+        for layer in layers
+            flat_modification_masks = []
+            labels = []
+            distances = []
+            og_mk = ExplainMill.create_mask_structure(ds, d -> SimpleMask(d))
+            og = ExplainMill.e2boolean(ds, og_mk, extractor)
 
-        if mask_node isa ExplainMill.NGramMatrixMask
-            # println(vals)
-        end
+            for _ in 1:e.n
 
-        if mask_node isa ExplainMill.CategoricalMask || mask_node isa ExplainMill.NGramMatrixMask
-            new_hot_vectors = []
-            new_random_keys = []
-            global my_mask_node = mask_node
-            global my_extractor_node = extractor_node
-            global my_schema_node = schema_node
-            global my_data_node = data_node
-            new_values = []
-            # println("new values start ", numobs(data_node), " -> ", data_node)
-            for i in 1:numobs(data_node)
-                # original_hot_vector = data_node.data[:, i]
-                if rand() > perturbation_chance
-                    if (parent_mask isa BagMask)
-                        # println("&&&&&%%%%%%&&&")
-                        parent_mask.mask.x[i] = true
-                    end
+                random_number = rand()
 
-                    random_val = sample(vals, w)
-                    # if (random_val == data_node.metadata[i])
-                    #     println("MATCH")
-                    # else
-                    #     println("MISS")
-                    # end
-                    if perturbation_strategy == "missing"
-                        random_val = missing
-                    end
-                    push!(new_values, random_val)
-                    # println("pushing ", random_val)
+                sample_at_level!(mk, Weights([random_number, 1 - random_number]), layer)
 
-                    mask_node.mask.x[i] = true
+                # updateparticipation!(mk)
+                local_flat_view = ExplainMill.FlatView(mk)
+                p_flat_view = ExplainMill.participate(ExplainMill.FlatView(mk))
+                # for i in 1:length(p_flat_view)
+                #     if flat_view[i] && p_flat_view[i]
+                #         println("MATCH")
+                #     else
+                #         println("Not match")
+                #     end
+                # end
+                new_mask_bool_vector = [(p_flat_view[i] && local_flat_view[i]) for i in 1:length(local_flat_view.itemmap)]
+
+
+                current_level = vcat((mask.m.x for mask in local_flat_view.masks[mask_ids_at_level[layer]])...)
+
+                if e.type == FLAT
+                    push!(flat_modification_masks, new_mask_bool_vector)
                 else
-                    # println("pushing ", data_node.metadata[i])
-
-                    push!(new_values, data_node.metadata[i])
-                    mask_node.mask.x[i] = false
+                    push!(flat_modification_masks, current_level)
                 end
 
+
+                push!(labels, argmax(model(ds[mk]))[1])
+                # println(argmax(model(ds[mk]))[1])
+
+
+
+
+                s = ExplainMill.e2boolean(ds, mk, extractor)
+                # println(nnodes(s))
+                # println(nleaves(s))
+                ce = jsondiff(og, s)
+                ec = jsondiff(s, og)
+                # println("metric ", nleaves(ce) + nleaves(ec))
+                push!(distances, nleaves(ce) + nleaves(ec))
+
+                # o = f()
+                # foreach_mask(mk) do m, _
+                #     Duff.update!(e, m, o)
+                # end
             end
-            # println("new values done ", new_values)
+            # println(length(flat_modification_masks[1]), flat_modification_masks[1])
+            # println("labels", labels)
 
-            new_array_node = extractbatch_andstore(extractor_node, new_values; store_input=true)
-            return new_array_node, mask_node
-        elseif mask_node isa ExplainMill.FeatureMask
-            if rand() > perturbation_chance
-                if (parent_mask isa BagMask)
-                    println("&&&&&&&&&&&&&&&&&&&&&")
-                    parent_mask.mask.x .= true
+            og_class = Flux.onecold((model(ds)))[1]
+            # println("og_class", og_class)
+            labels = ifelse.(labels .== og_class, 2, 1)
+            X = hcat(flat_modification_masks...)
+            y = labels
+
+            # println("y is ", y)
+
+            Xmatrix = convert(Matrix{Float64}, X')  # transpose X because glmnet assumes features are in columns
+            yvector = convert(Vector{Float64}, y)
+
+            # Fit the model
+            label_freq = countmap(yvector)
+
+
+            # weights = 1 ./ (2 .^ (sum(Xmatrix .== 1, dims=2)[:, 1] ./ 100))
+            # weights = sum(Xmatrix .== 1, dims=2)[:, 1]
+
+            weights = [1 / label_freq[label] for label in yvector]
+            normalized_distances = 1 ./ ((distances .+ 1e-6) .^ 2)
+            # weights /= sum(weights)
+            # println("weights are", weights .* normalized_distances)
+
+            # println(typeof(Xmatrix))
+            # println(typeof(yvector))
+
+
+
+            lambda = 0.0
+            step = 0.01
+            confidence = 1.0
+            i = 0
+
+            cg = 1
+            cgs = []
+            non_zero_lengths = []
+            # while cg > 0
+            i += 1
+
+            lambdas = collect(range(0.000, stop=0.5, step=0.0005))
+            path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
+            lambdas = []
+            betas = convert(Matrix, path.betas)
+            for i in 1:length(path.lambda)
+                coef = betas[:, i]
+                if i == 1
+                    println("######")
+                    println("lambda ", path.lambda[i])
+                    coef .+= 0.1
+                    non_zero_indices = findall(x -> abs(x) > 0, coef)
+                    println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
                 end
-                new_hot_vectors = []
-                new_random_keys = []
-                global my_mask_node = mask_node
-                global my_extractor_node = extractor_node
-                global my_schema_node = schema_node
-                global my_data_node = data_node
-                for i in 1:numobs(data_node)
-                    random_key = sample(vals, w)
-                    if perturbation_strategy == "missing"
-                        random_key = missing
+                non_zero_indices = findall(x -> abs(x) > 0, coef)
+                if e.type == FLAT
+                    for i in 1:length(globat_flat_view.itemmap)
+                        globat_flat_view[i] = 0
                     end
-                    push!(new_random_keys, random_key)
+                    for i in non_zero_indices
+                        globat_flat_view[i] = 1
+                    end
+                else
+                    for i in items_ids_at_level[layer]
+                        globat_flat_view[i] = 0
+                    end
+                    for i in items_ids_at_level[layer][non_zero_indices]
+                        globat_flat_view[i] = 1
+                    end
                 end
-                mask_node.mask.x[1] = true
-                new_array_node = extractbatch_andstore(extractor_node, new_random_keys; store_input=true)
-            else
-                mask_node.mask.x[1] = false
-                return data_node, mask_node
-            end
-            return new_array_node, mask_node
-        elseif mask_node isa ExplainMill.EmptyMask
 
-        else
-            @warn typeof(mask_node)
+                cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
+                push!(lambdas, path.lambda[i])
+                push!(non_zero_lengths, length(non_zero_indices))
+                push!(cgs, cg)
+                # printtree(mk)
+                if i == 1
+                    println(ExplainMill.logitconfgap(model, ds[mk], og_class))
+                    println("cg: ", cg)
+                    println("######")
+                end
+            end
+            positive_indices = findall(x -> x > 0, cgs)
+
+            if length(positive_indices) > 0
+                best_index = findmin(non_zero_lengths[positive_indices])[2]
+                coef = betas[:, positive_indices[best_index]]
+                non_zero_indices = findall(x -> abs(x) > 0, coef)
+                if e.type == FLAT
+                    for i in 1:length(globat_flat_view.itemmap)
+                        globat_flat_view[i] = 0
+                    end
+                    for i in non_zero_indices
+                        globat_flat_view[i] = 1
+                    end
+                else
+                    for i in items_ids_at_level[layer]
+                        globat_flat_view[i] = 0
+                    end
+                    for i in items_ids_at_level[layer][non_zero_indices]
+                        globat_flat_view[i] = 1
+                    end
+                end
+            end
+            cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
+            println("END OF LAYER $(layer) CG: ", cg)
+
+
+            @save "cg_lambda_plot_$(e.n)_$(e.type)_$(layer).jld2" lambdas cgs non_zero_lengths
         end
-        return ArrayNode(Mill.data(data_node), data_node.metadata), mask_node
     end
 end
 
+function sample_at_level!(mk::ExplainMill.AbstractStructureMask, weights, level)
+    ExplainMill.foreach_mask(mk) do m, l
+        if l == level
+            m.m.x .= sample([true, false], weights, length(m))
+        end
+    end
+end
