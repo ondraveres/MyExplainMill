@@ -9,10 +9,7 @@ struct DafExplainer
     n::Int
     hard::Bool
     banzhaf::Bool
-    extractor::Any
-    flat::Bool
 end
-using JLD2
 
 DafExplainer(n::Int) = DafExplainer(n, true, false)
 DafExplainer() = DafExplainer(200)
@@ -38,7 +35,6 @@ heuristic(m::DafMask) = Duff.meanscore(m.stats)
 
 function stats(e::DafExplainer, ds::AbstractMillNode, model::AbstractMillModel, classes=onecold(model, ds), cluster=_nocluster)
     y = gnntarget(model, ds, classes)
-    println("y: ", y)
     f(o) = sum(softmax(o) .* y)
     heuristic_mask = statsf(e, ds, model, f, cluster)
     fv = FlatView(heuristic_mask)
@@ -50,277 +46,21 @@ end
 
 function statsf(e::DafExplainer, ds::AbstractMillNode, model::AbstractMillModel, f, cluster::typeof(_nocluster))
     mk = create_mask_structure(ds, d -> ParticipationTracker(DafMask(d)))
-    dafstats!(e, mk, ds, model) do
+    dafstats!(e, mk) do
         f(model(ds[mk]))
     end
     mk
 end
 
-function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask, ds, model)
-
-
-    globat_flat_view = ExplainMill.FlatView(mk)
-    max_depth = maximum(item.level for item in globat_flat_view.itemmap)
-    items_ids_at_level = []
-    mask_ids_at_level = []
-    for depth in 1:max_depth
-        current_depth_itemmap = filter(mask -> mask.level == depth, globat_flat_view.itemmap)
-        current_depth_item_ids = [item.itemid for item in current_depth_itemmap]
-        current_depth_mask_ids = unique([item.maskid for item in current_depth_itemmap])
-
-        push!(items_ids_at_level, current_depth_item_ids)
-        push!(mask_ids_at_level, current_depth_mask_ids)
-    end
-    for i in 1:length(globat_flat_view.itemmap)
-        globat_flat_view[i] = 1
-    end
-    ##1 keeps, 0 deletes
-    for layer in [1, 2, 3]
-        flat_modification_masks = []
-        labels = []
-        distances = []
-        for _ in 1:e.n
-
-            random_number = rand()
-
-            sample_at_level!(mk, Weights([random_number, 1 - random_number]), layer)
-
-            # updateparticipation!(mk)
-            local_flat_view = ExplainMill.FlatView(mk)
-            p_flat_view = participate(ExplainMill.FlatView(mk))
-            # for i in 1:length(p_flat_view)
-            #     if flat_view[i] && p_flat_view[i]
-            #         println("MATCH")
-            #     else
-            #         println("Not match")
-            #     end
-            # end
-            new_mask_bool_vector = [(p_flat_view[i] && local_flat_view[i]) for i in 1:length(local_flat_view.itemmap)]
-
-
-            current_level = vcat((mask.m.x for mask in local_flat_view.masks[mask_ids_at_level[layer]])...)
-
-            if e.flat
-                push!(flat_modification_masks, new_mask_bool_vector)
-            else
-                push!(flat_modification_masks, current_level)
-            end
-
-
-            push!(labels, argmax(model(ds[mk]))[1])
-            # println(argmax(model(ds[mk]))[1])
-            og_mk = create_mask_structure(ds, d -> SimpleMask(d))
-
-            s = ExplainMill.e2boolean(ds, mk, e.extractor)
-            og = ExplainMill.e2boolean(ds, og_mk, e.extractor)
-
-            # println(nnodes(s))
-            # println(nleaves(s))
-            ce = jsondiff(og, s)
-            ec = jsondiff(s, og)
-            # println("metric ", nleaves(ce) + nleaves(ec))
-            # push!(distances, nleaves(ce) + nleaves(ec))
-
-            # o = f()
-            # foreach_mask(mk) do m, _
-            #     Duff.update!(e, m, o)
-            # end
+function dafstats!(f, e::DafExplainer, mk::AbstractStructureMask)
+    for _ in 1:e.n
+        sample!(mk)
+        updateparticipation!(mk)
+        o = f()
+        foreach_mask(mk) do m, _
+            Duff.update!(e, m, o)
         end
-        # println(length(flat_modification_masks[1]), flat_modification_masks[1])
-        # println("labels", labels)
-
-        og_class = Flux.onecold((model(ds)))[1]
-        # println("og_class", og_class)
-        labels = ifelse.(labels .== og_class, 2, 1)
-        X = hcat(flat_modification_masks...)
-        y = labels
-
-        # println("y is ", y)
-
-        Xmatrix = convert(Matrix{Float64}, X')  # transpose X because glmnet assumes features are in columns
-        yvector = convert(Vector{Float64}, y)
-
-        # Fit the model
-        label_freq = countmap(yvector)
-
-
-        # weights = 1 ./ (2 .^ (sum(Xmatrix .== 1, dims=2)[:, 1] ./ 100))
-        # weights = sum(Xmatrix .== 1, dims=2)[:, 1]
-
-        weights = [1 / label_freq[label] for label in yvector]
-        normalized_distances = 1 ./ ((distances .+ 1e-6) .^ 2)
-        # weights /= sum(weights)
-        # println("weights are", weights .* normalized_distances)
-
-        # println(typeof(Xmatrix))
-        # println(typeof(yvector))
-
-
-
-        lambda = 0.0
-        step = 0.01
-        confidence = 1.0
-        i = 0
-
-        cg = 1
-        cgs = []
-        non_zero_lengths = []
-        # while cg > 0
-        i += 1
-
-        lambdas = collect(range(0.000, stop=0.5, step=0.0005))
-        path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
-        lambdas = []
-        betas = convert(Matrix, path.betas)
-        for i in 1:length(path.lambda)
-            coef = betas[:, i]
-            if i == 1
-                println("######")
-                println("lambda ", path.lambda[i])
-                coef .+= 0.1
-                non_zero_indices = findall(x -> abs(x) > 0, coef)
-                println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
-            end
-            non_zero_indices = findall(x -> abs(x) > 0, coef)
-            if e.flat
-                for i in 1:length(globat_flat_view.itemmap)
-                    globat_flat_view[i] = 0
-                end
-                for i in non_zero_indices
-                    globat_flat_view[i] = 1
-                end
-            else
-                for i in items_ids_at_level[layer]
-                    globat_flat_view[i] = 0
-                end
-                for i in items_ids_at_level[layer][non_zero_indices]
-                    globat_flat_view[i] = 1
-                end
-            end
-
-            cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
-            push!(lambdas, path.lambda[i])
-            push!(non_zero_lengths, length(non_zero_indices))
-            push!(cgs, cg)
-            # printtree(mk)
-            if i == 1
-                println(ExplainMill.logitconfgap(model, ds[mk], og_class))
-                println("cg: ", cg)
-                println("######")
-            end
-        end
-        positive_indices = findall(x -> x > 0, cgs)
-
-        if length(positive_indices) > 0
-            best_index = findmin(non_zero_lengths[positive_indices])[2]
-            coef = betas[:, positive_indices[best_index]]
-            non_zero_indices = findall(x -> abs(x) > 0, coef)
-            if e.flat
-                for i in 1:length(globat_flat_view.itemmap)
-                    globat_flat_view[i] = 0
-                end
-                for i in non_zero_indices
-                    globat_flat_view[i] = 1
-                end
-            else
-                for i in items_ids_at_level[layer]
-                    globat_flat_view[i] = 0
-                end
-                for i in items_ids_at_level[layer][non_zero_indices]
-                    globat_flat_view[i] = 1
-                end
-            end
-        end
-        cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
-        println("END OF LAYER $(layer) CG: ", cg)
-
-
-        @save "cg_lambda_plot_$(e.n)_$(e.flat)_$(layer).jld2" lambdas cgs non_zero_lengths
     end
-    # println("coef", mean(coef))
-    # non_zero_indices = findall(x -> abs(x) > 0, coef)
-    # println("non_zero_indices ration", length(non_zero_indices) / length(coef))
-    # for i in items_ids_at_level[1]
-    #     globat_flat_view[i] = 0
-    # end
-    # for i in items_ids_at_level[1][non_zero_indices]
-    #     globat_flat_view[i] = 1
-    # end
-    # printtree(mk)
-    # cg = ExplainMill.confidencegap(model, ds[mk], og_class)[1]
-    # println("cg", cg)
-    # if cg > 0
-    #     confidence = cg
-    #     println("Lambda: ", lambda, " Confidence Gap: ", cg)
-    # else
-    #     lambda -= step
-    #     break
-    # end
-    # lambda += step
-    # end
-    println(lambdas)
-    println(cgs)
-
-
-    println("Max Lambda with positive confidence: ", lambda)
-
-
-
-
-    y_pred = GLMNet.predict(cv, Xmatrix)
-    y_pred_labels = ifelse.(y_pred .>= 1.5, 2, 1)
-    println("mean prediction label ", mean(y_pred_labels))
-    my_accuracy = mean(y_pred_labels .== yvector)
-    println("Accuracy: $my_accuracy, Non-zero indexes: $(length(non_zero_indices))")
-
-
-    # leafmap!(mask) do mask_node
-    #     mask_node.mask.x .= false
-    #     return mask_node
-    # end
-
-    new_flat_view = ExplainMill.FlatView(mk)
-    # new_flat_view[non_zero_indices] = true
-    y_pred_inverted = 1 .- y_pred
-    for i in 1:length(flat_modification_masks[1])
-        mi = new_flat_view.itemmap[i]
-        # println(typeof(new_flat_view.masks[mi.maskid].m.stats.present))
-        # println(fieldnames(typeof(new_flat_view.masks[mi.maskid].m.stats.present)))
-        # println(abs(coef[i]))
-        # new_flat_view.masks[mi.maskid].h = abs(coef[i]) == 0 ? 0 : abs(coef[i])
-        # if typeof(new_flat_view.masks[mi.maskid].m.stats.present.s) != Array{Float64,1}
-        #     new_flat_view.masks[mi.maskid].m.stats.present.s = Float64[]
-        # end
-
-        # Append abs(coef[i]) to s
-        # push!(new_flat_view.masks[mi.maskid].m.stats.present.s, abs(coef[i]))
-        # # Initialize as an empty array if not already an array and append 1
-        # if typeof(new_flat_view.masks[mi.maskid].m.stats.present.n) != Array{Int64,1}
-        #     new_flat_view.masks[mi.maskid].m.stats.present.n = Int64[]
-        # end
-        # push!(new_flat_view.masks[mi.maskid].m.stats.present.n, 1)
-
-        # # Initialize as an empty array if not already an array and append 0.0
-        # if typeof(new_flat_view.masks[mi.maskid].m.stats.absent.s) != Array{Float64,1}
-        #     new_flat_view.masks[mi.maskid].m.stats.absent.s = Float64[]
-        # end
-        # push!(new_flat_view.masks[mi.maskid].m.stats.absent.s, 0.0)
-
-        # # Initialize as an empty array if not already an array and append 1
-        # if typeof(new_flat_view.masks[mi.maskid].m.stats.absent.n) != Array{Int64,1}
-        #     new_flat_view.masks[mi.maskid].m.stats.absent.n = Int64[]
-        # end
-        # push!(new_flat_view.masks[mi.maskid].m.stats.absent.n, 1)
-        new_flat_view.masks[mi.maskid].m.stats.present.s[mi.innerid] = abs(coef[i])
-        new_flat_view.masks[mi.maskid].m.stats.present.n[mi.innerid] = 1
-        new_flat_view.masks[mi.maskid].m.stats.absent.s[mi.innerid] = 0
-        new_flat_view.masks[mi.maskid].m.stats.absent.n[mi.innerid] = 1
-        # new_flat_view.masks[mi.maskid].stats[mi.innerid] = abs(coef[i]) == 0 ? 0 : abs(coef[i])
-        #new_flat_view.masks[mi.maskid].h[mi.innerid] = abs(coef[i])
-        # new_flat_view.masks[mi.maskid].x[mi.innerid] = abs(coef[i])
-        # new_flat_view.masks[i].h = 0.123
-    end
-
 end
 
 function Duff.update!(e::DafExplainer, mk::AbstractVectorMask, o)
@@ -331,15 +71,8 @@ function Duff.update!(e::DafExplainer, mk::AbstractVectorMask, o)
     end
 end
 
-function StatsBase.sample!(mk::AbstractStructureMask, weights)
+function StatsBase.sample!(mk::AbstractStructureMask)
     foreach_mask(mk) do m, l
-        m .= sample([true, false], weights, length(m))
-    end
-end
-function sample_at_level!(mk::AbstractStructureMask, weights, level)
-    foreach_mask(mk) do m, l
-        if l == level
-            m .= sample([true, false], weights, length(m))
-        end
+        m .= sample([true, false], length(m))
     end
 end

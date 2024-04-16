@@ -17,6 +17,7 @@ struct TreeLimeExplainer
     type::LimeType
     direction::Direction
 end
+include("setops.jl")
 
 function treelime(e::TreeLimeExplainer, ds::AbstractMillNode, model::AbstractMillModel, extractor)
     mk = ExplainMill.create_mask_structure(ds, d -> ExplainMill.ParticipationTracker(ExplainMill.SimpleMask(fill(true, d))))
@@ -94,7 +95,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 ce = jsondiff(og, s)
                 ec = jsondiff(s, og)
                 # println("metric ", nleaves(ce) + nleaves(ec))
-                push!(distances, nleaves(ce) + nleaves(ec))
+                # push!(distances, nleaves(ce) + nleaves(ec))
 
                 # o = f()
                 # foreach_mask(mk) do m, _
@@ -132,18 +133,12 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
 
-            lambda = 0.0
-            step = 0.01
-            confidence = 1.0
-            i = 0
 
-            cg = 1
             cgs = []
             non_zero_lengths = []
-            # while cg > 0
-            i += 1
+            nleaves_list = []
 
-            lambdas = collect(range(0.000, stop=0.5, step=0.0005))
+            lambdas = collect(range(0.000, stop=1, step=0.0005))
             path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
             lambdas = []
             betas = convert(Matrix, path.betas)
@@ -156,6 +151,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                     non_zero_indices = findall(x -> abs(x) > 0, coef)
                     println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
                 end
+
                 non_zero_indices = findall(x -> abs(x) > 0, coef)
                 if e.type == FLAT
                     for i in 1:length(globat_flat_view.itemmap)
@@ -177,11 +173,15 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 push!(lambdas, path.lambda[i])
                 push!(non_zero_lengths, length(non_zero_indices))
                 push!(cgs, cg)
+                s = ExplainMill.e2boolean(ds, mk, extractor)
+                push!(nleaves_list, nleaves(s))
                 # printtree(mk)
                 if i == 1
-                    println(ExplainMill.logitconfgap(model, ds[mk], og_class))
                     println("cg: ", cg)
                     println("######")
+                end
+                if length(non_zero_indices) == 0
+                    break
                 end
             end
             positive_indices = findall(x -> x > 0, cgs)
@@ -206,11 +206,13 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                     end
                 end
             end
+
+
             cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
             println("END OF LAYER $(layer) CG: ", cg)
 
 
-            @save "cg_lambda_plot_$(e.n)_$(e.type)_$(layer).jld2" lambdas cgs non_zero_lengths
+            @save "cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer).jld2" lambdas cgs non_zero_lengths nleaves_list
         end
     end
 end
