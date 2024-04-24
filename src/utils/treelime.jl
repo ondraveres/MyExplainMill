@@ -47,6 +47,10 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         layers = reverse(layers)
     end
     rounds_list = collect(1:e.rounds)
+    if e.type == FLAT
+        rounds_list = [1]
+        layers = [1]
+    end
     for round in rounds_list
         for layer in layers
             flat_modification_masks = []
@@ -58,8 +62,11 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
             for _ in 1:e.n
 
                 random_number = rand()
-
-                sample_at_level!(mk, Weights([random_number, 1 - random_number]), layer)
+                if e.type == FLAT
+                    full_sample!(mk, Weights([random_number, 1 - random_number]))
+                else
+                    sample_at_level!(mk, Weights([random_number, 1 - random_number]), layer)
+                end
 
                 # updateparticipation!(mk)
                 local_flat_view = ExplainMill.FlatView(mk)
@@ -139,6 +146,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
             nleaves_list = []
 
             lambdas = collect(range(0.000, stop=1, step=0.0005))
+            pushfirst!(lambdas, 0.0)
             path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
             lambdas = []
             betas = convert(Matrix, path.betas)
@@ -222,5 +230,19 @@ function sample_at_level!(mk::ExplainMill.AbstractStructureMask, weights, level)
         if l == level
             m.m.x .= sample([true, false], weights, length(m))
         end
+    end
+end
+
+function sample_at_level!(mk::ExplainMill.AbstractStructureMask, weights, level)
+    ExplainMill.foreach_mask(mk) do m, l
+        if l == level
+            m.m.x .= sample([true, false], weights, length(m))
+        end
+    end
+end
+
+function full_sample!(mk::ExplainMill.AbstractStructureMask, weights)
+    foreach_mask(mk) do m, l
+        m.m.x .= sample([true, false], length(m))
     end
 end

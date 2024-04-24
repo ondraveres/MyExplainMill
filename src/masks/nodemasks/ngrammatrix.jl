@@ -14,7 +14,7 @@ function HierarchicalUtils.nodeshow(io::IO, m::NGramMatrixMask{M}) where {M}
     catch
         mask = m.mask.m.x
     end
-    print(io, "NGramMatrixMask: ", mask) #size(m.mask.x))
+    print(io, "NGramMatrixMask: ", size(m.mask.x)) #mask) #size(m.mask.x))
 end
 
 # function nodecommshow(io::IO, n::NGramMatrixMask)

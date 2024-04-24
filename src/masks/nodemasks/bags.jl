@@ -13,7 +13,7 @@ function HierarchicalUtils.nodeshow(io::IO, m::BagMask{C,B,M}) where {C,B,M}
     catch
         mask = m.mask.m.x
     end
-    print(io, "BagMask: ", mask) #size(m.mask.x))
+    print(io, "BagMask: ", size(m.mask.x))#mask) #size(m.mask.x))
 end
 
 Flux.@functor BagMask

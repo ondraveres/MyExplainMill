@@ -19,7 +19,7 @@ function HierarchicalUtils.nodeshow(io::IO, m::CategoricalMask{M}) where {M}
     catch
         mask = m.mask.m.x
     end
-    print(io, "CategoricalMask: ", mask) #size(m.mask.x))
+    print(io, "CategoricalMask: ", size(m.mask.x))#mask) #size(m.mask.x))
 
 end
 
