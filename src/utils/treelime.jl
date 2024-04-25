@@ -17,7 +17,7 @@ struct TreeLimeExplainer
     type::LimeType
     direction::Direction
 end
-include("setops.jl")
+# include("setops.jl")
 
 function treelime(e::TreeLimeExplainer, ds::AbstractMillNode, model::AbstractMillModel, extractor)
     mk = ExplainMill.create_mask_structure(ds, d -> ExplainMill.ParticipationTracker(ExplainMill.SimpleMask(fill(true, d))))
@@ -221,14 +221,6 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
         @save "cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer).jld2" lambdas cgs non_zero_lengths nleaves_list
-    end
-end
-
-function sample_at_level!(mk::ExplainMill.AbstractStructureMask, weights, level)
-    ExplainMill.foreach_mask(mk) do m, l
-        if l == level
-            m.m.x .= sample([true, false], weights, length(m))
-        end
     end
 end
 

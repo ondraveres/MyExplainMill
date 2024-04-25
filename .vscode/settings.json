@@ -3,6 +3,5 @@
     "julia.lint.disabledDirs": [
         "docs",
         "test"
-    ],
-    "julia.environmentPath": "/Users/ondrejveres/Diplomka/ExplainMill.jl/myscripts"
+    ]
 }
