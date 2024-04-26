@@ -59,7 +59,15 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         og_mk = ExplainMill.create_mask_structure(ds, d -> SimpleMask(d))
         og = ExplainMill.e2boolean(ds, og_mk, extractor)
 
-        for _ in 1:e.n
+        n = nothing
+        if e.type == FLAT
+            n = e.n
+        else
+            n = round(Int, e.n / max_depth)
+        end
+
+
+        for _ in 1:n
 
             random_number = rand()
             if e.type == FLAT

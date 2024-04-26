@@ -3,5 +3,6 @@
     "julia.lint.disabledDirs": [
         "docs",
         "test"
-    ]
+    ],
+    "julia.environmentPath": "/home/veresond/ExplainMill.jl/myscripts"
 }
