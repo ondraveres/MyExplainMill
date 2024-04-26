@@ -11,11 +11,18 @@ end
     LAYERED
 end
 
+@enum Distance begin
+    CONST
+    JSONDIFF
+end
+
 struct TreeLimeExplainer
     n::Int
     rounds::Int
     type::LimeType
     direction::Direction
+    perturbation_chance::Float64
+    distance::Distance
 end
 # include("setops.jl")
 
@@ -68,12 +75,16 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
         for _ in 1:n
-
-            random_number = rand()
-            if e.type == FLAT
-                full_sample!(mk, Weights([random_number, 1 - random_number]))
+            perturbation_chance = nothing
+            if e.perturbation_chance == 0
+                perturbation_chance = rand()
             else
-                sample_at_level!(mk, Weights([random_number, 1 - random_number]), layer)
+                perturbation_chance = e.perturbation_chance
+            end
+            if e.type == FLAT
+                full_sample!(mk, Weights([perturbation_chance, 1 - perturbation_chance]))
+            else
+                sample_at_level!(mk, Weights([perturbation_chance, 1 - perturbation_chance]), layer)
             end
 
             # updateparticipation!(mk)
@@ -105,17 +116,14 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
             # s = ExplainMill.e2boolean(ds, mk, extractor)
-            # # println(nnodes(s))
-            # # println(nleaves(s))
-            # ce = jsondiff(og, s)
-            # ec = jsondiff(s, og)
-            # println("metric ", nleaves(ce) + nleaves(ec))
-            # push!(distances, nleaves(ce) + nleaves(ec))
+            if e.distance == JSONDIFF
+                # println(nnodes(s))
+                # println(nleaves(s))
+                ce = jsondiff(og, s)
+                ec = jsondiff(s, og)
+                push!(distances, nleaves(ce) + nleaves(ec))
+            end
 
-            # o = f()
-            # foreach_mask(mk) do m, _
-            #     Duff.update!(e, m, o)
-            # end
         end
         # println(length(flat_modification_masks[1]), flat_modification_masks[1])
         # println("labels", labels)
@@ -142,6 +150,9 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         normalized_distances = 1 ./ ((distances .+ 1e-6) .^ 2)
         # weights /= sum(weights)
         # println("weights are", weights .* normalized_distances)
+        if e.distance == JSONDIFF
+            weights = weights .* (1 ./ ((distances .+ 1e-6)))
+        end
 
         # println(typeof(Xmatrix))
         # println(typeof(yvector))
@@ -242,6 +253,6 @@ end
 
 function full_sample!(mk::ExplainMill.AbstractStructureMask, weights)
     foreach_mask(mk) do m, l
-        m.m.x .= sample([true, false], length(m))
+        m.m.x .= sample([true, false], weights, length(m))
     end
 end
