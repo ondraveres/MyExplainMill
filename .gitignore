@@ -34,3 +34,5 @@ LocalPreferences.toml
 
 *.jld2
 *.so
+
+*.pdf

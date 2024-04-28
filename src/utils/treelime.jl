@@ -1,5 +1,6 @@
 using JLD2
 using ExplainMill
+using Distributions
 
 @enum Direction begin
     UP
@@ -79,7 +80,13 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
             if e.perturbation_chance == 0
                 perturbation_chance = rand()
             else
-                perturbation_chance = e.perturbation_chance
+
+                # Create a truncated normal distribution with mean 0.1, standard deviation 0.1, min 0, and max 1
+                d = Truncated(Normal(0.0, e.perturbation_chance), 0, 1)
+
+                # Generate a random number from the distribution
+                rand(d)
+                perturbation_chance = rand(d)
             end
             if e.type == FLAT
                 full_sample!(mk, Weights([perturbation_chance, 1 - perturbation_chance]))
