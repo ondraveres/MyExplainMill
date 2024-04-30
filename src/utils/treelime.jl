@@ -19,7 +19,7 @@ end
 
 struct TreeLimeExplainer
     n::Int
-    rounds::Int
+    rel_tol::Float64
     type::LimeType
     direction::Direction
     perturbation_chance::Float64
@@ -34,6 +34,8 @@ function treelime(e::TreeLimeExplainer, ds::AbstractMillNode, model::AbstractMil
 end
 
 function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, ds, model, extractor)
+    og_class = Flux.onecold((model(ds)))[1]
+    min_cg = e.rel_tol * ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
     globat_flat_view = ExplainMill.FlatView(mk)
     max_depth = maximum(item.level for item in globat_flat_view.itemmap)
     items_ids_at_level = []
@@ -54,9 +56,8 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
     if e.direction == UP
         layers = reverse(layers)
     end
-    rounds_list = collect(1:e.rounds)
+
     if e.type == FLAT
-        rounds_list = [1]
         layers = [1]
     end
 
@@ -135,7 +136,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         # println(length(flat_modification_masks[1]), flat_modification_masks[1])
         # println("labels", labels)
 
-        og_class = Flux.onecold((model(ds)))[1]
+
         # println("og_class", og_class)
         labels = ifelse.(labels .== og_class, 2, 1)
         X = hcat(flat_modification_masks...)
@@ -178,6 +179,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         try
             path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
         catch
+            "ZERO VARIANCE USING ONES"
         end
         lambdas = []
         betas = nothing
@@ -230,7 +232,9 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 break
             end
         end
-        positive_indices = findall(x -> x > 0, cgs)
+        positive_indices = findall(x -> x >= min_cg, cgs)
+        println("cgs", cgs)
+        println("min_cg", min_cg)
 
         if length(positive_indices) > 0
             println("non_zero_lengths", non_zero_lengths)
