@@ -192,6 +192,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 println("######")
                 println("lambda ", mylambdas[i])
                 coef .+= 0.1
+                betas[:, i] .+= 0.1
                 non_zero_indices = findall(x -> abs(x) > 0, coef)
                 println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
             end
@@ -232,8 +233,13 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         positive_indices = findall(x -> x > 0, cgs)
 
         if length(positive_indices) > 0
+            println("non_zero_lengths", non_zero_lengths)
+            println("positive_indices", positive_indices)
             best_index = findmin(non_zero_lengths[positive_indices])[2]
+            println("best_index", best_index)
             coef = betas[:, positive_indices[best_index]]
+            println("positive_indices[best_index]", positive_indices[best_index])
+            println("coef", coef)
             non_zero_indices = findall(x -> abs(x) > 0, coef)
             if e.type == FLAT
                 for i in 1:length(globat_flat_view.itemmap)
