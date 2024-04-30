@@ -172,15 +172,25 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         nleaves_list = []
 
         lambdas = collect(range(0.000, stop=1, step=0.0005))
+        mylambdas = lambdas
         pushfirst!(lambdas, 0.0)
-        path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
+        path = nothing
+        try
+            path = glmnet(Xmatrix, yvector; weights=weights, alpha=1.0, lambda=lambdas)#nlambda=1000)#, lambda=[lambda])
+        catch
+        end
         lambdas = []
-        betas = convert(Matrix, path.betas)
-        for i in 1:length(path.lambda)
+        betas = nothing
+        try
+            betas = convert(Matrix, path.betas)
+        catch
+            betas = ones(size(Xmatrix, 2), length(mylambdas))
+        end
+        for i in 1:length(mylambdas)
             coef = betas[:, i]
             if i == 1
                 println("######")
-                println("lambda ", path.lambda[i])
+                println("lambda ", mylambdas[i])
                 coef .+= 0.1
                 non_zero_indices = findall(x -> abs(x) > 0, coef)
                 println("non_zero_indices ration ", length(non_zero_indices) / length(coef))
@@ -198,13 +208,14 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 for i in items_ids_at_level[layer]
                     globat_flat_view[i] = 0
                 end
+
                 for i in items_ids_at_level[layer][non_zero_indices]
                     globat_flat_view[i] = 1
                 end
             end
 
             cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
-            push!(lambdas, path.lambda[i])
+            push!(lambdas, mylambdas[i])
             push!(non_zero_lengths, length(non_zero_indices))
             push!(cgs, cg)
             s = ExplainMill.e2boolean(ds, mk, extractor)
