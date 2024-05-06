@@ -268,8 +268,10 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
         println("END OF LAYER $(layer) CG: ", cg)
 
+        # println(e.rel_tol)
+        rt = e.rel_tol
 
-        @save "visual/cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer)_$(e.rel_tol)_$(og_class).jld2" lambdas cgs non_zero_lengths nleaves_list og_class e.rel_tol min_cg og_class
+        @save "visual/cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer)_$(e.rel_tol)_$(og_class).jld2" lambdas cgs non_zero_lengths nleaves_list og_class min_cg rt
     end
 end
 
