@@ -264,10 +264,12 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
         cg = ExplainMill.logitconfgap(model, ds[mk], og_class)[1]
+
+
         println("END OF LAYER $(layer) CG: ", cg)
 
 
-        @save "cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer).jld2" lambdas cgs non_zero_lengths nleaves_list
+        @save "visual/cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer)_$(og_class).jld2" lambdas cgs non_zero_lengths nleaves_list
     end
 end
 
