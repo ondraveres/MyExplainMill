@@ -233,17 +233,17 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
             end
         end
         positive_indices = findall(x -> x >= min_cg, cgs)
-        println("cgs", cgs)
-        println("min_cg", min_cg)
+        # println("cgs", cgs)
+        # println("min_cg", min_cg)
 
         if length(positive_indices) > 0
-            println("non_zero_lengths", non_zero_lengths)
-            println("positive_indices", positive_indices)
+            # println("non_zero_lengths", non_zero_lengths)
+            # println("positive_indices", positive_indices)
             best_index = findmin(non_zero_lengths[positive_indices])[2]
-            println("best_index", best_index)
+            # println("best_index", best_index)
             coef = betas[:, positive_indices[best_index]]
-            println("positive_indices[best_index]", positive_indices[best_index])
-            println("coef", coef)
+            # println("positive_indices[best_index]", positive_indices[best_index])
+            # println("coef", coef)
             non_zero_indices = findall(x -> abs(x) > 0, coef)
             if e.type == FLAT
                 for i in 1:length(globat_flat_view.itemmap)
@@ -269,7 +269,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         println("END OF LAYER $(layer) CG: ", cg)
 
 
-        @save "visual/cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer)_$(og_class).jld2" lambdas cgs non_zero_lengths nleaves_list
+        @save "visual/cg_lambda_plot_$(e.n)_$(e.type)_$(e.direction)_$(layer)_$(e.rel_tol)_$(og_class).jld2" lambdas cgs non_zero_lengths nleaves_list og_class e.rel_tol min_cg og_class
     end
 end
 
