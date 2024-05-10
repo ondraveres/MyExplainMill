@@ -167,7 +167,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
         # println(Xmatrix)
 
-        @save "Xmatrix.jld2" Xmatrix
+        @save "Xmatrix-$(e.type)-$(layer).jld2" Xmatrix
 
         cgs = []
         non_zero_lengths = []

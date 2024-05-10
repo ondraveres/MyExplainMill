@@ -4,5 +4,5 @@
         "docs",
         "test"
     ],
-    "julia.environmentPath": "/home/veresond/ExplainMill.jl/myscripts"
+    "julia.environmentPath": "/Users/ondrejveres/Diplomka/ExplainMill.jl/myscripts"
 }
