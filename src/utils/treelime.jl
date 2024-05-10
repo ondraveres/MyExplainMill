@@ -90,9 +90,9 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 perturbation_chance = rand(d)
             end
             if e.type == FLAT
-                full_sample!(mk, Weights([perturbation_chance, 1 - perturbation_chance]))
+                full_sample!(mk, Weights([1 - perturbation_chance, perturbation_chance]))
             else
-                sample_at_level!(mk, Weights([perturbation_chance, 1 - perturbation_chance]), layer)
+                sample_at_level!(mk, Weights([1 - perturbation_chance, perturbation_chance]), layer)
             end
 
             # updateparticipation!(mk)
@@ -165,8 +165,9 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
         # println(typeof(Xmatrix))
         # println(typeof(yvector))
 
+        # println(Xmatrix)
 
-
+        @save "Xmatrix.jld2" Xmatrix
 
         cgs = []
         non_zero_lengths = []
