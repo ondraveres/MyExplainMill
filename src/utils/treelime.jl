@@ -95,7 +95,7 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 sample_at_level!(mk, Weights([1 - perturbation_chance, perturbation_chance]), layer)
             end
 
-            # updateparticipation!(mk)
+            updateparticipation!(mk)
             local_flat_view = ExplainMill.FlatView(mk)
             p_flat_view = ExplainMill.participate(ExplainMill.FlatView(mk))
             # for i in 1:length(p_flat_view)
