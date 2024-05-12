@@ -80,14 +80,17 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
             perturbation_chance = nothing
             if e.perturbation_chance == 0
                 perturbation_chance = rand()
-            else
-
-                # Create a truncated normal distribution with mean 0.1, standard deviation 0.1, min 0, and max 1
+            elseif e.perturbation_chance < 1
                 d = Truncated(Normal(0.0, e.perturbation_chance), 0, 1)
-
-                # Generate a random number from the distribution
                 rand(d)
                 perturbation_chance = rand(d)
+            elseif e.perturbation_chance < 2
+                d = Truncated(Normal(1.0, e.perturbation_chance - 1), 0, 1)
+                rand(d)
+                perturbation_chance = rand(d)
+            elseif e.perturbation_chance < 3
+
+                perturbation_chance = e.perturbation_chance - 2
             end
             if e.type == FLAT
                 full_sample!(mk, Weights([1 - perturbation_chance, perturbation_chance]))
@@ -123,10 +126,10 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
 
 
 
-            # s = ExplainMill.e2boolean(ds, mk, extractor)
             if e.distance == JSONDIFF
                 # println(nnodes(s))
                 # println(nleaves(s))
+                s = ExplainMill.e2boolean(ds, mk, extractor)
                 ce = jsondiff(og, s)
                 ec = jsondiff(s, og)
                 push!(distances, nleaves(ce) + nleaves(ec))
