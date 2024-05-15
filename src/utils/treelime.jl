@@ -89,7 +89,6 @@ function treelime!(e::TreeLimeExplainer, mk::ExplainMill.AbstractStructureMask, 
                 rand(d)
                 perturbation_chance = rand(d)
             elseif e.perturbation_chance < 3
-
                 perturbation_chance = e.perturbation_chance - 2
             end
             if e.type == FLAT
