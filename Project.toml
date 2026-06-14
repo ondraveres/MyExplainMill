@@ -1,7 +1,7 @@
 name = "ExplainMill"
 uuid = "a2c437b0-bf6b-41a1-8a62-162a814afa99"
-authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
 version = "0.0.1"
+authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -37,6 +37,7 @@ HierarchicalUtils = "2"
 JSON = "0.21"
 JsonGrinder = "^2"
 Mill = "^2"
+Revise = "3"
 Setfield = "1"
 StatsBase = "0.33, 0.34"
 julia = "^1"
