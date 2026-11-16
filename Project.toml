@@ -1,7 +1,7 @@
 name = "ExplainMill"
 uuid = "a2c437b0-bf6b-41a1-8a62-162a814afa99"
-authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
 version = "0.0.1"
+authors = ["Pevnak <pevnak@gmail.com>, Simon Mandlik <simon.mandlik@gmail.com>"]
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -29,7 +29,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 ChainRulesCore = "1"
 Clustering = "0.13, 0.14, 0.15"
-DataStructures = "0.17, 0.18"
+DataStructures = "0.17, 0.18, 0.19"
 Distances = "0.8, 0.9, 0.10"
 Duff = "0.5, 0.6"
 Flux = "0.13, 0.14"
